@@ -11,9 +11,9 @@ Your Beehiiv newsletters, launched straight from the WordPress editor.
 
 ## Development environments
 
-Use **wp-env** if you do not have WordPress installed locally — it runs WordPress in Docker and mounts this repo as the plugin. Use a **local WordPress install** (Local, MAMP, Valet, etc.) if you already have a site; clone or symlink this repo into `wp-content/plugins/beehiiv` and activate the plugin manually.
+Use **wp-env** if you're running Docker — it spins up WordPress, creates the database, mounts this repo as the plugin, and activates it for you. No separate WordPress install required.
 
-Asset builds (`npm run build` / `npm run start`) always run on your machine, not inside WordPress.
+Or, if you prefer **Local**, **MAMP**, **Valet**, or similar, clone or symlink this repo into `wp-content/plugins/beehiiv`, run the [setup commands](#setup) below, and activate the plugin manually under **Plugins** in wp-admin.
 
 ## Setup
 
