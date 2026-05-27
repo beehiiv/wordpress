@@ -1,6 +1,7 @@
 @use "../../css" as beehiiv;
 
 .beehiiv-sidebar-icon {
+
 	@include beehiiv.icon-mask(
 		"../../../images/beehiiv-for-light-logo.svg",
 		20px

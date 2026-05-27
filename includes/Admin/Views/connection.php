@@ -68,7 +68,12 @@ $status_label = $is_connected
 		<?php else : ?>
 			<div class="beehiiv-connection-next-steps">
 				<p class="description">
-					<?php esc_html_e( 'You are now connected to Beehiiv. To send WordPress posts to your newsletter:', 'beehiiv' ); ?>
+					<?php
+					esc_html_e(
+						'You are now connected to Beehiiv. To send WordPress posts to your newsletter:',
+						'beehiiv'
+					);
+					?>
 				</p>
 				<ol class="description">
 					<li>
@@ -82,6 +87,7 @@ $status_label = $is_connected
 					<li>
 						<?php
 						echo wp_kses(
+							// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
 							__( 'Open the <strong>Beehiiv</strong> panel in the editor sidebar (Beehiiv icon in the top toolbar).', 'beehiiv' ),
 							[ 'strong' => [] ]
 						);
@@ -90,6 +96,7 @@ $status_label = $is_connected
 					<li>
 						<?php
 						echo wp_kses(
+							// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
 							__( 'Turn on <strong>Send to newsletter</strong> before you publish, and the post will be queued for delivery via Beehiiv.', 'beehiiv' ),
 							[ 'strong' => [] ]
 						);
