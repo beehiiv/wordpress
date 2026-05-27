@@ -1,0 +1,61 @@
+/**
+ * Connection card on the Beehiiv settings screen.
+ */
+
+@use "../../css" as beehiiv;
+
+.beehiiv-connection-card {
+	max-width: 800px;
+	margin: 20px 0;
+
+	&__inside {
+		margin: 0;
+		padding: 25px 0;
+	}
+}
+
+.beehiiv-connection-status {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+
+	&__icon--connected {
+		color: beehiiv.$beehiiv-status-connected;
+	}
+
+	&__icon--disconnected {
+		color: beehiiv.$beehiiv-status-disconnected;
+	}
+}
+
+.beehiiv-connection-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 12px;
+
+	.beehiiv-connection-actions,
+	.beehiiv-connection-status {
+		margin: 0;
+	}
+}
+
+.beehiiv-connection-signup {
+	margin-bottom: 0;
+}
+
+.beehiiv-connection-next-steps {
+	.description {
+		margin-bottom: 0.5em;
+	}
+
+	ol.description {
+		margin: 0 0 0 1.25em;
+		padding: 0;
+
+		li + li {
+			margin-top: 0.35em;
+		}
+	}
+}

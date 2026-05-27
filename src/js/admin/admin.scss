@@ -1,0 +1,27 @@
+/**
+ * Global wp-admin styles for Beehiiv.
+ *
+ * Menu icon uses a CSS mask + currentcolor (same model as Dashicons) instead of
+ * an <img>, which only supports opacity and does not match admin menu states.
+ */
+
+@use '../css' as beehiiv;
+
+/* stylelint-disable-next-line selector-id-pattern -- WordPress core admin menu ID. */
+#toplevel_page_beehiiv .wp-menu-image {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	&::before {
+		content: "";
+		flex-shrink: 0;
+		padding: 0;
+		margin: 0;
+		@include beehiiv.icon-mask( '../../images/beehiiv-for-dark-logo.svg', 19px );
+	}
+
+	img {
+		display: none;
+	}
+}

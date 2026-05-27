@@ -1,0 +1,9 @@
+composer.lock
+
+build
+coverage
+node_modules
+vendor
+
+.DS_Store
+*.zip

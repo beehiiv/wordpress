@@ -1,0 +1,14 @@
+/**
+ * Shared Beehiiv SCSS mixins.
+ */
+
+/// SVG icon via CSS mask + currentColor (Dashicons-style; works in wp-admin menu states).
+/// @param {String} $url - Path to the SVG, relative to the file that `@include`s this mixin (for webpack).
+/// @param {Number} $size - Width and height of the icon.
+@mixin icon-mask( $url, $size: 20px ) {
+	display: block;
+	width: $size;
+	height: $size;
+	background-color: currentcolor;
+	mask: url( $url ) center / contain no-repeat;
+}

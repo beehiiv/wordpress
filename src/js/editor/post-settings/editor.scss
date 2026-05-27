@@ -1,0 +1,25 @@
+@use "../../css" as beehiiv;
+
+.beehiiv-sidebar-icon {
+	@include beehiiv.icon-mask(
+		"../../../images/beehiiv-for-light-logo.svg",
+		20px
+	);
+}
+
+.beehiiv-post-settings-content {
+	/* stylelint-disable selector-class-pattern -- @wordpress/components */
+	.components-panel__body {
+		border: 0;
+		margin: 0;
+	}
+
+	.components-panel__body .components-base-control {
+		margin-bottom: 0;
+	}
+
+	.beehiiv-post-settings-notice {
+		margin: 12px 0;
+	}
+	/* stylelint-enable selector-class-pattern */
+}

@@ -1,0 +1,5 @@
+/**
+ * Shared Beehiiv styles (import via `@use '../../css' as beehiiv`).
+ */
+@forward 'colors';
+@forward 'mixins';
