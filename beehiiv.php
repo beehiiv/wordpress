@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Beehiiv
  * Description: Official Beehiiv WordPress plugin.
- * Version: 0.1.0
+ * Version: 1.0.0
  * Author: Beehiiv
  * Text Domain: beehiiv
  * Domain Path: /languages
@@ -18,7 +18,7 @@
 defined( 'ABSPATH' ) || exit;
 
 if ( ! defined( 'BEEHIIV_VERSION' ) ) {
-	define( 'BEEHIIV_VERSION', '0.1.0' );
+	define( 'BEEHIIV_VERSION', '1.0.0' );
 }
 
 if ( ! defined( 'BEEHIIV_PLUGIN_FILE' ) ) {
@@ -41,7 +41,7 @@ if ( ! defined( 'BEEHIIV_BUILD_URL' ) ) {
 	define( 'BEEHIIV_BUILD_URL', BEEHIIV_PLUGIN_URL . 'build/' );
 }
 
-require_once BEEHIIV_PLUGIN_DIR . 'vendor/autoload_packages.php';
+require_once BEEHIIV_PLUGIN_DIR . 'vendor/autoload.php';
 
 /**
  * Initialize the plugin.

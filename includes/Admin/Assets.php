@@ -13,6 +13,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Enqueues compiled scripts and styles in wp-admin.
+ *
+ * @since 1.0.0
  */
 final class Assets {
 
@@ -38,6 +40,8 @@ final class Assets {
 
 	/**
 	 * Hook asset registration.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function init(): void {
 		add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue_admin_scripts' ] );
@@ -47,6 +51,7 @@ final class Assets {
 	 * Enqueue wp-admin scripts and styles (global and screen-specific).
 	 *
 	 * @param string $hook_suffix Current admin page hook suffix.
+	 * @since 1.0.0
 	 */
 	public static function enqueue_admin_scripts( string $hook_suffix ): void {
 		self::enqueue_build_style( self::HANDLE_ADMIN, self::BUILD_ENTRY_ADMIN );
@@ -63,6 +68,7 @@ final class Assets {
 	 *
 	 * @param string $handle      Style handle.
 	 * @param string $build_entry Webpack entry name (without extension).
+	 * @since 1.0.0
 	 */
 	private static function enqueue_build_style( string $handle, string $build_entry ): void {
 		$asset_path = BEEHIIV_BUILD_DIR . $build_entry . '.asset.php';

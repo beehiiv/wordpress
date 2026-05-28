@@ -13,6 +13,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * On `admin_init`, registers the option and page settings fields.
+ *
+ * @since 1.0.0
  */
 final class Registrar {
 
@@ -30,6 +32,8 @@ final class Registrar {
 
 	/**
 	 * Register the option and page settings section (once per request).
+	 *
+	 * @since 1.0.0
 	 */
 	public static function register(): void {
 		if ( self::$registered ) {
@@ -45,6 +49,7 @@ final class Registrar {
 	 * Register the page settings section and fields.
 	 *
 	 * @param string $page_slug Settings page slug (admin menu slug).
+	 * @since 1.0.0
 	 */
 	private static function register_page_settings_section( string $page_slug ): void {
 		add_settings_section(
@@ -79,6 +84,8 @@ final class Registrar {
 
 	/**
 	 * Fallback section intro text.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function render_page_settings_description(): void {
 		echo '<p>' . esc_html__(
@@ -89,6 +96,8 @@ final class Registrar {
 
 	/**
 	 * API key field.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function render_api_key_field(): void {
 		$settings = Options::get();
@@ -109,6 +118,8 @@ final class Registrar {
 
 	/**
 	 * Publication ID field.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function render_publication_id_field(): void {
 		$settings = Options::get();

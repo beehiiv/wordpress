@@ -13,6 +13,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Persists plugin settings in a single WordPress option.
+ *
+ * @since 1.0.0
  */
 final class Options {
 
@@ -30,6 +32,8 @@ final class Options {
 
 	/**
 	 * Register the option with the Settings API.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function register(): void {
 		register_setting(
@@ -47,6 +51,7 @@ final class Options {
 	 * Merge saved values with defaults.
 	 *
 	 * @return array<string, mixed>
+	 * @since 1.0.0
 	 */
 	public static function get(): array {
 		$saved = get_option( Config::OPTION_NAME, [] );
@@ -63,6 +68,7 @@ final class Options {
 	 *
 	 * @param mixed $input Raw option value from the form.
 	 * @return array<string, mixed>
+	 * @since 1.0.0
 	 */
 	public static function sanitize( $input ): array {
 		$current = self::get();

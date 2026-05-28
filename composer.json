@@ -10,15 +10,13 @@
 	},
 	"minimum-stability": "stable",
 	"require": {
-		"php": ">=7.4",
-		"automattic/jetpack-autoloader": "^5.0"
+		"php": ">=7.4"
 	},
 	"config": {
 		"platform": {
 			"php": "7.4"
 		},
 		"allow-plugins": {
-			"automattic/jetpack-autoloader": true,
 			"dealerdirect/phpcodesniffer-composer-installer": true
 		}
 	},

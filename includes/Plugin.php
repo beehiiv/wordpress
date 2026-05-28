@@ -11,11 +11,17 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Wires up the plugin's feature modules.
+ *
+ * @since 1.0.0
  */
 final class Plugin {
 
 	/**
-	 * Boot the plugin.
+	 * Register core hooks and bootstrap feature modules.
+	 *
+	 * Runs on `plugins_loaded` from the main plugin file.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function init(): void {
 		Frontend\Assets::init();
@@ -31,6 +37,8 @@ final class Plugin {
 
 	/**
 	 * Initializes admin feature hooks during `admin_init`.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function bootstrap_admin_features(): void {
 		Admin\SettingsPage::init();

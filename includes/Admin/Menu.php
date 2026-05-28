@@ -13,6 +13,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Adds the Beehiiv item to the wp-admin sidebar.
+ *
+ * @since 1.0.0
  */
 final class Menu {
 
@@ -21,6 +23,8 @@ final class Menu {
 	 *
 	 * Icon is drawn in global admin CSS (`src/js/admin/admin.scss`) via mask so it
 	 * follows the same currentColor / hover / active states as Dashicons.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function register(): void {
 		add_menu_page(

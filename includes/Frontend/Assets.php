@@ -11,6 +11,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Enqueues compiled scripts and styles on the public site.
+ *
+ * @since 1.0.0
  */
 final class Assets {
 
@@ -31,6 +33,8 @@ final class Assets {
 
 	/**
 	 * Hook asset registration.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function init(): void {
 		add_action( 'wp_enqueue_scripts', [ self::class, 'enqueue_scripts' ] );
@@ -38,6 +42,8 @@ final class Assets {
 
 	/**
 	 * Enqueue frontend scripts and styles when the build artifacts exist.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function enqueue_scripts(): void {
 		$asset_path  = BEEHIIV_BUILD_DIR . self::BUILD_ENTRY . '.asset.php';

@@ -11,6 +11,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Registers every block whose metadata lives under `build/blocks/`.
+ *
+ * @since 1.0.0
  */
 final class Registry {
 
@@ -21,6 +23,8 @@ final class Registry {
 
 	/**
 	 * Register the Beehiiv block category for the block editor.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function register_category(): void {
 		add_filter( 'block_categories_all', [ self::class, 'add_block_category' ] );
@@ -31,6 +35,7 @@ final class Registry {
 	 *
 	 * @param array<int, array<string, mixed>> $categories Registered block categories.
 	 * @return array<int, array<string, mixed>>
+	 * @since 1.0.0
 	 */
 	public static function add_block_category( array $categories ): array {
 		array_unshift(
@@ -46,6 +51,8 @@ final class Registry {
 
 	/**
 	 * Discover and register every compiled block.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function register_blocks(): void {
 		$blocks_dir = BEEHIIV_BUILD_DIR . 'blocks';

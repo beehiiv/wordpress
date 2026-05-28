@@ -12,6 +12,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Registers post meta and enqueues the Beehiiv plugin sidebar for the default
  * `post` post type.
+ *
+ * @since 1.0.0
  */
 final class PostSettings {
 
@@ -50,6 +52,8 @@ final class PostSettings {
 	/**
 	 * Expose Beehiiv post meta to the REST API so the block editor can read
 	 * and write it.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function register_meta(): void {
 		foreach ( self::META_KEYS as $key => $config ) {
@@ -71,6 +75,8 @@ final class PostSettings {
 
 	/**
 	 * Enqueue the compiled editor plugin only on `post` edit screens.
+	 *
+	 * @since 1.0.0
 	 */
 	public static function enqueue_assets(): void {
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
