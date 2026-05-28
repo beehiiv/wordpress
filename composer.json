@@ -26,5 +26,32 @@
 		"wp-coding-standards/wpcs": "^3.3",
 		"phpcompatibility/phpcompatibility-wp": "^2.1",
 		"dealerdirect/phpcodesniffer-composer-installer": "^1.2"
+	},
+	"archive": {
+		"exclude": [
+			"!/build",
+			"!/includes",
+			"!/vendor/**",
+			"!/readme.txt",
+			"!/beehiiv.php",
+			"src",
+			"tests",
+			"node_modules",
+			".git",
+			".github",
+			".vscode",
+			"dist",
+			"build-dev",
+			"build-module",
+			"build-style",
+			"README.md",
+			"package.json",
+			"package-lock.json",
+			"composer.json",
+			"composer.lock",
+			"webpack.config.js",
+			".*",
+			"*.zip"
+		]
 	}
 }
