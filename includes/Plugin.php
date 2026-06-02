@@ -29,8 +29,8 @@ final class Plugin {
 		add_action( 'init', [ Blocks\Registry::class, 'register_category' ] );
 		add_action( 'init', [ Blocks\Registry::class, 'register_blocks' ] );
 		add_action( 'init', [ Editor\PostSettings::class, 'register_meta' ] );
-		add_action( 'init', [ API\Routes::class, 'init' ] );
 		add_action( 'enqueue_block_editor_assets', [ Editor\PostSettings::class, 'enqueue_assets' ] );
+		Newsletter\Sender::init();
 		add_action( 'admin_menu', [ Admin\Menu::class, 'register' ] );
 		add_action( 'admin_init', [ self::class, 'bootstrap_admin_features' ] );
 	}

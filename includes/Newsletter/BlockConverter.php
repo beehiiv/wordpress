@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Walks parsed block editor content and builds the Beehiiv `blocks` array.
  *
- * Supported WordPress blocks (mapped in `convert()`):
+ * Supported WordPress blocks (mapped in `convert_all_blocks()`):
  *
  * - Featured image (post thumbnail) — `convert_post_thumbnail()` (NOT IMPLEMENTED YET)
  * - `core/heading` — `convert_heading_block()` (NOT IMPLEMENTED YET)
@@ -44,7 +44,7 @@ final class BlockConverter {
 	 * @return array<int, array<string, mixed>>
 	 * @since 1.0.0
 	 */
-	public static function convert( WP_Post $post_object ): array {
+	public static function convert_all_blocks( WP_Post $post_object ): array {
 		$beehiiv_blocks = [];
 		$wp_blocks      = parse_blocks( $post_object->post_content );
 

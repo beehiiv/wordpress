@@ -24,7 +24,7 @@ final class PostSettingsBuilder {
 	 * Create Beehiiv post settings array for the WordPress post.
 	 *
 	 * @param int $post_id Post ID.
-	 * @return array|\WP_Error Beehiiv post settings array, or error.
+	 * @return array<string, mixed>|WP_Error Beehiiv post settings or error.
 	 * @since 1.0.0
 	 */
 	public static function get_post_settings( int $post_id ) {
@@ -33,22 +33,32 @@ final class PostSettingsBuilder {
 		if ( ! $post_object instanceof WP_Post ) {
 			return new WP_Error(
 				'beehiiv_post_not_found',
-				sprintf(
-					/* translators: %s: WordPress post ID */
-					__( 'Post not found for post ID: %s.', 'beehiiv' ),
-					(string) $post_id
-				)
+				sprintf( 'Post not found for ID: %d.', $post_id )
+			);
+		}
+
+		$post_template_id = self::get_site_post_template_id();
+
+		if ( '' === $post_template_id ) {
+			return new WP_Error(
+				'beehiiv_post_template_id_empty',
+				sprintf( 'Beehiiv email template is not configured for post ID: %d.', $post_id )
 			);
 		}
 
 		if ( '' === $post_object->post_title || '' === $post_object->post_content ) {
 			return new WP_Error(
 				'beehiiv_post_title_or_content_empty',
-				sprintf(
-					/* translators: %s: WordPress post ID */
-					__( 'Beehiiv post title or content is empty for post ID: %s.', 'beehiiv' ),
-					(string) $post_id
-				)
+				sprintf( 'Post title or content is empty for post ID: %d.', $post_id )
+			);
+		}
+
+		$beehiiv_blocks = BlockConverter::convert_all_blocks( $post_object );
+
+		if ( empty( $beehiiv_blocks ) ) {
+			return new WP_Error(
+				'beehiiv_blocks_empty',
+				sprintf( 'No supported Beehiiv blocks for post ID: %d.', $post_id )
 			);
 		}
 
@@ -57,11 +67,10 @@ final class PostSettingsBuilder {
 			? self::normalize_thumbnail_url( $thumbnail_image_url )
 			: '';
 
-		$beehiiv_blocks = BlockConverter::convert( $post_object );
-
 		$post_title = html_entity_decode( get_the_title( $post_object ) );
 
 		$settings = [
+			'post_template_id'    => $post_template_id,
 			'title'               => $post_title,
 			'blocks'              => $beehiiv_blocks,
 			'status'              => 'confirmed',
@@ -79,12 +88,6 @@ final class PostSettingsBuilder {
 			'social_share'        => 'none',
 		];
 
-		$post_template_id = self::get_site_post_template_id();
-
-		if ( '' !== $post_template_id ) {
-			$settings['post_template_id'] = $post_template_id;
-		}
-
 		/**
 		 * Filters the Beehiiv newsletter post settings before they are sent.
 		 *
@@ -96,7 +99,7 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Plugin default email template; empty omits post_template_id from the payload.
+	 * Default email template from plugin settings.
 	 *
 	 * @return string
 	 * @since 1.0.0
@@ -119,7 +122,6 @@ final class PostSettingsBuilder {
 	 * @since 1.0.0
 	 */
 	private static function normalize_thumbnail_url( string $url ): string {
-		// Convert thumbnail image url to production url.
 		// Non-production image urls do not work in Beehiiv and it prevents creating post via API.
 		return str_replace( [ 'test.', 'preprod.', 'viptest.' ], '', $url );
 	}

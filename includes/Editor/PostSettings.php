@@ -55,6 +55,10 @@ final class PostSettings {
 			'type'    => 'boolean',
 			'default' => false,
 		],
+		Meta::BEEHIIV_POST_ID            => [
+			'type'    => 'string',
+			'default' => '',
+		],
 	];
 
 	/**

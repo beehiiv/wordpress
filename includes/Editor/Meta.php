@@ -36,4 +36,11 @@ final class Meta {
 	 * @since 1.0.0
 	 */
 	public const SEND_TO_NEWSLETTER_SNIPPET = '_beehiiv_send_to_newsletter_snippet';
+
+	/**
+	 * Beehiiv post ID after the newsletter has been created via the API.
+	 *
+	 * @since 1.0.0
+	 */
+	public const BEEHIIV_POST_ID = '_beehiiv_post_id';
 }

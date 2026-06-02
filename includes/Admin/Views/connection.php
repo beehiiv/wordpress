@@ -14,10 +14,6 @@ $is_connected = Manager::is_connected();
 $status_icon_class = $is_connected
 	? 'beehiiv-connection-status__icon beehiiv-connection-status__icon--connected dashicons dashicons-yes-alt'
 	: 'beehiiv-connection-status__icon beehiiv-connection-status__icon--disconnected dashicons dashicons-marker';
-
-$status_label = $is_connected
-	? esc_html__( 'Connected', 'beehiiv' )
-	: esc_html__( 'Not connected', 'beehiiv' );
 ?>
 <div class="beehiiv-connection-card">
 	<div class="postbox-header">
@@ -28,7 +24,7 @@ $status_label = $is_connected
 		<div class="beehiiv-connection-row">
 			<div class="beehiiv-connection-actions">
 				<button type="button" class="button button-primary">
-					<?php echo esc_html( $status_label ); ?>
+					<?php echo esc_html( Manager::get_status_label() ); ?>
 				</button>
 			</div>
 
