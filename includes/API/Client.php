@@ -34,6 +34,27 @@ final class Client {
 	private static $request_log = [];
 
 	/**
+	 * HTTP status code from the most recent request.
+	 *
+	 * @var int|null
+	 */
+	private static $last_status_code = null;
+
+	/**
+	 * WP_Error message from the most recent request, if any.
+	 *
+	 * @var string|null
+	 */
+	private static $last_wp_error = null;
+
+	/**
+	 * HTTP timeout in seconds for Beehiiv API requests.
+	 *
+	 * @since 1.0.0
+	 */
+	private const REQUEST_TIMEOUT = 30;
+
+	/**
 	 * Make an authenticated GET request to Beehiiv v2.
 	 *
 	 * @param string              $path Relative API path (e.g. `/publications`).
@@ -53,6 +74,26 @@ final class Client {
 	 */
 	public static function get_request_log(): array {
 		return self::$request_log;
+	}
+
+	/**
+	 * HTTP status code from the most recent request.
+	 *
+	 * @return int|null
+	 * @since 1.0.0
+	 */
+	public static function get_last_status_code(): ?int {
+		return self::$last_status_code;
+	}
+
+	/**
+	 * Transport error from the most recent request.
+	 *
+	 * @return string|null
+	 * @since 1.0.0
+	 */
+	public static function get_last_wp_error(): ?string {
+		return self::$last_wp_error;
 	}
 
 	/**
@@ -88,6 +129,7 @@ final class Client {
 
 		$args = [
 			'method'  => $method,
+			'timeout' => self::REQUEST_TIMEOUT,
 			'headers' => [
 				'Authorization' => 'Bearer ' . $api_key,
 				'Accept'        => 'application/json',
@@ -99,15 +141,19 @@ final class Client {
 			$args['body']                    = wp_json_encode( $body );
 		}
 
-		$res  = wp_remote_request( $url, $args );
+		$res = wp_remote_request( $url, $args );
+
+		self::$last_status_code = is_wp_error( $res ) ? null : (int) wp_remote_retrieve_response_code( $res );
+		self::$last_wp_error    = is_wp_error( $res ) ? $res->get_error_message() : null;
+
 		$raw  = is_wp_error( $res ) ? '' : (string) wp_remote_retrieve_body( $res );
 		$json = json_decode( $raw, true );
 
 		self::$request_log[] = [
 			'method'      => $method,
 			'url'         => $url,
-			'status_code' => is_wp_error( $res ) ? null : (int) wp_remote_retrieve_response_code( $res ),
-			'wp_error'    => is_wp_error( $res ) ? $res->get_error_message() : null,
+			'status_code' => self::$last_status_code,
+			'wp_error'    => self::$last_wp_error,
 			'raw_body'    => $raw,
 			'parsed_json' => is_array( $json ) ? $json : null,
 		];
