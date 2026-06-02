@@ -84,16 +84,16 @@ See `src/js/blocks/signup-form/` and `src/js/blocks/advertisement/` for block sc
 
 A top-level **Beehiiv** wp-admin menu (not under Settings) is wired from `Plugin::bootstrap_admin_features()`:
 
-| Class                     | Responsibility                                                    |
-| ------------------------- | ----------------------------------------------------------------- |
-| `Config`                  | Shared constants (slug, option name, REST namespace, view paths)  |
-| `Admin\SettingsPage`      | Registers Settings API fields; renders the screen                 |
-| `Admin\Menu`              | Sidebar menu → calls `SettingsPage::render`                       |
-| `Admin\Options`           | `beehiiv_settings` option: defaults, `get()`, sanitize            |
-| `Admin\Registrar`         | Registers publication ID and default email template fields          |
-| `Connection\Manager`      | Connection status; temporary API key in `is_connected()`      |
-| `Views/connection.php`    | Connection card and post-connect next steps                       |
-| `Views/settings-page.php` | Form wrapper (`settings_fields`, `do_settings_sections`)          |
+| Class                     | Responsibility                                                   |
+| ------------------------- | ---------------------------------------------------------------- |
+| `Config`                  | Shared constants (slug, option name, REST namespace, view paths) |
+| `Admin\SettingsPage`      | Registers Settings API fields; renders the screen                |
+| `Admin\Menu`              | Sidebar menu → calls `SettingsPage::render`                      |
+| `Admin\Options`           | `beehiiv_settings` option: defaults, `get()`, sanitize           |
+| `Admin\Registrar`         | Registers publication ID and default email template fields       |
+| `Connection\Manager`      | Connection status; temporary API key in `is_connected()`         |
+| `Views/connection.php`    | Connection card and post-connect next steps                      |
+| `Views/settings-page.php` | Form wrapper (`settings_fields`, `do_settings_sections`)         |
 
 ### Post settings sidebar
 
@@ -109,7 +109,13 @@ Add new fields by keeping these in sync:
 3. `META_KEYS` in `includes/Editor/PostSettings.php` — registration config
 4. Controls in `src/js/editor/post-settings/index.js`
 
-Until OAuth is available, paste your Beehiiv API key into `Manager::is_connected()` in `includes/Connection/Manager.php`. When non-empty, the settings screen treats the site as connected. Remove that temporary key when OAuth ships.
+Until OAuth is available, define your Beehiiv API key in `wp-config.php`:
+
+```php
+define( 'BEEHIIV_API_KEY', 'your_beehiiv_api_key_here' );
+```
+
+When non-empty, the settings screen treats the site as connected. Remove that temporary key when OAuth ships.
 
 Email template for API payloads uses the plugin default `post_template_id`; omit `post_template_id` from the request when unset (`Newsletter\PostSettingsBuilder`).
 

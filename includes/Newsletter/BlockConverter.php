@@ -17,17 +17,17 @@ defined( 'ABSPATH' ) || exit;
  *
  * Supported WordPress blocks (mapped in `convert()`):
  *
- * - Featured image (post thumbnail) — `convert_post_thumbnail()` (stub)
- * - `core/heading` — `convert_heading_block()` (stub)
- * - `core/paragraph` — `convert_paragraph_block()` (stub)
- * - `core/image` — `convert_image_block()` (stub)
- * - `core/list` — `convert_list_block()` (stub)
- * - `core/table` — `convert_table_block()` (stub)
- * - `core/quote` — `convert_quote_block()` (stub)
- * - `core/pullquote` — `convert_pullquote_block()` (stub)
- * - `core/embed` — `convert_embed_block()` (stub)
- * - `core/media-text` — `convert_media_text_block()` (stub)
- * - `core/buttons` / inner `core/button` — `convert_buttons_block()`, `convert_button_block()` (stub)
+ * - Featured image (post thumbnail) — `convert_post_thumbnail()` (NOT IMPLEMENTED YET)
+ * - `core/heading` — `convert_heading_block()` (NOT IMPLEMENTED YET)
+ * - `core/paragraph` — `convert_paragraph_block()` (NOT IMPLEMENTED YET)
+ * - `core/image` — `convert_image_block()` (NOT IMPLEMENTED YET)
+ * - `core/list` — `convert_list_block()` (NOT IMPLEMENTED YET)
+ * - `core/table` — `convert_table_block()` (NOT IMPLEMENTED YET)
+ * - `core/quote` — `convert_quote_block()` (NOT IMPLEMENTED YET)
+ * - `core/pullquote` — `convert_pullquote_block()` (NOT IMPLEMENTED YET)
+ * - `core/embed` — `convert_embed_block()` (NOT IMPLEMENTED YET)
+ * - `core/media-text` — `convert_media_text_block()` (NOT IMPLEMENTED YET)
+ * - `core/buttons` / inner `core/button` — `convert_buttons_block()`, `convert_button_block()` (NOT IMPLEMENTED YET)
  * - `core/separator` — Beehiiv `content_break` (implemented)
  * - `core/more` — snippet newsletters only; Beehiiv Read More `button` via `convert_more_block()` (implemented)
  *
