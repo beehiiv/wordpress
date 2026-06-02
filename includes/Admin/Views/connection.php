@@ -83,7 +83,7 @@ $status_label = $is_connected
 							esc_url( admin_url( 'post-new.php' ) ),
 							esc_html__( 'Create', 'beehiiv' )
 						);
-						$edit_posts_link = sprintf(
+						$edit_posts_link  = sprintf(
 							'<a href="%1$s">%2$s</a>',
 							esc_url( admin_url( 'edit.php' ) ),
 							esc_html__( 'edit', 'beehiiv' )

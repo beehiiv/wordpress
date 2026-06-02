@@ -24,9 +24,9 @@ final class Options {
 	 * @var array<string, mixed>
 	 */
 	private const DEFAULTS = [
-		'publication_id'      => '',
-		'post_template_id'    => '',
-		'oauth_connected'     => false,
+		'publication_id'   => '',
+		'post_template_id' => '',
+		'oauth_connected'  => false,
 	];
 
 	/**
@@ -76,7 +76,7 @@ final class Options {
 			return $current;
 		}
 
-		$publication_id = isset( $input['publication_id'] )
+		$publication_id   = isset( $input['publication_id'] )
 			? sanitize_text_field( (string) $input['publication_id'] )
 			: '';
 		$post_template_id = isset( $input['post_template_id'] )
@@ -84,9 +84,9 @@ final class Options {
 			: '';
 
 		return [
-			'publication_id'      => $publication_id,
-			'post_template_id'    => $post_template_id,
-			'oauth_connected'     => $current['oauth_connected'],
+			'publication_id'   => $publication_id,
+			'post_template_id' => $post_template_id,
+			'oauth_connected'  => $current['oauth_connected'],
 		];
 	}
 }
