@@ -20,21 +20,49 @@ defined( 'ABSPATH' ) || exit;
 final class Manager {
 
 	/**
+	 * `wp-config.php` constant name for the Beehiiv API key.
+	 *
+	 * @since 1.0.0
+	 */
+	private const API_KEY_CONST = 'BEEHIIV_API_KEY';
+
+	/**
 	 * Whether the site can call the Beehiiv API.
 	 *
 	 * @since 1.0.0
 	 */
 	public static function is_connected(): bool {
-		// Temporary until OAuth. Paste your Beehiiv API key here.
-		$api_key = 'N2hMYn6zDVuNt1ec8byKeUdiytm2smGik1RXUqKaE6zG3R5A14C5dxBVJ1tRbV94';
-
-		if ( '' !== $api_key ) {
+		if ( '' !== self::get_api_key() ) {
 			return true;
 		}
 
 		$settings = Options::get();
 
 		return ! empty( $settings['oauth_connected'] );
+	}
+
+	/**
+	 * API key for Beehiiv API requests.
+	 *
+	 * Hardcoded temporarily until OAuth is implemented.
+	 *
+	 * @return string
+	 * @since 1.0.0
+	 */
+	public static function get_api_key(): string {
+		$api_key = '';
+
+		if ( defined( self::API_KEY_CONST ) ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- Consumed from wp-config.php.
+			$api_key = (string) constant( self::API_KEY_CONST );
+		} elseif ( function_exists( 'getenv' ) ) {
+			$env_key = getenv( self::API_KEY_CONST );
+			if ( is_string( $env_key ) ) {
+				$api_key = $env_key;
+			}
+		}
+
+		return trim( $api_key );
 	}
 
 	/**
