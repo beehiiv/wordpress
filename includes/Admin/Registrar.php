@@ -7,11 +7,11 @@
 
 namespace Beehiiv\Admin;
 
+use Beehiiv\API\Client;
 use Beehiiv\API\Resources\PostTemplates;
 use Beehiiv\API\Resources\Publications;
 use Beehiiv\Config;
 use Beehiiv\Connection\Manager;
-use WP_Error;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -87,6 +87,14 @@ final class Registrar {
 				'label_for' => 'beehiiv_post_template_id',
 			]
 		);
+
+		add_settings_field(
+			'beehiiv_api_debug',
+			__( 'API debug', 'beehiiv' ),
+			[ self::class, 'render_api_debug_field' ],
+			$page_slug,
+			self::PAGE_SETTINGS_SECTION_ID
+		);
 	}
 
 	/**
@@ -110,20 +118,13 @@ final class Registrar {
 		$settings = Options::get();
 		$selected = (string) $settings['publication_id'];
 		$name     = Config::OPTION_NAME . '[publication_id]';
-		$items    = Publications::list();
+		$items    = Publications::get_publications();
 		?>
 		<select id="beehiiv_publication_id" class="beehiiv-settings-select" name="<?php echo esc_attr( $name ); ?>">
 			<option value="" <?php selected( $selected, '' ); ?>>
 				<?php esc_html_e( 'Select a publication', 'beehiiv' ); ?>
 			</option>
-			<?php if ( is_wp_error( $items ) ) : ?>
-				<?php if ( '' !== $selected ) : ?>
-					<option value="<?php echo esc_attr( $selected ); ?>" selected="selected">
-						<?php echo esc_html( $selected ); ?>
-					</option>
-				<?php endif; ?>
-			<?php elseif ( is_array( $items ) ) : ?>
-				<?php foreach ( $items as $item ) : ?>
+			<?php foreach ( $items as $item ) : ?>
 					<?php
 					$id   = isset( $item['id'] ) ? (string) $item['id'] : '';
 					$name = isset( $item['name'] ) ? (string) $item['name'] : '';
@@ -149,25 +150,9 @@ final class Registrar {
 						<?php echo esc_html( $selected ); ?>
 					</option>
 				<?php endif; ?>
-			<?php endif; ?>
 		</select>
 		<p class="description">
-			<?php
-			esc_html_e( 'The publication to use for newsletters sent from this site.', 'beehiiv' );
-			if ( is_wp_error( $items ) ) {
-				printf(
-					' %s',
-					wp_kses(
-						sprintf(
-							/* translators: %s: Beehiiv API error message. */
-							__( 'Unable to load publications from Beehiiv (%s).', 'beehiiv' ),
-							esc_html( $items->get_error_message() )
-						),
-						[]
-					)
-				);
-			}
-			?>
+			<?php esc_html_e( 'The publication to use for newsletters sent from this site.', 'beehiiv' ); ?>
 		</p>
 		<?php
 	}
@@ -182,23 +167,13 @@ final class Registrar {
 		$selected       = (string) $settings['post_template_id'];
 		$name           = Config::OPTION_NAME . '[post_template_id]';
 		$publication_id = (string) $settings['publication_id'];
-		$items          = '' !== $publication_id ? PostTemplates::list( $publication_id ) : new WP_Error(
-			'beehiiv_no_publication_selected',
-			__( 'Select a publication to load templates.', 'beehiiv' )
-		);
+		$items          = '' !== $publication_id ? PostTemplates::get_post_templates( $publication_id ) : [];
 		?>
 		<select id="beehiiv_post_template_id" class="beehiiv-settings-select" name="<?php echo esc_attr( $name ); ?>">
 			<option value="" <?php selected( $selected, '' ); ?>>
 				<?php esc_html_e( 'No default template', 'beehiiv' ); ?>
 			</option>
-			<?php if ( is_wp_error( $items ) ) : ?>
-				<?php if ( '' !== $selected ) : ?>
-					<option value="<?php echo esc_attr( $selected ); ?>" selected="selected">
-						<?php echo esc_html( $selected ); ?>
-					</option>
-				<?php endif; ?>
-			<?php elseif ( is_array( $items ) ) : ?>
-				<?php foreach ( $items as $item ) : ?>
+			<?php foreach ( $items as $item ) : ?>
 					<?php
 					$id   = isset( $item['id'] ) ? (string) $item['id'] : '';
 					$name = isset( $item['name'] ) ? (string) $item['name'] : '';
@@ -224,26 +199,67 @@ final class Registrar {
 						<?php echo esc_html( $selected ); ?>
 					</option>
 				<?php endif; ?>
-			<?php endif; ?>
 		</select>
 		<p class="description">
-			<?php
-			esc_html_e( 'Default email template for newsletters sent from this site.', 'beehiiv' );
-			if ( is_wp_error( $items ) ) {
-				printf(
-					' %s',
-					wp_kses(
-						sprintf(
-							/* translators: %s: Beehiiv API error message. */
-							__( 'Unable to load templates from Beehiiv (%s).', 'beehiiv' ),
-							esc_html( $items->get_error_message() )
-						),
-						[]
-					)
-				);
-			}
-			?>
+			<?php esc_html_e( 'Default email template for newsletters sent from this site.', 'beehiiv' ); ?>
 		</p>
 		<?php
+	}
+
+	/**
+	 * Temporary: show raw Beehiiv API responses from this page load.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function render_api_debug_field(): void {
+		$log = Client::get_request_log();
+
+		if ( empty( $log ) ) {
+			echo '<p class="description">' . esc_html__(
+				'No API requests were made on this page load.',
+				'beehiiv'
+			) . '</p>';
+			return;
+		}
+
+		echo '<p class="description">' . esc_html__(
+			// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
+			'Temporary debug output from Beehiiv API calls made while rendering the fields above. Remove before release.',
+			'beehiiv'
+		) . '</p>';
+
+		foreach ( $log as $index => $entry ) {
+			$label = sprintf(
+				/* translators: %d: 1-based request number. */
+				__( 'Request %d', 'beehiiv' ),
+				$index + 1
+			);
+			?>
+			<details class="beehiiv-api-debug" open>
+				<summary>
+					<strong><?php echo esc_html( $label ); ?></strong>
+					<?php if ( ! empty( $entry['url'] ) ) : ?>
+						<code><?php echo esc_html( (string) $entry['url'] ); ?></code>
+					<?php endif; ?>
+					<?php if ( isset( $entry['status_code'] ) && null !== $entry['status_code'] ) : ?>
+						— <?php echo esc_html( 'HTTP ' . (string) $entry['status_code'] ); ?>
+					<?php endif; ?>
+					<?php if ( ! empty( $entry['wp_error'] ) ) : ?>
+						— <?php echo esc_html( (string) $entry['wp_error'] ); ?>
+					<?php endif; ?>
+				</summary>
+				<pre class="beehiiv-api-debug__body">
+					<?php
+					echo esc_html(
+						wp_json_encode(
+							$entry,
+							JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+						)
+					);
+					?>
+				</pre>
+			</details>
+			<?php
+		}
 	}
 }

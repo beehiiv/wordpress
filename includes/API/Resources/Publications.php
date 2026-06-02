@@ -8,7 +8,6 @@
 namespace Beehiiv\API\Resources;
 
 use Beehiiv\API\Client;
-use WP_Error;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -20,26 +19,12 @@ defined( 'ABSPATH' ) || exit;
 final class Publications {
 
 	/**
-	 * Cache TTL (seconds) for publications list.
-	 *
-	 * @since 1.0.0
-	 */
-	private const CACHE_TTL = 300;
-
-	/**
 	 * Retrieve publications available for the configured API key.
 	 *
-	 * @return array<int, array{id: string, name: string}>|\WP_Error
+	 * @return array<int, array{id: string, name: string}>
 	 * @since 1.0.0
 	 */
-	public static function list() {
-		$cache_key = 'beehiiv_publications_v2';
-		$cached    = get_transient( $cache_key );
-
-		if ( is_array( $cached ) ) {
-			return $cached;
-		}
-
+	public static function get_publications(): array {
 		$response = Client::request(
 			'/publications',
 			[
@@ -47,9 +32,6 @@ final class Publications {
 				'page'  => 1,
 			]
 		);
-		if ( is_wp_error( $response ) ) {
-			return $response;
-		}
 
 		$data = isset( $response['data'] ) && is_array( $response['data'] ) ? $response['data'] : [];
 		$out  = [];
@@ -71,8 +53,6 @@ final class Publications {
 				'name' => '' !== $name ? $name : $id,
 			];
 		}
-
-		set_transient( $cache_key, $out, self::CACHE_TTL );
 
 		return $out;
 	}

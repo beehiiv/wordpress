@@ -66,15 +66,6 @@ final class Manager {
 	}
 
 	/**
-	 * Whether the connection card should show the OAuth connect flow.
-	 *
-	 * @since 1.0.0
-	 */
-	public static function uses_oauth_connection(): bool {
-		return ! self::is_connected();
-	}
-
-	/**
 	 * Human-readable connection status for the settings UI.
 	 *
 	 * @since 1.0.0

@@ -38,13 +38,6 @@ final class Config {
 	public const SETTINGS_GROUP = 'beehiiv_settings';
 
 	/**
-	 * REST API namespace (appended to `/wp-json/`).
-	 *
-	 * @since 1.0.0
-	 */
-	public const REST_NAMESPACE = 'beehiiv/v1';
-
-	/**
 	 * Beehiiv sign-up URL for users without an account.
 	 *
 	 * @since 1.0.0

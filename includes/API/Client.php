@@ -8,7 +8,6 @@
 namespace Beehiiv\API;
 
 use Beehiiv\Connection\Manager;
-use WP_Error;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -27,72 +26,92 @@ final class Client {
 	private const API_BASE = 'https://api.beehiiv.com/v2';
 
 	/**
-	 * Back-compat wrapper: use Resources\Publications instead.
+	 * Recent HTTP transport details for temporary admin debugging.
+	 * (Remove when dropdown label issue is resolved.)
 	 *
-	 * @return array<int, array{id: string, name: string}>|\WP_Error
-	 * @since 1.0.0
+	 * @var array<int, array<string, mixed>>
 	 */
-	public static function get_publications() {
-		return \Beehiiv\API\Resources\Publications::list();
-	}
+	private static $request_log = [];
 
 	/**
-	 * Back-compat wrapper: use Resources\PostTemplates instead.
-	 *
-	 * @param string $publication_id Publication ID.
-	 * @return array<int, array{id: string, name: string}>|\WP_Error
-	 * @since 1.0.0
-	 */
-	public static function get_post_templates( string $publication_id ) {
-		return \Beehiiv\API\Resources\PostTemplates::list( $publication_id );
-	}
-
-	/**
-	 * Make an authenticated request to Beehiiv v2.
+	 * Make an authenticated GET request to Beehiiv v2.
 	 *
 	 * @param string              $path Relative API path (e.g. `/publications`).
 	 * @param array<string,mixed> $query Query parameters.
-	 * @return array<string,mixed>|\WP_Error
+	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
-	public static function request( string $path, array $query = [] ) {
-		$api_key = Manager::get_api_key();
-		if ( '' === $api_key ) {
-			return Errors::missing_api_key();
-		}
+	public static function request( string $path, array $query = [] ): array {
+		return self::send( 'GET', $path, $query, null );
+	}
 
-		$url = self::API_BASE . $path;
+	/**
+	 * HTTP transport log from recent API calls this request.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 * @since 1.0.0
+	 */
+	public static function get_request_log(): array {
+		return self::$request_log;
+	}
+
+	/**
+	 * Make an authenticated POST request with a JSON body.
+	 *
+	 * @param string              $path Relative API path.
+	 * @param array<string,mixed> $body Request body (JSON-encoded).
+	 * @param array<string,mixed> $query Optional query parameters.
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function post( string $path, array $body, array $query = [] ): array {
+		return self::send( 'POST', $path, $query, $body );
+	}
+
+	/**
+	 * Shared HTTP transport for Beehiiv v2 requests.
+	 *
+	 * @param string                   $method HTTP method.
+	 * @param string                   $path   Relative API path.
+	 * @param array<string,mixed>      $query  Query parameters.
+	 * @param array<string,mixed>|null $body   JSON body for POST; null for GET.
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	private static function send( string $method, string $path, array $query, ?array $body ): array {
+		$api_key = Manager::get_api_key();
+		$url     = self::API_BASE . $path;
+
 		if ( ! empty( $query ) ) {
 			$url = add_query_arg( $query, $url );
 		}
 
-		$res = wp_remote_get(
-			$url,
-			[
-				'timeout' => 15,
-				'headers' => [
-					'Authorization' => 'Bearer ' . $api_key,
-					'Accept'        => 'application/json',
-				],
-			]
-		);
+		$args = [
+			'method'  => $method,
+			'headers' => [
+				'Authorization' => 'Bearer ' . $api_key,
+				'Accept'        => 'application/json',
+			],
+		];
 
-		if ( is_wp_error( $res ) ) {
-			return $res;
+		if ( null !== $body ) {
+			$args['headers']['Content-Type'] = 'application/json';
+			$args['body']                    = wp_json_encode( $body );
 		}
 
-		$code = (int) wp_remote_retrieve_response_code( $res );
-		$body = (string) wp_remote_retrieve_body( $res );
+		$res  = wp_remote_request( $url, $args );
+		$raw  = is_wp_error( $res ) ? '' : (string) wp_remote_retrieve_body( $res );
+		$json = json_decode( $raw, true );
 
-		$json = json_decode( $body, true );
-		if ( ! is_array( $json ) ) {
-			return Errors::invalid_json();
-		}
+		self::$request_log[] = [
+			'method'      => $method,
+			'url'         => $url,
+			'status_code' => is_wp_error( $res ) ? null : (int) wp_remote_retrieve_response_code( $res ),
+			'wp_error'    => is_wp_error( $res ) ? $res->get_error_message() : null,
+			'raw_body'    => $raw,
+			'parsed_json' => is_array( $json ) ? $json : null,
+		];
 
-		if ( $code < 200 || $code >= 300 ) {
-			return Errors::api_error( $code, $json );
-		}
-
-		return $json;
+		return is_array( $json ) ? $json : [];
 	}
 }

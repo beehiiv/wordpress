@@ -8,7 +8,6 @@
 namespace Beehiiv\Newsletter;
 
 use Beehiiv\Admin\Options;
-use WP_Error;
 use WP_Post;
 
 defined( 'ABSPATH' ) || exit;
@@ -24,32 +23,14 @@ final class PostSettingsBuilder {
 	 * Create Beehiiv post settings array for the WordPress post.
 	 *
 	 * @param int $post_id Post ID.
-	 * @return array|\WP_Error Beehiiv post settings array, or error.
+	 * @return array<string, mixed> Beehiiv post settings array.
 	 * @since 1.0.0
 	 */
-	public static function get_post_settings( int $post_id ) {
+	public static function get_post_settings( int $post_id ): array {
 		$post_object = get_post( $post_id );
 
 		if ( ! $post_object instanceof WP_Post ) {
-			return new WP_Error(
-				'beehiiv_post_not_found',
-				sprintf(
-					/* translators: %s: WordPress post ID */
-					__( 'Post not found for post ID: %s.', 'beehiiv' ),
-					(string) $post_id
-				)
-			);
-		}
-
-		if ( '' === $post_object->post_title || '' === $post_object->post_content ) {
-			return new WP_Error(
-				'beehiiv_post_title_or_content_empty',
-				sprintf(
-					/* translators: %s: WordPress post ID */
-					__( 'Beehiiv post title or content is empty for post ID: %s.', 'beehiiv' ),
-					(string) $post_id
-				)
-			);
+			return [];
 		}
 
 		$thumbnail_image_url = get_the_post_thumbnail_url( $post_object, 'full' );
@@ -57,7 +38,13 @@ final class PostSettingsBuilder {
 			? self::normalize_thumbnail_url( $thumbnail_image_url )
 			: '';
 
-		$beehiiv_blocks = BlockConverter::convert( $post_object );
+		// TEMP: testing create-post API with separator block only; restore when block converters are ready.
+		// $beehiiv_blocks = BlockConverter::convert_all_blocks( $post_object ); // Restore this line.
+		$beehiiv_blocks = [
+			[
+				'type' => 'content_break',
+			],
+		];
 
 		$post_title = html_entity_decode( get_the_title( $post_object ) );
 
