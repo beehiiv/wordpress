@@ -40,10 +40,18 @@ final class PostSettings {
 	/**
 	 * Post meta keys registered for the block editor (REST-visible).
 	 *
-	 * @var array<string, array{type: string, default: bool}>
+	 * @var array<string, array{type: string, default: bool|string}>
 	 */
 	private const META_KEYS = [
-		Meta::SEND_TO_NEWSLETTER => [
+		Meta::SEND_TO_NEWSLETTER         => [
+			'type'    => 'boolean',
+			'default' => false,
+		],
+		Meta::SEND_TO_NEWSLETTER_DATE    => [
+			'type'    => 'string',
+			'default' => '',
+		],
+		Meta::SEND_TO_NEWSLETTER_SNIPPET => [
 			'type'    => 'boolean',
 			'default' => false,
 		],

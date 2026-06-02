@@ -22,4 +22,18 @@ final class Meta {
 	 * @since 1.0.0
 	 */
 	public const SEND_TO_NEWSLETTER = '_beehiiv_send_to_newsletter';
+
+	/**
+	 * ISO 8601 datetime when the newsletter should send. Empty = on publish.
+	 *
+	 * @since 1.0.0
+	 */
+	public const SEND_TO_NEWSLETTER_DATE = '_beehiiv_send_to_newsletter_date';
+
+	/**
+	 * Whether to send a snippet newsletter (teaser) instead of the full post.
+	 *
+	 * @since 1.0.0
+	 */
+	public const SEND_TO_NEWSLETTER_SNIPPET = '_beehiiv_send_to_newsletter_snippet';
 }

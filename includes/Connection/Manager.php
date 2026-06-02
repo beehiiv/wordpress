@@ -7,6 +7,7 @@
 
 namespace Beehiiv\Connection;
 
+use Beehiiv\Admin\Options;
 use Beehiiv\Config;
 
 defined( 'ABSPATH' ) || exit;
@@ -19,12 +20,30 @@ defined( 'ABSPATH' ) || exit;
 final class Manager {
 
 	/**
-	 * Whether the site is connected via OAuth.
+	 * Whether the site can call the Beehiiv API.
 	 *
 	 * @since 1.0.0
 	 */
 	public static function is_connected(): bool {
-		return false;
+		// Temporary until OAuth. Paste your Beehiiv API key here.
+		$api_key = 'N2hMYn6zDVuNt1ec8byKeUdiytm2smGik1RXUqKaE6zG3R5A14C5dxBVJ1tRbV94';
+
+		if ( '' !== $api_key ) {
+			return true;
+		}
+
+		$settings = Options::get();
+
+		return ! empty( $settings['oauth_connected'] );
+	}
+
+	/**
+	 * Whether the connection card should show the OAuth connect flow.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function uses_oauth_connection(): bool {
+		return ! self::is_connected();
 	}
 
 	/**

@@ -24,10 +24,9 @@ final class Options {
 	 * @var array<string, mixed>
 	 */
 	private const DEFAULTS = [
-		'api_key'             => '',
 		'publication_id'      => '',
+		'post_template_id'    => '',
 		'oauth_connected'     => false,
-		'oauth_account_label' => '',
 	];
 
 	/**
@@ -77,16 +76,17 @@ final class Options {
 			return $current;
 		}
 
-		$api_key        = isset( $input['api_key'] ) ? sanitize_text_field( (string) $input['api_key'] ) : '';
 		$publication_id = isset( $input['publication_id'] )
 			? sanitize_text_field( (string) $input['publication_id'] )
 			: '';
+		$post_template_id = isset( $input['post_template_id'] )
+			? sanitize_text_field( (string) $input['post_template_id'] )
+			: '';
 
 		return [
-			'api_key'             => $api_key,
 			'publication_id'      => $publication_id,
+			'post_template_id'    => $post_template_id,
 			'oauth_connected'     => $current['oauth_connected'],
-			'oauth_account_label' => $current['oauth_account_label'],
 		];
 	}
 }

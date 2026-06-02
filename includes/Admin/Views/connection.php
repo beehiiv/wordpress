@@ -78,9 +78,28 @@ $status_label = $is_connected
 				<ol class="description">
 					<li>
 						<?php
+						$create_post_link = sprintf(
+							'<a href="%1$s">%2$s</a>',
+							esc_url( admin_url( 'post-new.php' ) ),
+							esc_html__( 'Create', 'beehiiv' )
+						);
+						$edit_posts_link = sprintf(
+							'<a href="%1$s">%2$s</a>',
+							esc_url( admin_url( 'edit.php' ) ),
+							esc_html__( 'edit', 'beehiiv' )
+						);
 						echo wp_kses(
-							__( 'Edit a <strong>post</strong> in the block editor.', 'beehiiv' ),
-							[ 'strong' => [] ]
+							sprintf(
+								/* translators: 1: link to create a new post, 2: link to the posts list. */
+								__( '%1$s or %2$s a post in the block editor.', 'beehiiv' ),
+								$create_post_link,
+								$edit_posts_link
+							),
+							[
+								'a' => [
+									'href' => true,
+								],
+							]
 						);
 						?>
 					</li>
