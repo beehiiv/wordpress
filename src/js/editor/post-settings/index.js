@@ -7,11 +7,12 @@ import { __ } from '@wordpress/i18n';
 import { registerPlugin } from '@wordpress/plugins';
 import { PluginSidebar, store as editorStore } from '@wordpress/editor';
 import { Notice, PanelBody, ToggleControl } from '@wordpress/components';
-import { useSelect, useDispatch } from '@wordpress/data';
+import { useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 
-import { META_SEND_TO_NEWSLETTER } from '../../shared/meta';
 import BeehiivSidebarIcon from './icon';
+import NewsletterDatePicker from './components/newsletter-date-picker';
+import { useBeehiivPostMeta } from './hooks/use-beehiiv-post-meta';
 
 import './editor.scss';
 
@@ -21,15 +22,20 @@ const PLUGIN_NAME = 'beehiiv-post-settings';
 const SIDEBAR_NAME = 'beehiiv-post-settings';
 
 function BeehiivPostSettingsPanel() {
-	const meta = useSelect(
-		( select ) =>
-			select( editorStore ).getEditedPostAttribute( 'meta' ) || {},
-		[]
-	);
+	const beehiivMeta = useBeehiivPostMeta();
 
-	const { editPost } = useDispatch( editorStore );
+	if ( ! beehiivMeta ) {
+		return null;
+	}
 
-	const sendToNewsletter = !! meta[ META_SEND_TO_NEWSLETTER ];
+	const {
+		sendToNewsletter,
+		sendToNewsletterDate,
+		sendToNewsletterSnippet,
+		setSendToNewsletter,
+		setSendToNewsletterDate,
+		setSendToNewsletterSnippet,
+	} = beehiivMeta;
 
 	return (
 		<div className="beehiiv-post-settings-content">
@@ -41,23 +47,54 @@ function BeehiivPostSettingsPanel() {
 						'beehiiv'
 					) }
 					checked={ sendToNewsletter }
-					onChange={ ( value ) =>
-						editPost( {
-							meta: { [ META_SEND_TO_NEWSLETTER ]: value },
-						} )
-					}
+					onChange={ setSendToNewsletter }
 				/>
 				{ sendToNewsletter && (
-					<Notice
-						className="beehiiv-post-settings-notice"
-						status="warning"
-						isDismissible={ false }
-					>
-						{ __(
-							'The newsletter can only be sent once and cannot be undone.',
-							'beehiiv'
-						) }
-					</Notice>
+					<>
+						<Notice
+							className="beehiiv-post-settings-notice"
+							status="warning"
+							isDismissible={ false }
+						>
+							{ __(
+								'The newsletter can only be sent once and cannot be undone.',
+								'beehiiv'
+							) }
+						</Notice>
+
+						<NewsletterDatePicker
+							date={ sendToNewsletterDate }
+							onChange={ setSendToNewsletterDate }
+						/>
+
+						<ToggleControl
+							className="beehiiv-post-settings-snippet"
+							label={ __( 'Snippet newsletter', 'beehiiv' ) }
+							help={
+								sendToNewsletterSnippet ? (
+									<>
+										{ __(
+											'Send a snippet newsletter with a "Read More" button to the full post.',
+											'beehiiv'
+										) }
+										<br />
+										<br />
+										{ __(
+											'Insert the "More" block in your post to mark where the snippet ends.',
+											'beehiiv'
+										) }
+									</>
+								) : (
+									__(
+										'Send a snippet newsletter with a "Read More" button to the full post.',
+										'beehiiv'
+									)
+								)
+							}
+							checked={ sendToNewsletterSnippet }
+							onChange={ setSendToNewsletterSnippet }
+						/>
+					</>
 				) }
 			</PanelBody>
 		</div>

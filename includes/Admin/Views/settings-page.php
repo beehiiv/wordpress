@@ -8,6 +8,7 @@
 defined( 'ABSPATH' ) || exit;
 
 use Beehiiv\Config;
+use Beehiiv\Connection\Manager;
 
 ?>
 <div class="wrap">
@@ -17,11 +18,13 @@ use Beehiiv\Config;
 
 	<?php require Config::ADMIN_VIEWS_DIR . 'connection.php'; ?>
 
-	<form action="options.php" method="post">
-		<?php
-		settings_fields( Config::SETTINGS_GROUP );
-		do_settings_sections( Config::PLUGIN_SLUG );
-		submit_button( __( 'Save settings', 'beehiiv' ) );
-		?>
-	</form>
+	<?php if ( Manager::is_connected() ) : ?>
+		<form action="options.php" method="post">
+			<?php
+			settings_fields( Config::SETTINGS_GROUP );
+			do_settings_sections( Config::PLUGIN_SLUG );
+			submit_button( __( 'Save settings', 'beehiiv' ) );
+			?>
+		</form>
+	<?php endif; ?>
 </div>

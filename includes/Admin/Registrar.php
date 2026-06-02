@@ -8,6 +8,7 @@
 namespace Beehiiv\Admin;
 
 use Beehiiv\Config;
+use Beehiiv\Connection\Manager;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -19,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
 final class Registrar {
 
 	/**
-	 * Settings API section ID for manual API key / publication fields.
+	 * Settings API section ID for publication / template defaults.
 	 */
 	private const PAGE_SETTINGS_SECTION_ID = 'beehiiv_page_settings';
 
@@ -42,7 +43,10 @@ final class Registrar {
 
 		self::$registered = true;
 		Options::register();
-		self::register_page_settings_section( Config::PLUGIN_SLUG );
+
+		if ( Manager::is_connected() ) {
+			self::register_page_settings_section( Config::PLUGIN_SLUG );
+		}
 	}
 
 	/**
@@ -54,25 +58,14 @@ final class Registrar {
 	private static function register_page_settings_section( string $page_slug ): void {
 		add_settings_section(
 			self::PAGE_SETTINGS_SECTION_ID,
-			__( 'Manual connection (FALLBACK for OAuth)', 'beehiiv' ),
+			__( 'Publication', 'beehiiv' ),
 			[ self::class, 'render_page_settings_description' ],
 			$page_slug
 		);
 
 		add_settings_field(
-			'beehiiv_api_key',
-			__( 'API key', 'beehiiv' ),
-			[ self::class, 'render_api_key_field' ],
-			$page_slug,
-			self::PAGE_SETTINGS_SECTION_ID,
-			[
-				'label_for' => 'beehiiv_api_key',
-			]
-		);
-
-		add_settings_field(
 			'beehiiv_publication_id',
-			__( 'Publication ID', 'beehiiv' ),
+			__( 'Publication', 'beehiiv' ),
 			[ self::class, 'render_publication_id_field' ],
 			$page_slug,
 			self::PAGE_SETTINGS_SECTION_ID,
@@ -80,40 +73,29 @@ final class Registrar {
 				'label_for' => 'beehiiv_publication_id',
 			]
 		);
+
+		add_settings_field(
+			'beehiiv_post_template_id',
+			__( 'Default email template', 'beehiiv' ),
+			[ self::class, 'render_post_template_id_field' ],
+			$page_slug,
+			self::PAGE_SETTINGS_SECTION_ID,
+			[
+				'label_for' => 'beehiiv_post_template_id',
+			]
+		);
 	}
 
 	/**
-	 * Fallback section intro text.
+	 * Section intro text.
 	 *
 	 * @since 1.0.0
 	 */
 	public static function render_page_settings_description(): void {
 		echo '<p>' . esc_html__(
-			'The option to use an API key while the Beehiiv OAuth integration is in development.',
+			'Default Beehiiv publication and email template for newsletters sent from this site.',
 			'beehiiv'
 		) . '</p>';
-	}
-
-	/**
-	 * API key field.
-	 *
-	 * @since 1.0.0
-	 */
-	public static function render_api_key_field(): void {
-		$settings = Options::get();
-		?>
-		<input
-			type="password"
-			id="beehiiv_api_key"
-			name="<?php echo esc_attr( Config::OPTION_NAME . '[api_key]' ); ?>"
-			value="<?php echo esc_attr( (string) $settings['api_key'] ); ?>"
-			class="regular-text"
-			autocomplete="off"
-		/>
-		<p class="description">
-			<?php esc_html_e( 'Beehiiv API key.', 'beehiiv' ); ?>
-		</p>
-		<?php
 	}
 
 	/**
@@ -123,16 +105,49 @@ final class Registrar {
 	 */
 	public static function render_publication_id_field(): void {
 		$settings = Options::get();
+		$selected = (string) $settings['publication_id'];
+		$name     = Config::OPTION_NAME . '[publication_id]';
 		?>
-		<input
-			type="text"
-			id="beehiiv_publication_id"
-			name="<?php echo esc_attr( Config::OPTION_NAME . '[publication_id]' ); ?>"
-			value="<?php echo esc_attr( (string) $settings['publication_id'] ); ?>"
-			class="regular-text"
-		/>
+		<select id="beehiiv_publication_id" class="beehiiv-settings-select" name="<?php echo esc_attr( $name ); ?>">
+			<option value="" <?php selected( $selected, '' ); ?>>
+				<?php esc_html_e( 'Select a publication', 'beehiiv' ); ?>
+			</option>
+			<option value="pub_dummy_a" <?php selected( $selected, 'pub_dummy_a' ); ?>>
+				<?php esc_html_e( 'Dummy publication A', 'beehiiv' ); ?>
+			</option>
+			<option value="pub_dummy_b" <?php selected( $selected, 'pub_dummy_b' ); ?>>
+				<?php esc_html_e( 'Dummy publication B', 'beehiiv' ); ?>
+			</option>
+		</select>
 		<p class="description">
-			<?php esc_html_e( 'The ID of the Publication to use on this site.', 'beehiiv' ); ?>
+			<?php esc_html_e( 'The publication to use for newsletters sent from this site.', 'beehiiv' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Default post template ID field.
+	 *
+	 * @since 1.0.0
+	 */
+	public static function render_post_template_id_field(): void {
+		$settings = Options::get();
+		$selected = (string) $settings['post_template_id'];
+		$name     = Config::OPTION_NAME . '[post_template_id]';
+		?>
+		<select id="beehiiv_post_template_id" class="beehiiv-settings-select" name="<?php echo esc_attr( $name ); ?>">
+			<option value="" <?php selected( $selected, '' ); ?>>
+				<?php esc_html_e( 'No default template', 'beehiiv' ); ?>
+			</option>
+			<option value="template_dummy_a" <?php selected( $selected, 'template_dummy_a' ); ?>>
+				<?php esc_html_e( 'Dummy template A', 'beehiiv' ); ?>
+			</option>
+			<option value="template_dummy_b" <?php selected( $selected, 'template_dummy_b' ); ?>>
+				<?php esc_html_e( 'Dummy template B', 'beehiiv' ); ?>
+			</option>
+		</select>
+		<p class="description">
+			<?php esc_html_e( 'Default email template for newsletters sent from this site.', 'beehiiv' ); ?>
 		</p>
 		<?php
 	}
