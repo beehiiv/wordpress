@@ -12,14 +12,15 @@ use Beehiiv\API\Resources\Posts;
 use Beehiiv\Connection\Manager;
 use Beehiiv\Editor\Meta;
 use DateTimeImmutable;
+use DateTimeZone;
 use Exception;
 use WP_Post;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Creates a Beehiiv post in the configured publication when a post is published
- * or at a scheduled send time via WP-Cron.
+ * Creates or schedules a Beehiiv post in the configured publication when newsletter
+ * send is enabled on save. Future send times use Beehiiv `scheduled_at` (UTC).
  *
  * @link https://developers.beehiiv.com/api-reference/posts/create
  * @since 1.0.0
@@ -34,14 +35,7 @@ final class Sender {
 	private const POST_TYPE = 'post';
 
 	/**
-	 * WP-Cron hook for a single scheduled newsletter send.
-	 *
-	 * @since 1.0.0
-	 */
-	private const CRON_HOOK = 'beehiiv_send_post_newsletter';
-
-	/**
-	 * Register hooks that schedule and send newsletters.
+	 * Register hooks that sync newsletters to Beehiiv on save.
 	 *
 	 * @return void
 	 * @since 1.0.0
@@ -49,22 +43,21 @@ final class Sender {
 	public static function init(): void {
 		add_action( 'rest_after_insert_' . self::POST_TYPE, [ self::class, 'on_rest_insert' ], 10, 1 );
 		add_action( 'future_to_publish', [ self::class, 'on_future_to_publish' ], 10, 1 );
-		add_action( self::CRON_HOOK, [ self::class, 'on_scheduled_send' ] );
 	}
 
 	/**
-	 * Send on block editor save when the post is published.
+	 * Sync on block editor save when newsletter meta allows.
 	 *
 	 * @param WP_Post $post Inserted or updated post.
 	 * @return void
 	 * @since 1.0.0
 	 */
 	public static function on_rest_insert( WP_Post $post ): void {
-		self::maybe_schedule_post_newsletter( $post );
+		self::maybe_send_post_newsletter( $post );
 	}
 
 	/**
-	 * Schedule when a scheduled (`future`) post transitions to `publish` without a REST save.
+	 * Sync when a scheduled (`future`) post transitions to `publish` without a REST save.
 	 *
 	 * Block editor publishes use `rest_after_insert_post`. WordPress releases scheduled posts
 	 * via cron (`future` → `publish`) without the REST API; core fires `future_to_publish`.
@@ -78,30 +71,19 @@ final class Sender {
 			return;
 		}
 
-		self::maybe_schedule_post_newsletter( $post );
+		self::maybe_send_post_newsletter( $post );
 	}
 
 	/**
-	 * Send newsletter when the scheduled WP-Cron event fires.
+	 * Create or schedule a Beehiiv newsletter when post meta and status allow.
 	 *
-	 * @param int $post_id Post ID.
-	 * @return void
-	 * @since 1.0.0
-	 */
-	public static function on_scheduled_send( int $post_id ): void {
-		self::send( $post_id );
-	}
-
-	/**
-	 * Schedule Beehiiv newsletter send when post meta and status allow.
-	 *
-	 * Snippet newsletters require a public permalink for Read more; defer scheduling until `publish`.
+	 * Snippet newsletters require a public permalink for Read more; defer until `publish`.
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return void
 	 * @since 1.0.0
 	 */
-	public static function maybe_schedule_post_newsletter( WP_Post $post ): void {
+	public static function maybe_send_post_newsletter( WP_Post $post ): void {
 		if ( self::POST_TYPE !== $post->post_type ) {
 			return;
 		}
@@ -115,58 +97,21 @@ final class Sender {
 			return;
 		}
 
-		// Clear any existing scheduled event for this post.
-		// This is to avoid duplicate scheduled events in one request and if newsletter option disabled after scheduling.
-		wp_clear_scheduled_hook( self::CRON_HOOK, [ $post->ID ] );
-
 		if ( ! self::is_send_to_newsletter_enabled( $post->ID ) ) {
 			return;
 		}
 
 		$send_newsletter_snippet = (bool) get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_SNIPPET, true );
 
-		// If snippet newsletter is enabled and post is not published, do nothing.
 		if ( $send_newsletter_snippet && 'publish' !== $post->post_status ) {
 			return;
 		}
 
-		// Get scheduled date if set.
-		$scheduled_date = get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_DATE, true );
-		$scheduled_date = is_string( $scheduled_date ) ? trim( $scheduled_date ) : '';
-
-		// If no scheduled date, schedule for now.
-		if ( '' === $scheduled_date ) {
-			$scheduled_date = 'now';
-		}
-
-		try {
-			$scheduled_date_object = new DateTimeImmutable( $scheduled_date, wp_timezone() );
-			$scheduled_timestamp     = $scheduled_date_object->getTimestamp();
-
-			// If scheduled date is in the past or now, schedule for now.
-			if ( $scheduled_timestamp <= time() ) {
-				$scheduled_timestamp = time();
-
-				// Update the post meta to indicate that the newsletter has been sent immediately.
-				// So that the user can't reschedule the newsletter after it has been sent.
-				update_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER, false );
-			}
-
-			wp_schedule_single_event( $scheduled_timestamp, self::CRON_HOOK, [ $post->ID ] );
-		} catch ( Exception $e ) {
-			self::log_error(
-				$post->ID,
-				sprintf(
-					'Newsletter scheduling failed. Invalid scheduled date "%s": %s',
-					$scheduled_date,
-					$e->getMessage()
-				)
-			);
-		}
+		self::send( $post->ID );
 	}
 
 	/**
-	 * Send a WordPress post to Beehiiv as a newsletter.
+	 * Send a WordPress post to Beehiiv as a newsletter (immediate or via scheduled_at).
 	 *
 	 * @param int $post_id Post ID.
 	 * @return void
@@ -198,6 +143,7 @@ final class Sender {
 
 		$send_newsletter_snippet = (bool) get_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER_SNIPPET, true );
 
+		// If snippet newsletter is enabled and post is not published, do nothing.
 		if ( $send_newsletter_snippet && 'publish' !== $post_object->post_status ) {
 			self::log_error( $post_id, 'Snippet newsletter requires a published post.' );
 			return;
@@ -210,6 +156,12 @@ final class Sender {
 			return;
 		}
 
+		$scheduled_at = self::convert_send_date_to_scheduled_at_utc( $post_id );
+
+		if ( null !== $scheduled_at ) {
+			$beehiiv_post_data['scheduled_at'] = $scheduled_at;
+		}
+
 		$result = Posts::create( $publication_id, $beehiiv_post_data );
 
 		if ( ! $result['success'] ) {
@@ -219,6 +171,47 @@ final class Sender {
 
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, false );
+	}
+
+	/**
+	 * Convert the editor send datetime (site timezone) to Beehiiv scheduled_at (UTC).
+	 *
+	 * Returns null when send is immediate (empty date, past, or now) so the field is omitted
+	 * from the create-post payload.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string|null ISO 8601 UTC datetime (e.g. 2024-12-25T12:00:00Z), or null.
+	 * @since 1.0.0
+	 */
+	private static function convert_send_date_to_scheduled_at_utc( int $post_id ): ?string {
+		$scheduled_date = get_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER_DATE, true );
+		$scheduled_date = is_string( $scheduled_date ) ? trim( $scheduled_date ) : '';
+
+		if ( '' === $scheduled_date ) {
+			return null;
+		}
+
+		try {
+			$local = new DateTimeImmutable( $scheduled_date, wp_timezone() );
+			$utc   = $local->setTimezone( new DateTimeZone( 'UTC' ) );
+
+			if ( $utc->getTimestamp() <= time() ) {
+				return null;
+			}
+
+			return $utc->format( 'Y-m-d\TH:i:s\Z' );
+		} catch ( Exception $e ) {
+			self::log_error(
+				$post_id,
+				sprintf(
+					'Invalid newsletter send date "%s": %s',
+					$scheduled_date,
+					$e->getMessage()
+				)
+			);
+
+			return null;
+		}
 	}
 
 	/**
