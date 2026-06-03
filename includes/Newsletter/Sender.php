@@ -15,6 +15,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Exception;
 use WP_Post;
+use WP_REST_Request;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -41,19 +42,24 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	public static function init(): void {
-		add_action( 'rest_after_insert_' . self::POST_TYPE, [ self::class, 'on_rest_insert' ], 10, 1 );
+		add_action( 'rest_after_insert_' . self::POST_TYPE, [ self::class, 'on_rest_insert' ], 10, 3 );
 		add_action( 'future_to_publish', [ self::class, 'on_future_to_publish' ], 10, 1 );
 	}
 
 	/**
 	 * Sync on block editor save when newsletter meta allows.
 	 *
-	 * @param WP_Post $post Inserted or updated post.
+	 * @param WP_Post              $post     Inserted or updated post.
+	 * @param WP_REST_Request|null $request  REST request (meta may only be present here on the same request).
+	 * @param bool                 $creating Whether the post was created.
 	 * @return void
 	 * @since 1.0.0
 	 */
-	public static function on_rest_insert( WP_Post $post ): void {
-		self::maybe_send_post_newsletter( $post );
+	public static function on_rest_insert( WP_Post $post, $request = null, $creating = false ): void {
+		self::maybe_send_post_newsletter(
+			$post,
+			$request instanceof WP_REST_Request ? $request : null
+		);
 	}
 
 	/**
@@ -79,11 +85,12 @@ final class Sender {
 	 *
 	 * Snippet newsletters require a public permalink for Read more; defer until `publish`.
 	 *
-	 * @param WP_Post $post Post object.
+	 * @param WP_Post              $post    Post object.
+	 * @param WP_REST_Request|null $request Optional REST request from the block editor save.
 	 * @return void
 	 * @since 1.0.0
 	 */
-	public static function maybe_send_post_newsletter( WP_Post $post ): void {
+	public static function maybe_send_post_newsletter( WP_Post $post, ?WP_REST_Request $request = null ): void {
 		if ( self::POST_TYPE !== $post->post_type ) {
 			return;
 		}
@@ -97,7 +104,7 @@ final class Sender {
 			return;
 		}
 
-		if ( ! self::is_send_to_newsletter_enabled( $post->ID ) ) {
+		if ( ! self::is_send_to_newsletter_enabled( $post->ID, $request ) ) {
 			return;
 		}
 
@@ -156,7 +163,7 @@ final class Sender {
 			return;
 		}
 
-		$scheduled_at = self::convert_send_date_to_scheduled_at_utc( $post_id );
+		$scheduled_at = self::convert_send_date_to_scheduled_at_utc( $post_object );
 
 		if ( null !== $scheduled_at ) {
 			$beehiiv_post_data['scheduled_at'] = $scheduled_at;
@@ -174,18 +181,24 @@ final class Sender {
 	}
 
 	/**
-	 * Convert the editor send datetime (site timezone) to Beehiiv scheduled_at (UTC).
+	 * Convert the send datetime (site timezone) to Beehiiv scheduled_at (UTC).
 	 *
-	 * Returns null when send is immediate (empty date, past, or now) so the field is omitted
-	 * from the create-post payload.
+	 * Uses `_beehiiv_send_to_newsletter_date` when set; otherwise the WordPress post publish
+	 * datetime (`post_date`) for "On publish".
 	 *
-	 * @param int $post_id Post ID.
+	 * Returns null when send is immediate (past or now) so the field is omitted from the payload.
+	 *
+	 * @param WP_Post $post Post object.
 	 * @return string|null ISO 8601 UTC datetime (e.g. 2024-12-25T12:00:00Z), or null.
 	 * @since 1.0.0
 	 */
-	private static function convert_send_date_to_scheduled_at_utc( int $post_id ): ?string {
-		$scheduled_date = get_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER_DATE, true );
+	private static function convert_send_date_to_scheduled_at_utc( WP_Post $post ): ?string {
+		$scheduled_date = get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_DATE, true );
 		$scheduled_date = is_string( $scheduled_date ) ? trim( $scheduled_date ) : '';
+
+		if ( '' === $scheduled_date ) {
+			$scheduled_date = trim( (string) $post->post_date );
+		}
 
 		if ( '' === $scheduled_date ) {
 			return null;
@@ -202,7 +215,7 @@ final class Sender {
 			return $utc->format( 'Y-m-d\TH:i:s\Z' );
 		} catch ( Exception $e ) {
 			self::log_error(
-				$post_id,
+				$post->ID,
 				sprintf(
 					'Invalid newsletter send date "%s": %s',
 					$scheduled_date,
@@ -257,11 +270,20 @@ final class Sender {
 	/**
 	 * Whether the post is marked to send to the Beehiiv newsletter.
 	 *
-	 * @param int $post_id Post ID.
+	 * @param int                  $post_id Post ID.
+	 * @param WP_REST_Request|null $request REST request when syncing on editor save.
 	 * @return bool
 	 * @since 1.0.0
 	 */
-	private static function is_send_to_newsletter_enabled( int $post_id ): bool {
+	private static function is_send_to_newsletter_enabled( int $post_id, ?WP_REST_Request $request = null ): bool {
+		if ( $request instanceof WP_REST_Request ) {
+			$meta = $request->get_param( 'meta' );
+
+			if ( is_array( $meta ) && array_key_exists( Meta::SEND_TO_NEWSLETTER, $meta ) ) {
+				return rest_sanitize_boolean( $meta[ Meta::SEND_TO_NEWSLETTER ] );
+			}
+		}
+
 		$value = get_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
 
 		return rest_sanitize_boolean( $value );

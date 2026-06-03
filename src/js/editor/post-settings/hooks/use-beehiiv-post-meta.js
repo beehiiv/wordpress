@@ -17,7 +17,7 @@ import {
 /**
  * @typedef {Object} BeehiivPostMeta
  * @property {boolean}                     sendToNewsletter           Whether this post is queued for Beehiiv.
- * @property {string|null}                 sendToNewsletterDate       ISO 8601 datetime, or null for immediate send.
+ * @property {string|null}                 sendToNewsletterDate       ISO 8601 datetime, or null to send on WP post publish.
  * @property {boolean}                     sendToNewsletterSnippet    Whether to send a snippet instead of the full post.
  * @property {(enabled: boolean) => void}  setSendToNewsletter        Enable or disable newsletter delivery.
  * @property {(date: string|null) => void} setSendToNewsletterDate    Set scheduled send time.
