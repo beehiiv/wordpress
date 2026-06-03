@@ -29,15 +29,20 @@ export default function NewsletterDatePicker( { date, onChange } ) {
 		  ) }`
 		: '';
 
-	const dateLabel = date
-		? `${ format( 'M j, Y g:i a', date ) } ${ dateI18n( 'T', date ) }`
-		: formattedPublishDate
-		? sprintf(
-				/* translators: %s: WordPress post publish date and time. */
-				__( 'On publish (%s)', 'beehiiv' ),
-				formattedPublishDate
-		  )
-		: __( 'On publish', 'beehiiv' );
+	let dateLabel = __( 'On publish', 'beehiiv' );
+
+	if ( date ) {
+		dateLabel = `${ format( 'M j, Y g:i a', date ) } ${ dateI18n(
+			'T',
+			date
+		) }`;
+	} else if ( formattedPublishDate ) {
+		dateLabel = sprintf(
+			/* translators: %s: WordPress post publish date and time. */
+			__( 'On publish (%s)', 'beehiiv' ),
+			formattedPublishDate
+		);
+	}
 
 	return (
 		<Dropdown

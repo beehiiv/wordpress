@@ -42,20 +42,19 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	public static function init(): void {
-		add_action( 'rest_after_insert_' . self::POST_TYPE, [ self::class, 'on_rest_insert' ], 10, 3 );
+		add_action( 'rest_after_insert_' . self::POST_TYPE, [ self::class, 'on_rest_insert' ], 10, 2 );
 		add_action( 'future_to_publish', [ self::class, 'on_future_to_publish' ], 10, 1 );
 	}
 
 	/**
 	 * Sync on block editor save when newsletter meta allows.
 	 *
-	 * @param WP_Post              $post     Inserted or updated post.
-	 * @param WP_REST_Request|null $request  REST request (meta may only be present here on the same request).
-	 * @param bool                 $creating Whether the post was created.
+	 * @param WP_Post              $post    Inserted or updated post.
+	 * @param WP_REST_Request|null $request REST request (meta may only be present here on the same request).
 	 * @return void
 	 * @since 1.0.0
 	 */
-	public static function on_rest_insert( WP_Post $post, $request = null, $creating = false ): void {
+	public static function on_rest_insert( WP_Post $post, $request = null ): void {
 		self::maybe_send_post_newsletter(
 			$post,
 			$request instanceof WP_REST_Request ? $request : null
