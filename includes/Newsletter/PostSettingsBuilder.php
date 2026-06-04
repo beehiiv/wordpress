@@ -91,6 +91,8 @@ final class PostSettingsBuilder {
 		/**
 		 * Filters the Beehiiv newsletter post settings before they are sent.
 		 *
+		 * @since 1.0.0
+		 *
 		 * @param array   $settings    Payload for the Beehiiv create-post API.
 		 * @param int     $post_id     WordPress post ID.
 		 * @param WP_Post $post_object WordPress post object.
