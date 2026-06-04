@@ -63,9 +63,7 @@ final class PostSettingsBuilder {
 		}
 
 		$thumbnail_image_url = get_the_post_thumbnail_url( $post_object, 'full' );
-		$thumbnail_image_url = is_string( $thumbnail_image_url )
-			? self::normalize_thumbnail_url( $thumbnail_image_url )
-			: '';
+		$thumbnail_image_url = is_string( $thumbnail_image_url ) ? $thumbnail_image_url : '';
 
 		$post_title = html_entity_decode( get_the_title( $post_object ) );
 
@@ -114,17 +112,5 @@ final class PostSettingsBuilder {
 		}
 
 		return '';
-	}
-
-	/**
-	 * Strip non-production host prefixes from image URLs.
-	 *
-	 * @param string $url Thumbnail URL.
-	 * @return string
-	 * @since 1.0.0
-	 */
-	private static function normalize_thumbnail_url( string $url ): string {
-		// Non-production image urls do not work in Beehiiv and it prevents creating post via API.
-		return str_replace( [ 'test.', 'preprod.', 'viptest.' ], '', $url );
 	}
 }
