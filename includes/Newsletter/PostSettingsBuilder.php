@@ -53,7 +53,7 @@ final class PostSettingsBuilder {
 			);
 		}
 
-		$beehiiv_blocks = BlockConverter::convert_all_blocks( $post_object );
+		$beehiiv_blocks = BlockConverter::convert_supported_blocks( $post_object );
 
 		if ( empty( $beehiiv_blocks ) ) {
 			return new WP_Error(
