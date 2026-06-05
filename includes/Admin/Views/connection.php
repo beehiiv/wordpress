@@ -7,6 +7,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
+use Beehiiv\Config;
 use Beehiiv\Connection\Manager;
 
 $is_connected = Manager::is_connected();
@@ -120,5 +121,29 @@ $status_icon_class = $is_connected
 				</ol>
 			</div>
 		<?php endif; ?>
+
+		<p class="description beehiiv-connection-docs">
+			<?php
+			$plugin_page_link = sprintf(
+				'<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
+				esc_url( Config::PLUGIN_DOC_URL ),
+				esc_html__( 'plugin page', 'beehiiv' )
+			);
+			echo wp_kses(
+				sprintf(
+					/* translators: %s: link to the plugin page on WordPress.org. */
+					__( 'Read more in the documentation on the %s.', 'beehiiv' ),
+					$plugin_page_link
+				),
+				[
+					'a' => [
+						'href'   => true,
+						'target' => true,
+						'rel'    => true,
+					],
+				]
+			);
+			?>
+		</p>
 	</div>
 </div>

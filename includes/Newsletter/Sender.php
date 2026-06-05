@@ -41,6 +41,27 @@ final class Sender {
 	public static function init(): void {
 		add_action( 'rest_after_insert_' . self::POST_TYPE, [ self::class, 'on_rest_insert' ], 10, 2 );
 		add_action( 'future_to_publish', [ self::class, 'on_future_to_publish' ], 10, 1 );
+		add_filter( 'update_post_metadata', [ self::class, 'guard_beehiiv_post_id' ], 10, 3 );
+	}
+
+	/**
+	 * Prevent clearing or changing the Beehiiv post ID after a successful send.
+	 *
+	 * @param mixed  $check    Whether to allow updating metadata for the given type.
+	 * @param int    $post_id  Post ID.
+	 * @param string $meta_key Meta key.
+	 * @return mixed False to block the update, or $check to proceed.
+	 * @since 1.0.0
+	 */
+	public static function guard_beehiiv_post_id( $check, $post_id, $meta_key ) {
+		if (
+			Meta::BEEHIIV_POST_ID === $meta_key
+			&& self::has_beehiiv_post_id( (int) $post_id )
+		) {
+			return false;
+		}
+
+		return $check;
 	}
 
 	/**
@@ -166,6 +187,8 @@ final class Sender {
 			return;
 		}
 
+		// Post created successfully for sending the newsletter.
+		// Save the Beehiiv post ID in the post meta.
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, false );
 	}
