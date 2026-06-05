@@ -11,9 +11,6 @@ use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\Posts;
 use Beehiiv\Connection\Manager;
 use Beehiiv\Editor\Meta;
-use DateTimeImmutable;
-use DateTimeZone;
-use Exception;
 use WP_Post;
 use WP_REST_Request;
 
@@ -162,12 +159,6 @@ final class Sender {
 			return;
 		}
 
-		$scheduled_at = self::convert_send_date_to_scheduled_at_utc( $post_object );
-
-		if ( null !== $scheduled_at ) {
-			$beehiiv_post_data['scheduled_at'] = $scheduled_at;
-		}
-
 		$result = Posts::create( $publication_id, $beehiiv_post_data );
 
 		if ( ! $result['success'] ) {
@@ -177,53 +168,6 @@ final class Sender {
 
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, false );
-	}
-
-	/**
-	 * Convert the send datetime (site timezone) to Beehiiv scheduled_at (UTC).
-	 *
-	 * Uses `_beehiiv_send_to_newsletter_date` when set; otherwise the WordPress post publish
-	 * datetime (`post_date`) for "On publish".
-	 *
-	 * Returns null when send is immediate (past or now) so the field is omitted from the payload.
-	 *
-	 * @param WP_Post $post Post object.
-	 * @return string|null ISO 8601 UTC datetime (e.g. 2024-12-25T12:00:00Z), or null.
-	 * @since 1.0.0
-	 */
-	private static function convert_send_date_to_scheduled_at_utc( WP_Post $post ): ?string {
-		$scheduled_date = get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_DATE, true );
-		$scheduled_date = is_string( $scheduled_date ) ? trim( $scheduled_date ) : '';
-
-		if ( '' === $scheduled_date ) {
-			$scheduled_date = trim( (string) $post->post_date );
-		}
-
-		if ( '' === $scheduled_date ) {
-			return null;
-		}
-
-		try {
-			$local = new DateTimeImmutable( $scheduled_date, wp_timezone() );
-			$utc   = $local->setTimezone( new DateTimeZone( 'UTC' ) );
-
-			if ( $utc->getTimestamp() <= time() ) {
-				return null;
-			}
-
-			return $utc->format( 'Y-m-d\TH:i:s\Z' );
-		} catch ( Exception $e ) {
-			self::log_error(
-				$post->ID,
-				sprintf(
-					'Invalid newsletter send date "%s": %s',
-					$scheduled_date,
-					$e->getMessage()
-				)
-			);
-
-			return null;
-		}
 	}
 
 	/**
