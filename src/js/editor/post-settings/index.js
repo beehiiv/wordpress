@@ -38,6 +38,7 @@ function BeehiivPostSettingsPanel() {
 		sendToNewsletter,
 		sendToNewsletterDate,
 		sendToNewsletterSnippet,
+		newsletterAlreadySent,
 		setSendToNewsletter,
 		setSendToNewsletterDate,
 		setSendToNewsletterSnippet,
@@ -49,8 +50,21 @@ function BeehiivPostSettingsPanel() {
 				<SendNewsletterToggle
 					checked={ sendToNewsletter }
 					onChange={ setSendToNewsletter }
+					disabled={ newsletterAlreadySent }
 				/>
-				{ sendToNewsletter && (
+				{ newsletterAlreadySent && (
+					<Notice
+						className="beehiiv-post-settings-notice"
+						status="info"
+						isDismissible={ false }
+					>
+						{ __(
+							'This post was already sent to your Beehiiv newsletter.',
+							'beehiiv'
+						) }
+					</Notice>
+				) }
+				{ sendToNewsletter && ! newsletterAlreadySent && (
 					<>
 						<Notice
 							className="beehiiv-post-settings-notice"
