@@ -11,15 +11,14 @@ use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\Posts;
 use Beehiiv\Connection\Manager;
 use Beehiiv\Editor\Meta;
-use DateTimeImmutable;
-use Exception;
-use WP_Error;
 use WP_Post;
+use WP_REST_Request;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Creates a Beehiiv post in the configured publication when a post is published.
+ * Creates or schedules a Beehiiv post in the configured publication when newsletter
+ * send is enabled on save. Future send times use Beehiiv `scheduled_at` (UTC).
  *
  * @link https://developers.beehiiv.com/api-reference/posts/create
  * @since 1.0.0
@@ -34,13 +33,13 @@ final class Sender {
 	private const POST_TYPE = 'post';
 
 	/**
-	 * Register hooks that send newsletters on publish (immediate sends only).
+	 * Register hooks that sync newsletters to Beehiiv on save.
 	 *
 	 * @return void
 	 * @since 1.0.0
 	 */
 	public static function init(): void {
-		add_action( 'rest_after_insert_' . self::POST_TYPE, [ self::class, 'on_rest_insert' ], 10, 1 );
+		add_action( 'rest_after_insert_' . self::POST_TYPE, [ self::class, 'on_rest_insert' ], 10, 2 );
 		add_action( 'future_to_publish', [ self::class, 'on_future_to_publish' ], 10, 1 );
 		add_filter( 'update_post_metadata', [ self::class, 'guard_beehiiv_post_id' ], 10, 3 );
 	}
@@ -66,18 +65,25 @@ final class Sender {
 	}
 
 	/**
-	 * Send on block editor save when the post is published.
+	 * Sync on block editor save when newsletter meta allows.
 	 *
-	 * @param WP_Post $post Inserted or updated post.
+	 * @param WP_Post              $post    Inserted or updated post.
+	 * @param WP_REST_Request|null $request REST request (meta may only be present here on the same request).
 	 * @return void
 	 * @since 1.0.0
 	 */
-	public static function on_rest_insert( WP_Post $post ): void {
-		self::maybe_send_on_publish( $post );
+	public static function on_rest_insert( WP_Post $post, $request = null ): void {
+		self::maybe_send_post_newsletter(
+			$post,
+			$request instanceof WP_REST_Request ? $request : null
+		);
 	}
 
 	/**
-	 * Send when a scheduled WordPress post goes live (no REST save on that transition).
+	 * Sync when a scheduled (`future`) post transitions to `publish` without a REST save.
+	 *
+	 * Block editor publishes use `rest_after_insert_post`. WordPress releases scheduled posts
+	 * via cron (`future` → `publish`) without the REST API; core fires `future_to_publish`.
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return void
@@ -88,17 +94,20 @@ final class Sender {
 			return;
 		}
 
-		self::maybe_send_on_publish( $post );
+		self::maybe_send_post_newsletter( $post );
 	}
 
 	/**
-	 * Send immediately when post meta and status allow (no WP-Cron scheduling).
+	 * Create or schedule a Beehiiv newsletter when post meta and status allow.
 	 *
-	 * @param WP_Post $post Post object.
+	 * Snippet newsletters require a public permalink for Read more; defer until `publish`.
+	 *
+	 * @param WP_Post              $post    Post object.
+	 * @param WP_REST_Request|null $request Optional REST request from the block editor save.
 	 * @return void
 	 * @since 1.0.0
 	 */
-	public static function maybe_send_on_publish( WP_Post $post ): void {
+	public static function maybe_send_post_newsletter( WP_Post $post, ?WP_REST_Request $request = null ): void {
 		if ( self::POST_TYPE !== $post->post_type ) {
 			return;
 		}
@@ -107,25 +116,18 @@ final class Sender {
 			return;
 		}
 
+		// If post is already sent as newsletter, do nothing.
 		if ( self::has_beehiiv_post_id( $post->ID ) ) {
 			return;
 		}
 
-		if ( ! self::is_send_to_newsletter_enabled( $post->ID ) ) {
+		if ( ! self::is_send_to_newsletter_enabled( $post->ID, $request ) ) {
 			return;
 		}
 
-		if ( self::has_future_send_date( $post->ID ) ) {
-			return;
-		}
+		$send_newsletter_snippet = (bool) get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_SNIPPET, true );
 
-		$send_snippet = (bool) get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_SNIPPET, true );
-
-		if ( $send_snippet && 'publish' !== $post->post_status ) {
-			return;
-		}
-
-		if ( 'publish' !== $post->post_status ) {
+		if ( $send_newsletter_snippet && 'publish' !== $post->post_status ) {
 			return;
 		}
 
@@ -133,7 +135,7 @@ final class Sender {
 	}
 
 	/**
-	 * Send a WordPress post to Beehiiv as a newsletter.
+	 * Send a WordPress post to Beehiiv as a newsletter (immediate or via scheduled_at).
 	 *
 	 * @param int $post_id Post ID.
 	 * @return void
@@ -163,9 +165,10 @@ final class Sender {
 			return;
 		}
 
-		$send_snippet = (bool) get_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER_SNIPPET, true );
+		$send_newsletter_snippet = (bool) get_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER_SNIPPET, true );
 
-		if ( $send_snippet && 'publish' !== $post_object->post_status ) {
+		// If snippet newsletter is enabled and post is not published, do nothing.
+		if ( $send_newsletter_snippet && 'publish' !== $post_object->post_status ) {
 			self::log_error( $post_id, 'Snippet newsletter requires a published post.' );
 			return;
 		}
@@ -233,37 +236,22 @@ final class Sender {
 	/**
 	 * Whether the post is marked to send to the Beehiiv newsletter.
 	 *
-	 * @param int $post_id Post ID.
+	 * @param int                  $post_id Post ID.
+	 * @param WP_REST_Request|null $request REST request when syncing on editor save.
 	 * @return bool
 	 * @since 1.0.0
 	 */
-	private static function is_send_to_newsletter_enabled( int $post_id ): bool {
+	private static function is_send_to_newsletter_enabled( int $post_id, ?WP_REST_Request $request = null ): bool {
+		if ( $request instanceof WP_REST_Request ) {
+			$meta = $request->get_param( 'meta' );
+
+			if ( is_array( $meta ) && array_key_exists( Meta::SEND_TO_NEWSLETTER, $meta ) ) {
+				return rest_sanitize_boolean( $meta[ Meta::SEND_TO_NEWSLETTER ] );
+			}
+		}
+
 		$value = get_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
 
 		return rest_sanitize_boolean( $value );
-	}
-
-	/**
-	 * Whether a future send date is set (scheduled sends are not implemented yet).
-	 *
-	 * @param int $post_id Post ID.
-	 * @return bool
-	 * @since 1.0.0
-	 */
-	private static function has_future_send_date( int $post_id ): bool {
-		$scheduled_date = get_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER_DATE, true );
-		$scheduled_date = is_string( $scheduled_date ) ? trim( $scheduled_date ) : '';
-
-		if ( '' === $scheduled_date ) {
-			return false;
-		}
-
-		try {
-			$scheduled_date_object = new DateTimeImmutable( $scheduled_date, wp_timezone() );
-
-			return $scheduled_date_object->getTimestamp() > time();
-		} catch ( Exception $e ) {
-			return false;
-		}
 	}
 }

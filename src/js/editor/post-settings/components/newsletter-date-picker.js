@@ -10,7 +10,7 @@ import { store as editorStore } from '@wordpress/editor';
 
 /**
  * @param {Object}                      props
- * @param {string|null}                 props.date     ISO 8601 datetime, or null for immediate send.
+ * @param {string|null}                 props.date     ISO 8601 datetime, or null to send on WP post publish.
  * @param {(date: string|null) => void} props.onChange Called when the user picks a new send time.
  */
 export default function NewsletterDatePicker( { date, onChange } ) {
@@ -22,9 +22,27 @@ export default function NewsletterDatePicker( { date, onChange } ) {
 		[]
 	);
 
-	const dateLabel = date
-		? `${ format( 'M j, Y g:i a', date ) } ${ dateI18n( 'T', date ) }`
-		: __( 'On publish', 'beehiiv' );
+	const formattedPublishDate = postPublishDate
+		? `${ format( 'M j, Y g:i a', postPublishDate ) } ${ dateI18n(
+				'T',
+				postPublishDate
+		  ) }`
+		: '';
+
+	let dateLabel = __( 'On publish', 'beehiiv' );
+
+	if ( date ) {
+		dateLabel = `${ format( 'M j, Y g:i a', date ) } ${ dateI18n(
+			'T',
+			date
+		) }`;
+	} else if ( formattedPublishDate ) {
+		dateLabel = sprintf(
+			/* translators: %s: WordPress post publish date and time. */
+			__( 'On publish (%s)', 'beehiiv' ),
+			formattedPublishDate
+		);
+	}
 
 	return (
 		<Dropdown
@@ -62,7 +80,7 @@ export default function NewsletterDatePicker( { date, onChange } ) {
 						<div className="beehiiv-newsletter-date__popover-controls">
 							<Button
 								variant="tertiary"
-								onClick={ () => onChange( null ) } // Clicking "On Publish" button sets the date to the post's publish date.
+								onClick={ () => onChange( null ) }
 							>
 								{ __( 'On Publish', 'beehiiv' ) }
 							</Button>

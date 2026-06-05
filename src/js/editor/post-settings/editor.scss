@@ -33,10 +33,25 @@
 	}
 
 	.beehiiv-newsletter-date__row {
-		display: flex;
 		align-items: baseline;
-		justify-content: space-between;
+		column-gap: 8px;
+		display: flex;
+		flex-wrap: wrap;
+		row-gap: 4px;
 		width: 100%;
+	}
+
+	.beehiiv-newsletter-date__label {
+		flex: 0 0 auto;
+	}
+
+	.beehiiv-newsletter-date__toggle {
+		flex: 0 1 auto;
+		height: auto;
+		margin-inline-start: auto;
+		max-width: 100%;
+		text-align: center;
+		white-space: nowrap;
 	}
 	/* stylelint-enable selector-class-pattern */
 }
