@@ -45,6 +45,13 @@ final class Config {
 	public const SIGNUP_URL = 'https://www.beehiiv.com/';
 
 	/**
+	 * Plugin documentation on WordPress.org.
+	 *
+	 * @since 1.0.0
+	 */
+	public const PLUGIN_DOC_URL = 'https://wordpress.org/plugins/beehiiv/';
+
+	/**
 	 * Absolute path to admin view templates.
 	 *
 	 * @since 1.0.0
