@@ -1,14 +1,53 @@
 /**
  * Shared Beehiiv SCSS mixins.
  */
+@use "sass:color";
+@use "colors";
 
 /// SVG icon via CSS mask + currentColor (Dashicons-style; works in wp-admin menu states).
 /// @param {String} $url - Path to the SVG, relative to the file that `@include`s this mixin (for webpack).
 /// @param {Number} $size - Width and height of the icon.
-@mixin icon-mask( $url, $size: 20px ) {
+@mixin icon-mask($url, $size: 20px) {
 	display: block;
 	width: $size;
 	height: $size;
 	background-color: currentcolor;
-	mask: url( $url ) center / contain no-repeat;
+	mask: url($url) center / contain no-repeat;
+}
+
+/// Dashed outline for block placeholders in the editor.
+/// @param {Color} $color Outline color.
+@mixin block-placeholder-outline($color: rgb(0 0 0 / 20%)) {
+	outline: 1px dashed $color;
+	outline-offset: 4px;
+}
+
+/// Diagonal stripe background for blocks omitted from the Beehiiv newsletter.
+/// @param {Color} $warning-color Base warning color (defaults to status disconnected).
+@mixin omitted-block-background($warning-color: colors.$beehiiv-status-disconnected) {
+	background-color: color.change($warning-color, $alpha: 0.06);
+	background-image: repeating-linear-gradient(
+		-45deg,
+		transparent,
+		transparent 6px,
+		color.change($warning-color, $alpha: 0.08) 6px,
+		color.change($warning-color, $alpha: 0.08) 7px
+	);
+}
+
+/// Left-accent callout panel for Beehiiv blocks on the front end.
+/// @param {Color} $background Panel background.
+/// @param {Color} $accent Left border color.
+@mixin block-callout($background, $accent) {
+	padding: 1.5rem;
+	background: $background;
+	border-left: 4px solid $accent;
+	border-radius: 4px;
+}
+
+/// Body text inside a `block-callout` panel.
+@mixin block-callout-message {
+	margin: 0;
+	font-size: 1.125rem;
+	line-height: 1.5;
 }
