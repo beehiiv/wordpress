@@ -7,6 +7,10 @@
 
 namespace Beehiiv\Editor;
 
+use Beehiiv\Admin\Options;
+use Beehiiv\Config;
+use Beehiiv\Connection\Manager;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -59,6 +63,16 @@ final class PostSettings {
 			'type'    => 'string',
 			'default' => '',
 		],
+		Meta::NEWSLETTER_ERROR           => [
+			'type'     => 'string',
+			'default'  => '',
+			'readonly' => true,
+		],
+		Meta::NEWSLETTER_ERROR_TYPE      => [
+			'type'     => 'string',
+			'default'  => '',
+			'readonly' => true,
+		],
 	];
 
 	/**
@@ -69,11 +83,23 @@ final class PostSettings {
 	 */
 	public static function register_meta(): void {
 		foreach ( self::META_KEYS as $key => $config ) {
+			$show_in_rest = true;
+
+			if ( ! empty( $config['readonly'] ) ) {
+				$show_in_rest = [
+					'schema' => [
+						'type'     => $config['type'],
+						'default'  => $config['default'],
+						'readonly' => true,
+					],
+				];
+			}
+
 			register_post_meta(
 				self::POST_TYPE,
 				$key,
 				[
-					'show_in_rest'  => true,
+					'show_in_rest'  => $show_in_rest,
 					'single'        => true,
 					'type'          => $config['type'],
 					'default'       => $config['default'],
@@ -113,6 +139,12 @@ final class PostSettings {
 
 		wp_set_script_translations( self::SCRIPT_HANDLE, 'beehiiv' );
 
+		wp_localize_script(
+			self::SCRIPT_HANDLE,
+			'beehiivPostSettings',
+			self::get_editor_config()
+		);
+
 		$style_path = BEEHIIV_BUILD_DIR . self::BUILD_ENTRY . '.css';
 		if ( file_exists( $style_path ) ) {
 			wp_enqueue_style(
@@ -122,5 +154,22 @@ final class PostSettings {
 				$asset['version']
 			);
 		}
+	}
+
+	/**
+	 * Data exposed to the block editor script.
+	 *
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	private static function get_editor_config(): array {
+		$settings = Options::get();
+
+		return [
+			'isConnected'      => Manager::is_connected(),
+			'settingsUrl'      => admin_url( 'admin.php?page=' . Config::PLUGIN_SLUG ),
+			'hasPublication'   => '' !== trim( (string) ( $settings['publication_id'] ?? '' ) ),
+			'hasEmailTemplate' => '' !== trim( (string) ( $settings['post_template_id'] ?? '' ) ),
+		];
 	}
 }

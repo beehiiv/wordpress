@@ -10,13 +10,16 @@ import {
 	PluginPrePublishPanel,
 	store as editorStore,
 } from '@wordpress/editor';
-import { Notice, PanelBody, ToggleControl } from '@wordpress/components';
+import { PanelBody, ToggleControl } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 
 import BeehiivSidebarIcon from './icon';
 import NewsletterDatePicker from './components/newsletter-date-picker';
+import NewsletterStatusNotices from './components/newsletter-status-notices';
+import PostSettingsNotice from './components/post-settings-notice';
 import SendNewsletterToggle from './components/send-newsletter-toggle';
+import { useBeehiivEditorConfig } from './hooks/use-beehiiv-editor-config';
 import { useBeehiivPostMeta } from './hooks/use-beehiiv-post-meta';
 
 import './editor.scss';
@@ -29,6 +32,8 @@ const PRE_PUBLISH_PANEL_NAME = 'beehiiv-send-newsletter';
 
 function BeehiivPostSettingsPanel() {
 	const beehiivMeta = useBeehiivPostMeta();
+	const { isConnected, hasPublication, hasEmailTemplate } =
+		useBeehiivEditorConfig();
 
 	if ( ! beehiivMeta ) {
 		return null;
@@ -44,73 +49,70 @@ function BeehiivPostSettingsPanel() {
 		setSendToNewsletterSnippet,
 	} = beehiivMeta;
 
+	const isNewsletterReady = isConnected && hasPublication && hasEmailTemplate;
+
 	return (
 		<div className="beehiiv-post-settings-content">
 			<PanelBody>
+				<NewsletterStatusNotices beehiivMeta={ beehiivMeta } />
 				<SendNewsletterToggle
 					checked={ sendToNewsletter }
 					onChange={ setSendToNewsletter }
-					disabled={ newsletterAlreadySent }
+					disabled={ newsletterAlreadySent || ! isNewsletterReady }
 				/>
 				{ newsletterAlreadySent && (
-					<Notice
-						className="beehiiv-post-settings-notice"
-						status="info"
-						isDismissible={ false }
-					>
+					<PostSettingsNotice status="info">
 						{ __(
 							'This post was already sent to your Beehiiv newsletter.',
 							'beehiiv'
 						) }
-					</Notice>
+					</PostSettingsNotice>
 				) }
-				{ sendToNewsletter && ! newsletterAlreadySent && (
-					<>
-						<Notice
-							className="beehiiv-post-settings-notice"
-							status="warning"
-							isDismissible={ false }
-						>
-							{ __(
-								'The newsletter can only be sent once and cannot be undone.',
-								'beehiiv'
-							) }
-						</Notice>
+				{ sendToNewsletter &&
+					! newsletterAlreadySent &&
+					isNewsletterReady && (
+						<>
+							<PostSettingsNotice status="warning">
+								{ __(
+									'The newsletter can only be sent once and cannot be undone.',
+									'beehiiv'
+								) }
+							</PostSettingsNotice>
 
-						<NewsletterDatePicker
-							date={ sendToNewsletterDate }
-							onChange={ setSendToNewsletterDate }
-						/>
+							<NewsletterDatePicker
+								date={ sendToNewsletterDate }
+								onChange={ setSendToNewsletterDate }
+							/>
 
-						<ToggleControl
-							className="beehiiv-post-settings-snippet"
-							label={ __( 'Snippet newsletter', 'beehiiv' ) }
-							help={
-								sendToNewsletterSnippet ? (
-									<>
-										{ __(
+							<ToggleControl
+								className="beehiiv-post-settings-snippet"
+								label={ __( 'Snippet newsletter', 'beehiiv' ) }
+								help={
+									sendToNewsletterSnippet ? (
+										<>
+											{ __(
+												'Send a snippet newsletter with a "Read More" button to the full post.',
+												'beehiiv'
+											) }
+											<br />
+											<br />
+											{ __(
+												'Insert the "More" block in your post to mark where the snippet ends.',
+												'beehiiv'
+											) }
+										</>
+									) : (
+										__(
 											'Send a snippet newsletter with a "Read More" button to the full post.',
 											'beehiiv'
-										) }
-										<br />
-										<br />
-										{ __(
-											'Insert the "More" block in your post to mark where the snippet ends.',
-											'beehiiv'
-										) }
-									</>
-								) : (
-									__(
-										'Send a snippet newsletter with a "Read More" button to the full post.',
-										'beehiiv'
+										)
 									)
-								)
-							}
-							checked={ sendToNewsletterSnippet }
-							onChange={ setSendToNewsletterSnippet }
-						/>
-					</>
-				) }
+								}
+								checked={ sendToNewsletterSnippet }
+								onChange={ setSendToNewsletterSnippet }
+							/>
+						</>
+					) }
 			</PanelBody>
 		</div>
 	);
@@ -156,6 +158,8 @@ function BeehiivPostSettingsSidebar() {
 function BeehiivSendNewsletterPrePublishPanel() {
 	const { postType, canPublishPosts } = useBeehiivPostSettingsEligibility();
 	const beehiivMeta = useBeehiivPostMeta();
+	const { isConnected, hasPublication, hasEmailTemplate } =
+		useBeehiivEditorConfig();
 
 	if ( postType && postType !== 'post' ) {
 		return null;
@@ -169,7 +173,9 @@ function BeehiivSendNewsletterPrePublishPanel() {
 		return null;
 	}
 
-	const { sendToNewsletter, setSendToNewsletter } = beehiivMeta;
+	const { sendToNewsletter, setSendToNewsletter, newsletterAlreadySent } =
+		beehiivMeta;
+	const isNewsletterReady = isConnected && hasPublication && hasEmailTemplate;
 
 	const sendToNewsletterStatus = sendToNewsletter
 		? __( 'Yes', 'beehiiv' )
@@ -188,9 +194,11 @@ function BeehiivSendNewsletterPrePublishPanel() {
 			}
 			icon={ false }
 		>
+			<NewsletterStatusNotices beehiivMeta={ beehiivMeta } />
 			<SendNewsletterToggle
 				checked={ sendToNewsletter }
 				onChange={ setSendToNewsletter }
+				disabled={ newsletterAlreadySent || ! isNewsletterReady }
 			/>
 		</PluginPrePublishPanel>
 	);
