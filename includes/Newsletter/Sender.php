@@ -142,8 +142,8 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	public static function send( int $post_id ): void {
-		if ( '' === Manager::get_api_key() ) {
-			self::log_error( $post_id, 'Beehiiv API key is not configured.' );
+		if ( ! Manager::is_connected() ) {
+			self::log_error( $post_id, 'Beehiiv is not connected.' );
 			return;
 		}
 

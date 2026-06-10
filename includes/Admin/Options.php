@@ -26,7 +26,6 @@ final class Options {
 	private const DEFAULTS = [
 		'publication_id'   => '',
 		'post_template_id' => '',
-		'oauth_connected'  => false,
 	];
 
 	/**
@@ -70,10 +69,8 @@ final class Options {
 	 * @since 1.0.0
 	 */
 	public static function sanitize( $input ): array {
-		$current = self::get();
-
 		if ( ! is_array( $input ) ) {
-			return $current;
+			return self::get();
 		}
 
 		$publication_id   = isset( $input['publication_id'] )
@@ -86,7 +83,6 @@ final class Options {
 		return [
 			'publication_id'   => $publication_id,
 			'post_template_id' => $post_template_id,
-			'oauth_connected'  => $current['oauth_connected'],
 		];
 	}
 }

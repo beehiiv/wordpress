@@ -29,12 +29,17 @@ final class Assets {
 	private const HANDLE_ADMIN_SETTINGS = 'beehiiv-admin-settings';
 
 	/**
+	 * Script handle for the settings page (`build/admin-settings.js`).
+	 */
+	private const HANDLE_ADMIN_SETTINGS_SCRIPT = 'beehiiv-admin-settings';
+
+	/**
 	 * Webpack entry name for global admin styles.
 	 */
 	private const BUILD_ENTRY_ADMIN = 'admin';
 
 	/**
-	 * Webpack entry name for the settings page styles.
+	 * Webpack entry name for the settings page bundle.
 	 */
 	private const BUILD_ENTRY_SETTINGS = 'admin-settings';
 
@@ -61,6 +66,7 @@ final class Assets {
 		}
 
 		self::enqueue_build_style( self::HANDLE_ADMIN_SETTINGS, self::BUILD_ENTRY_SETTINGS );
+		self::enqueue_build_script( self::HANDLE_ADMIN_SETTINGS_SCRIPT, self::BUILD_ENTRY_SETTINGS );
 	}
 
 	/**
@@ -85,6 +91,36 @@ final class Assets {
 			BEEHIIV_BUILD_URL . $build_entry . '.css',
 			[],
 			$asset['version']
+		);
+	}
+
+	/**
+	 * Enqueue a compiled script from the build directory.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $handle      Script handle.
+	 * @param string $build_entry Webpack entry name (without extension).
+	 *
+	 * @return void
+	 */
+	private static function enqueue_build_script( string $handle, string $build_entry ): void {
+
+		$asset_path  = BEEHIIV_BUILD_DIR . $build_entry . '.asset.php';
+		$script_path = BEEHIIV_BUILD_DIR . $build_entry . '.js';
+
+		if ( ! file_exists( $asset_path ) || ! file_exists( $script_path ) ) {
+			return;
+		}
+
+		$asset = require $asset_path;
+
+		wp_enqueue_script(
+			$handle,
+			BEEHIIV_BUILD_URL . $build_entry . '.js',
+			$asset['dependencies'],
+			$asset['version'],
+			true
 		);
 	}
 }
