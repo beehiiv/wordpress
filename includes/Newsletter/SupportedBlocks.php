@@ -65,8 +65,8 @@ final class SupportedBlocks {
 	 */
 	public static function get_editor_config(): array {
 		return [
-			'supported'  => self::BLOCKS,
-			'nestedOnly' => self::NESTED_ONLY,
+			'supported'   => self::BLOCKS,
+			'nestedOnly'  => self::NESTED_ONLY,
 			'snippetOnly' => self::SNIPPET_ONLY,
 		];
 	}
