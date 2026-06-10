@@ -1,6 +1,6 @@
 <?php
 /**
- * OAuth environment URLs and shared configuration.
+ * OAuth URLs and shared configuration.
  *
  * @package beehiiv
  */
@@ -59,7 +59,7 @@ final class Config {
 	public const PKCE_TRANSIENT_TTL = 600;
 
 	/**
-	 * OAuth app base URL for the current environment.
+	 * OAuth app base URL.
 	 *
 	 * @since 1.0.0
 	 *
@@ -67,15 +67,11 @@ final class Config {
 	 */
 	public static function get_oauth_base_url(): string {
 
-		if ( self::is_production_environment() ) {
-			return 'https://app.beehiiv.com';
-		}
-
-		return 'https://app.staginghiiv.com';
+		return 'https://app.beehiiv.com';
 	}
 
 	/**
-	 * Beehiiv public API base URL for the current environment.
+	 * Beehiiv public API base URL.
 	 *
 	 * @since 1.0.0
 	 *
@@ -83,11 +79,7 @@ final class Config {
 	 */
 	public static function get_api_base_url(): string {
 
-		if ( self::is_production_environment() ) {
-			return 'https://api.beehiiv.com/v2';
-		}
-
-		return 'https://api.staginghiiv.com/v2';
+		return 'https://api.beehiiv.com/v2';
 	}
 
 	/**
@@ -137,22 +129,6 @@ final class Config {
 	}
 
 	/**
-	 * Whether the site should use production Beehiiv endpoints.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @return bool
-	 */
-	private static function is_production_environment(): bool {
-
-		if ( function_exists( 'wp_get_environment_type' ) ) {
-			return 'production' === wp_get_environment_type();
-		}
-
-		return true;
-	}
-
-	/**
 	 * Register hooks for OAuth-related WordPress integration.
 	 *
 	 * @since 1.0.0
@@ -179,7 +155,7 @@ final class Config {
 	}
 
 	/**
-	 * Known Beehiiv OAuth app hostnames (all environments).
+	 * Known Beehiiv OAuth app hostnames.
 	 *
 	 * @since 1.0.0
 	 *
@@ -189,7 +165,6 @@ final class Config {
 
 		return [
 			'app.beehiiv.com',
-			'app.staginghiiv.com',
 		];
 	}
 }
