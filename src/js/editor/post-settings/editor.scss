@@ -23,6 +23,16 @@
 		margin: 12px 0;
 	}
 
+	.beehiiv-send-newsletter-toggle.is-disabled {
+		opacity: 0.65;
+
+		.components-form-toggle,
+		.components-base-control__label,
+		.components-base-control__help {
+			cursor: not-allowed;
+		}
+	}
+
 	.beehiiv-newsletter-date {
 		width: 100%;
 		margin-bottom: 12px;
