@@ -196,7 +196,6 @@ function BeehiivSendNewsletterPrePublishPanel() {
 			}
 			icon={ false }
 		>
-			<NewsletterStatusNotices beehiivMeta={ beehiivMeta } />
 			<SendNewsletterToggle
 				checked={ sendToNewsletter }
 				onChange={ setSendToNewsletter }
