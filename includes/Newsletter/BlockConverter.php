@@ -19,14 +19,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * - Featured image (post thumbnail) — `convert_post_thumbnail()`
  * - `core/heading` — `convert_heading_block()`
- * - `core/paragraph` — `convert_paragraph_block()` -------------------------------------------------> (NOT IMPLEMENTED YET)
+ * - `core/paragraph` — `convert_paragraph_block()` (not implemented yet)
  * - `core/image` — `convert_image_block()`
- * - `core/list` — `convert_list_block()` -----------------------------------------------------------> (NOT IMPLEMENTED YET)
- * - `core/table` — `convert_table_block()` ---------------------------------------------------------> (NOT IMPLEMENTED YET)
+ * - `core/list` — `convert_list_block()` (not implemented yet)
+ * - `core/table` — `convert_table_block()` (not implemented yet)
  * - `core/quote` — `convert_quote_block()`
  * - `core/pullquote` — `convert_pullquote_block()`
  * - `core/embed` — `convert_embed_block()`
- * - `core/media-text` — `convert_media_text_block()` -----------------------------------------------> (NOT IMPLEMENTED YET)
+ * - `core/media-text` — `convert_media_text_block()` (not implemented yet)
  * - `core/buttons` / inner `core/button` — `convert_buttons_block()`, `convert_button_block()`
  * - `core/separator` — Beehiiv `content_break`
  * - `core/more` — snippet newsletters only; Beehiiv Read More `button` via `convert_more_block()`
