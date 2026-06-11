@@ -54,16 +54,18 @@ function BeehiivPostSettingsPanel() {
 	return (
 		<div className="beehiiv-post-settings-content">
 			<PanelBody>
-				<NewsletterStatusNotices beehiivMeta={ beehiivMeta } />
 				<SendNewsletterToggle
 					checked={ sendToNewsletter }
 					onChange={ setSendToNewsletter }
 					disabled={ newsletterAlreadySent || ! isNewsletterReady }
 				/>
+
+				<NewsletterStatusNotices beehiivMeta={ beehiivMeta } />
+
 				{ newsletterAlreadySent && (
-					<PostSettingsNotice status="info">
+					<PostSettingsNotice status="success">
 						{ __(
-							'This post was already sent to your Beehiiv newsletter.',
+							'This post was sent to your Beehiiv newsletter.',
 							'beehiiv'
 						) }
 					</PostSettingsNotice>

@@ -18,7 +18,9 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Creates or schedules a Beehiiv post in the configured publication when newsletter
- * send is enabled on save. Future send times use Beehiiv `scheduled_at` (UTC).
+ * send is enabled and the post is published (or scheduled). Draft saves are skipped
+ * unless retrying after a previous failed send. Future send times use Beehiiv
+ * `scheduled_at` (UTC).
  *
  * @link https://developers.beehiiv.com/api-reference/posts/create
  * @since 1.0.0
@@ -100,7 +102,8 @@ final class Sender {
 	/**
 	 * Create or schedule a Beehiiv newsletter when post meta and status allow.
 	 *
-	 * Snippet newsletters require a public permalink for Read more; defer until `publish`.
+	 * Draft saves are skipped unless retrying after a failed send. Snippet newsletters
+	 * require a public permalink for Read more; defer until `publish`.
 	 *
 	 * @param WP_Post              $post    Post object.
 	 * @param WP_REST_Request|null $request Optional REST request from the block editor save.
@@ -119,6 +122,10 @@ final class Sender {
 
 		if ( ! self::is_send_to_newsletter_enabled( $post->ID, $request ) ) {
 			self::clear_error( $post->ID );
+			return;
+		}
+
+		if ( ! self::should_attempt_send( $post ) ) {
 			return;
 		}
 
@@ -339,6 +346,37 @@ final class Sender {
 		}
 
 		return $error;
+	}
+
+	/**
+	 * Whether this save should trigger a Beehiiv send attempt.
+	 *
+	 * Sends on publish or schedule (`publish`, `future`), and on any save while a
+	 * previous send failure is still recorded so the editor can retry.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return bool
+	 * @since 1.0.0
+	 */
+	private static function should_attempt_send( WP_Post $post ): bool {
+		if ( self::has_newsletter_error( $post->ID ) ) {
+			return true;
+		}
+
+		return in_array( $post->post_status, [ 'publish', 'future' ], true );
+	}
+
+	/**
+	 * Whether a prior newsletter save or send left an error on this post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since 1.0.0
+	 */
+	private static function has_newsletter_error( int $post_id ): bool {
+		$error = get_post_meta( $post_id, Meta::NEWSLETTER_ERROR, true );
+
+		return is_string( $error ) && '' !== trim( $error );
 	}
 
 	/**

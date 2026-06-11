@@ -4,8 +4,9 @@
  * Uses `useEntityProp` so meta reads/writes stay in sync with the post entity
  * store (same pattern as core post fields).
  */
-import { useSelect } from '@wordpress/data';
-import { useEntityProp } from '@wordpress/core-data';
+import { useEffect, useRef } from '@wordpress/element';
+import { useRegistry, useSelect } from '@wordpress/data';
+import { useEntityProp, store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
 
 import {
@@ -40,6 +41,71 @@ export function useBeehiivPostMeta() {
 	);
 
 	const [ meta, setMeta ] = useEntityProp( 'postType', postType, 'meta' );
+	const registry = useRegistry();
+
+	const { postId, isSavingPost, didPostSaveRequestSucceed } = useSelect(
+		( select ) => {
+			const editor = select( editorStore );
+
+			return {
+				postId: editor.getCurrentPostId(),
+				isSavingPost: editor.isSavingPost(),
+				didPostSaveRequestSucceed: editor.didPostSaveRequestSucceed(),
+			};
+		},
+		[]
+	);
+
+	const wasSavingPostRef = useRef( false );
+
+	useEffect( () => {
+		const wasSavingPost = wasSavingPostRef.current;
+		wasSavingPostRef.current = isSavingPost;
+
+		if (
+			! wasSavingPost ||
+			isSavingPost ||
+			! didPostSaveRequestSucceed ||
+			! postType ||
+			! postId
+		) {
+			return;
+		}
+
+		const serverMeta = registry
+			.select( coreStore )
+			.getEntityRecord( 'postType', postType, postId )?.meta;
+
+		if ( ! serverMeta ) {
+			return;
+		}
+
+		const editedMeta = registry
+			.select( coreStore )
+			.getEditedEntityRecord( 'postType', postType, postId )?.meta;
+
+		if ( ! editedMeta ) {
+			return;
+		}
+
+		setMeta( {
+			...editedMeta,
+			[ META_BEEHIIV_POST_ID ]: serverMeta[ META_BEEHIIV_POST_ID ] ?? '',
+			[ META_SEND_TO_NEWSLETTER ]:
+				!! serverMeta[ META_SEND_TO_NEWSLETTER ],
+			[ META_NEWSLETTER_ERROR ]:
+				serverMeta[ META_NEWSLETTER_ERROR ] ?? '',
+			[ META_NEWSLETTER_ERROR_TYPE ]:
+				serverMeta[ META_NEWSLETTER_ERROR_TYPE ] ?? '',
+		} );
+	}, [
+		didPostSaveRequestSucceed,
+		isSavingPost,
+		postId,
+		postType,
+		registry,
+		setMeta,
+	] );
 
 	if ( ! postType ) {
 		return null;
