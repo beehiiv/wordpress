@@ -1,0 +1,52 @@
+@use "../../../css" as beehiiv;
+
+/*
+ * Canvas styles must use .editor-styles-wrapper (or .wp-block) so WordPress
+ * injects this stylesheet into the iframed block editor.
+ */
+/* stylelint-disable selector-class-pattern -- block editor + dashicons */
+.editor-styles-wrapper .beehiiv-omitted-block {
+
+	@include beehiiv.omitted-block-background;
+	border-radius: 2px;
+	box-sizing: border-box;
+	min-height: 24px;
+	position: relative;
+	width: 100%;
+
+	// Invisible hit area so the icon above the block stays hoverable.
+	&::before {
+		bottom: 100%;
+		content: "";
+		height: 24px;
+		position: absolute;
+		right: 0;
+		width: 28px;
+	}
+}
+
+.editor-styles-wrapper .beehiiv-omitted-block__icon {
+	bottom: 100%;
+	color: beehiiv.$beehiiv-status-disconnected;
+	cursor: default;
+	display: block;
+	font-family: dashicons, sans-serif;
+	font-size: 16px;
+	height: 20px;
+	line-height: 18px;
+	opacity: 0;
+	pointer-events: auto;
+	position: absolute;
+	right: 2px;
+	transition: opacity 0.15s ease;
+	width: 20px;
+	z-index: 30;
+}
+
+.editor-styles-wrapper .beehiiv-omitted-block__icon:hover,
+.editor-styles-wrapper
+	.beehiiv-omitted-block:has(:hover)
+	.beehiiv-omitted-block__icon {
+	opacity: 1;
+}
+/* stylelint-enable selector-class-pattern */

@@ -19,9 +19,10 @@ import NewsletterDatePicker from './components/newsletter-date-picker';
 import NewsletterStatusNotices from './components/newsletter-status-notices';
 import PostSettingsNotice from './components/post-settings-notice';
 import SendNewsletterToggle from './components/send-newsletter-toggle';
-import { useBeehiivEditorConfig } from './hooks/use-beehiiv-editor-config';
+import { OmittedBlocksNoticeMessage } from './components/omitted-blocks-notice';
 import { useBeehiivPostMeta } from './hooks/use-beehiiv-post-meta';
 
+import './filters/with-omitted-block-indicator';
 import './editor.scss';
 
 const sidebarIcon = <BeehiivSidebarIcon />;
@@ -70,41 +71,35 @@ function BeehiivPostSettingsPanel() {
 						) }
 					</PostSettingsNotice>
 				) }
-				{ sendToNewsletter &&
-					! newsletterAlreadySent &&
-					isNewsletterReady && (
-						<>
-							<PostSettingsNotice status="warning">
+				{ sendToNewsletter && ! newsletterAlreadySent && (
+					<>
+						<Notice
+							className="beehiiv-post-settings-notice"
+							status="warning"
+							isDismissible={ false }
+						>
+							<p className="beehiiv-post-settings-notice__text">
 								{ __(
 									'The newsletter can only be sent once and cannot be undone.',
 									'beehiiv'
 								) }
-							</PostSettingsNotice>
+							</p>
 
-							<NewsletterDatePicker
-								date={ sendToNewsletterDate }
-								onChange={ setSendToNewsletterDate }
-							/>
+							<OmittedBlocksNoticeMessage />
+						</Notice>
 
-							<ToggleControl
-								className="beehiiv-post-settings-snippet"
-								label={ __( 'Snippet newsletter', 'beehiiv' ) }
-								help={
-									sendToNewsletterSnippet ? (
-										<>
-											{ __(
-												'Send a snippet newsletter with a "Read More" button to the full post.',
-												'beehiiv'
-											) }
-											<br />
-											<br />
-											{ __(
-												'Insert the "More" block in your post to mark where the snippet ends.',
-												'beehiiv'
-											) }
-										</>
-									) : (
-										__(
+						<NewsletterDatePicker
+							date={ sendToNewsletterDate }
+							onChange={ setSendToNewsletterDate }
+						/>
+
+						<ToggleControl
+							className="beehiiv-post-settings-snippet"
+							label={ __( 'Snippet newsletter', 'beehiiv' ) }
+							help={
+								sendToNewsletterSnippet ? (
+									<>
+										{ __(
 											'Send a snippet newsletter with a "Read More" button to the full post.',
 											'beehiiv'
 										)
