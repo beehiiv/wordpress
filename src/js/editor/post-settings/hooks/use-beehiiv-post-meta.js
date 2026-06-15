@@ -4,12 +4,15 @@
  * Uses `useEntityProp` so meta reads/writes stay in sync with the post entity
  * store (same pattern as core post fields).
  */
-import { useSelect } from '@wordpress/data';
-import { useEntityProp } from '@wordpress/core-data';
+import { useEffect, useRef } from '@wordpress/element';
+import { useRegistry, useSelect } from '@wordpress/data';
+import { useEntityProp, store as coreStore } from '@wordpress/core-data';
 import { store as editorStore } from '@wordpress/editor';
 
 import {
 	META_BEEHIIV_POST_ID,
+	META_NEWSLETTER_ERROR,
+	META_NEWSLETTER_ERROR_TYPE,
 	META_SEND_TO_NEWSLETTER,
 	META_SEND_TO_NEWSLETTER_DATE,
 	META_SEND_TO_NEWSLETTER_SNIPPET,
@@ -21,6 +24,8 @@ import {
  * @property {string|null}                 sendToNewsletterDate       ISO 8601 datetime, or null to send on WP post publish.
  * @property {boolean}                     sendToNewsletterSnippet    Whether to send a snippet instead of the full post.
  * @property {boolean}                     newsletterAlreadySent      Whether this post was already sent to Beehiiv.
+ * @property {string|null}                 newsletterError            User-facing save or send error from the server.
+ * @property {string|null}                 newsletterErrorType        `save` or `send` when {@link newsletterError} is set.
  * @property {(enabled: boolean) => void}  setSendToNewsletter        Enable or disable newsletter delivery.
  * @property {(date: string|null) => void} setSendToNewsletterDate    Set scheduled send time.
  * @property {(enabled: boolean) => void}  setSendToNewsletterSnippet Enable or disable snippet delivery.
@@ -36,6 +41,71 @@ export function useBeehiivPostMeta() {
 	);
 
 	const [ meta, setMeta ] = useEntityProp( 'postType', postType, 'meta' );
+	const registry = useRegistry();
+
+	const { postId, isSavingPost, didPostSaveRequestSucceed } = useSelect(
+		( select ) => {
+			const editor = select( editorStore );
+
+			return {
+				postId: editor.getCurrentPostId(),
+				isSavingPost: editor.isSavingPost(),
+				didPostSaveRequestSucceed: editor.didPostSaveRequestSucceed(),
+			};
+		},
+		[]
+	);
+
+	const wasSavingPostRef = useRef( false );
+
+	useEffect( () => {
+		const wasSavingPost = wasSavingPostRef.current;
+		wasSavingPostRef.current = isSavingPost;
+
+		if (
+			! wasSavingPost ||
+			isSavingPost ||
+			! didPostSaveRequestSucceed ||
+			! postType ||
+			! postId
+		) {
+			return;
+		}
+
+		const serverMeta = registry
+			.select( coreStore )
+			.getEntityRecord( 'postType', postType, postId )?.meta;
+
+		if ( ! serverMeta ) {
+			return;
+		}
+
+		const editedMeta = registry
+			.select( coreStore )
+			.getEditedEntityRecord( 'postType', postType, postId )?.meta;
+
+		if ( ! editedMeta ) {
+			return;
+		}
+
+		setMeta( {
+			...editedMeta,
+			[ META_BEEHIIV_POST_ID ]: serverMeta[ META_BEEHIIV_POST_ID ] ?? '',
+			[ META_SEND_TO_NEWSLETTER ]:
+				!! serverMeta[ META_SEND_TO_NEWSLETTER ],
+			[ META_NEWSLETTER_ERROR ]:
+				serverMeta[ META_NEWSLETTER_ERROR ] ?? '',
+			[ META_NEWSLETTER_ERROR_TYPE ]:
+				serverMeta[ META_NEWSLETTER_ERROR_TYPE ] ?? '',
+		} );
+	}, [
+		didPostSaveRequestSucceed,
+		isSavingPost,
+		postId,
+		postType,
+		registry,
+		setMeta,
+	] );
 
 	if ( ! postType ) {
 		return null;
@@ -50,6 +120,17 @@ export function useBeehiivPostMeta() {
 	const rawBeehiivPostId = meta?.[ META_BEEHIIV_POST_ID ];
 	const newsletterAlreadySent =
 		typeof rawBeehiivPostId === 'string' && rawBeehiivPostId.length > 0;
+	const rawNewsletterError = meta?.[ META_NEWSLETTER_ERROR ];
+	const newsletterError =
+		typeof rawNewsletterError === 'string' && rawNewsletterError.length > 0
+			? rawNewsletterError
+			: null;
+	const rawNewsletterErrorType = meta?.[ META_NEWSLETTER_ERROR_TYPE ];
+	const newsletterErrorType =
+		typeof rawNewsletterErrorType === 'string' &&
+		rawNewsletterErrorType.length > 0
+			? rawNewsletterErrorType
+			: null;
 
 	const patchMeta = ( patch ) => {
 		setMeta( { ...meta, ...patch } );
@@ -60,6 +141,8 @@ export function useBeehiivPostMeta() {
 		sendToNewsletterDate,
 		sendToNewsletterSnippet,
 		newsletterAlreadySent,
+		newsletterError,
+		newsletterErrorType,
 		setSendToNewsletter( enabled ) {
 			if ( newsletterAlreadySent ) {
 				return;

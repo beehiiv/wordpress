@@ -43,4 +43,18 @@ final class Meta {
 	 * @since 1.0.0
 	 */
 	public const BEEHIIV_POST_ID = '_beehiiv_post_id';
+
+	/**
+	 * User-facing error after a failed newsletter save or send (`save` or `send`).
+	 *
+	 * @since 1.0.0
+	 */
+	public const NEWSLETTER_ERROR = '_beehiiv_newsletter_error';
+
+	/**
+	 * Error category for {@see Meta::NEWSLETTER_ERROR}: `save` or `send`.
+	 *
+	 * @since 1.0.0
+	 */
+	public const NEWSLETTER_ERROR_TYPE = '_beehiiv_newsletter_error_type';
 }

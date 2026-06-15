@@ -18,7 +18,9 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Creates or schedules a Beehiiv post in the configured publication when newsletter
- * send is enabled on save. Future send times use Beehiiv `scheduled_at` (UTC).
+ * send is enabled and the post is published (or scheduled). Draft saves are skipped
+ * unless retrying after a previous failed send. Future send times use Beehiiv
+ * `scheduled_at` (UTC).
  *
  * @link https://developers.beehiiv.com/api-reference/posts/create
  * @since 1.0.0
@@ -100,7 +102,8 @@ final class Sender {
 	/**
 	 * Create or schedule a Beehiiv newsletter when post meta and status allow.
 	 *
-	 * Snippet newsletters require a public permalink for Read more; defer until `publish`.
+	 * Draft saves are skipped unless retrying after a failed send. Snippet newsletters
+	 * require a public permalink for Read more; defer until `publish`.
 	 *
 	 * @param WP_Post              $post    Post object.
 	 * @param WP_REST_Request|null $request Optional REST request from the block editor save.
@@ -112,16 +115,26 @@ final class Sender {
 			return;
 		}
 
-		if ( ! Manager::is_connected() ) {
-			return;
-		}
-
 		// If post is already sent as newsletter, do nothing.
 		if ( self::has_beehiiv_post_id( $post->ID ) ) {
 			return;
 		}
 
 		if ( ! self::is_send_to_newsletter_enabled( $post->ID, $request ) ) {
+			self::clear_error( $post->ID );
+			return;
+		}
+
+		if ( ! self::should_attempt_send( $post ) ) {
+			return;
+		}
+
+		if ( ! Manager::is_connected() ) {
+			self::record_error(
+				$post->ID,
+				'send',
+				__( 'This site is not connected to Beehiiv.', 'beehiiv' )
+			);
 			return;
 		}
 
@@ -142,22 +155,39 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	public static function send( int $post_id ): void {
+		self::clear_error( $post_id );
+
 		if ( '' === Manager::get_api_key() ) {
-			self::log_error( $post_id, 'Beehiiv API key is not configured.' );
+			self::fail(
+				$post_id,
+				'send',
+				__( 'Beehiiv API key is not configured.', 'beehiiv' ),
+				'Beehiiv API key is not configured.'
+			);
 			return;
 		}
 
 		$publication_id = self::get_publication_id();
 
 		if ( '' === $publication_id ) {
-			self::log_error( $post_id, 'Publication ID is not configured.' );
+			self::fail(
+				$post_id,
+				'send',
+				__( 'No Beehiiv publication is configured.', 'beehiiv' ),
+				'Publication ID is not configured.'
+			);
 			return;
 		}
 
 		$post_object = get_post( $post_id );
 
 		if ( ! $post_object instanceof WP_Post ) {
-			self::log_error( $post_id, 'Post not found.' );
+			self::fail(
+				$post_id,
+				'save',
+				__( 'This post could not be found.', 'beehiiv' ),
+				'Post not found.'
+			);
 			return;
 		}
 
@@ -169,21 +199,30 @@ final class Sender {
 
 		// If snippet newsletter is enabled and post is not published, do nothing.
 		if ( $send_newsletter_snippet && 'publish' !== $post_object->post_status ) {
-			self::log_error( $post_id, 'Snippet newsletter requires a published post.' );
 			return;
 		}
 
 		$beehiiv_post_data = PostSettingsBuilder::get_post_settings( $post_id );
 
 		if ( is_wp_error( $beehiiv_post_data ) ) {
-			self::log_error( $post_id, $beehiiv_post_data->get_error_message() );
+			self::fail(
+				$post_id,
+				'save',
+				self::format_save_error_message( $beehiiv_post_data ),
+				$beehiiv_post_data->get_error_message()
+			);
 			return;
 		}
 
 		$result = Posts::create( $publication_id, $beehiiv_post_data );
 
 		if ( ! $result['success'] ) {
-			self::log_error( $post_id, $result['error'] );
+			self::fail(
+				$post_id,
+				'send',
+				self::format_send_error_message( $result['error'] ),
+				$result['error']
+			);
 			return;
 		}
 
@@ -191,6 +230,7 @@ final class Sender {
 		// Save the Beehiiv post ID in the post meta.
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, false );
+		self::clear_error( $post_id );
 	}
 
 	/**
@@ -221,16 +261,122 @@ final class Sender {
 	}
 
 	/**
-	 * Log a newsletter send failure.
+	 * Persist a newsletter failure for the block editor and log it.
 	 *
-	 * @param int    $post_id Post ID.
-	 * @param string $message Error message.
+	 * @param int    $post_id        Post ID.
+	 * @param string $type           `save` or `send`.
+	 * @param string $user_message   Message shown in the editor.
+	 * @param string $log_message    Message written to the error log.
 	 * @return void
 	 * @since 1.0.0
 	 */
-	private static function log_error( int $post_id, string $message ): void {
+	private static function fail( int $post_id, string $type, string $user_message, string $log_message ): void {
+		self::record_error( $post_id, $type, $user_message );
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( sprintf( 'Beehiiv newsletter send failed for post ID %d: %s', $post_id, $message ) );
+		error_log( sprintf( 'Beehiiv newsletter send failed for post ID %d: %s', $post_id, $log_message ) );
+	}
+
+	/**
+	 * Store a newsletter error on the post for display in the editor.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $type    `save` or `send`.
+	 * @param string $message User-facing error message.
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private static function record_error( int $post_id, string $type, string $message ): void {
+		$message = trim( $message );
+
+		if ( '' === $message ) {
+			self::clear_error( $post_id );
+			return;
+		}
+
+		update_post_meta( $post_id, Meta::NEWSLETTER_ERROR_TYPE, $type );
+		update_post_meta( $post_id, Meta::NEWSLETTER_ERROR, $message );
+	}
+
+	/**
+	 * Remove any stored newsletter error from the post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private static function clear_error( int $post_id ): void {
+		delete_post_meta( $post_id, Meta::NEWSLETTER_ERROR );
+		delete_post_meta( $post_id, Meta::NEWSLETTER_ERROR_TYPE );
+	}
+
+	/**
+	 * Map post-settings validation errors to editor-friendly copy.
+	 *
+	 * @param \WP_Error $error Validation error from PostSettingsBuilder.
+	 * @return string
+	 * @since 1.0.0
+	 */
+	private static function format_save_error_message( \WP_Error $error ): string {
+		switch ( $error->get_error_code() ) {
+			case 'beehiiv_post_template_id_empty':
+				return __( 'No default email template is configured in Beehiiv settings.', 'beehiiv' );
+			case 'beehiiv_post_title_or_content_empty':
+				return __( 'Add a title and content before sending to Beehiiv.', 'beehiiv' );
+			case 'beehiiv_blocks_empty':
+				return __( 'This post has no content blocks supported by Beehiiv.', 'beehiiv' );
+			case 'beehiiv_post_not_found':
+				return __( 'This post could not be found.', 'beehiiv' );
+			default:
+				return $error->get_error_message();
+		}
+	}
+
+	/**
+	 * Map Beehiiv API failures to editor-friendly copy.
+	 *
+	 * @param string $error Error string from the API client.
+	 * @return string
+	 * @since 1.0.0
+	 */
+	private static function format_send_error_message( string $error ): string {
+		$error = trim( $error );
+
+		if ( '' === $error ) {
+			return __( 'Beehiiv could not send this newsletter. Please try again.', 'beehiiv' );
+		}
+
+		return $error;
+	}
+
+	/**
+	 * Whether this save should trigger a Beehiiv send attempt.
+	 *
+	 * Sends on publish or schedule (`publish`, `future`), and on any save while a
+	 * previous send failure is still recorded so the editor can retry.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return bool
+	 * @since 1.0.0
+	 */
+	private static function should_attempt_send( WP_Post $post ): bool {
+		if ( self::has_newsletter_error( $post->ID ) ) {
+			return true;
+		}
+
+		return in_array( $post->post_status, [ 'publish', 'future' ], true );
+	}
+
+	/**
+	 * Whether a prior newsletter save or send left an error on this post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since 1.0.0
+	 */
+	private static function has_newsletter_error( int $post_id ): bool {
+		$error = get_post_meta( $post_id, Meta::NEWSLETTER_ERROR, true );
+
+		return is_string( $error ) && '' !== trim( $error );
 	}
 
 	/**
