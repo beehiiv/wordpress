@@ -2,6 +2,7 @@ import { useMemo } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
 import {
+	ExternalLink,
 	PanelBody,
 	Placeholder,
 	SandBox,
