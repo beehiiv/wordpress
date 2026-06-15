@@ -20,6 +20,7 @@ import NewsletterStatusNotices from './components/newsletter-status-notices';
 import PostSettingsNotice from './components/post-settings-notice';
 import SendNewsletterToggle from './components/send-newsletter-toggle';
 import { OmittedBlocksNoticeMessage } from './components/omitted-blocks-notice';
+import { useBeehiivEditorConfig } from './hooks/use-beehiiv-editor-config';
 import { useBeehiivPostMeta } from './hooks/use-beehiiv-post-meta';
 
 import './filters/with-omitted-block-indicator';
@@ -73,11 +74,7 @@ function BeehiivPostSettingsPanel() {
 				) }
 				{ sendToNewsletter && ! newsletterAlreadySent && (
 					<>
-						<Notice
-							className="beehiiv-post-settings-notice"
-							status="warning"
-							isDismissible={ false }
-						>
+						<PostSettingsNotice status="warning">
 							<p className="beehiiv-post-settings-notice__text">
 								{ __(
 									'The newsletter can only be sent once and cannot be undone.',
@@ -86,7 +83,7 @@ function BeehiivPostSettingsPanel() {
 							</p>
 
 							<OmittedBlocksNoticeMessage />
-						</Notice>
+						</PostSettingsNotice>
 
 						<NewsletterDatePicker
 							date={ sendToNewsletterDate }
@@ -97,19 +94,28 @@ function BeehiivPostSettingsPanel() {
 							className="beehiiv-post-settings-snippet"
 							label={ __( 'Snippet newsletter', 'beehiiv' ) }
 							help={
-								sendToNewsletterSnippet ? (
-									<>
-										{ __(
-											'Send a snippet newsletter with a "Read More" button to the full post.',
-											'beehiiv'
-										)
-									)
-								}
-								checked={ sendToNewsletterSnippet }
-								onChange={ setSendToNewsletterSnippet }
-							/>
-						</>
-					) }
+								<>
+									{ __(
+										'Send a snippet newsletter with a "Read More" button to the full post.',
+										'beehiiv'
+									) }
+									{ sendToNewsletterSnippet && (
+										<>
+											<br />
+											<br />
+											{ __(
+												'Insert the "More" block in your post to mark where the snippet ends.',
+												'beehiiv'
+											) }
+										</>
+									) }
+								</>
+							}
+							checked={ sendToNewsletterSnippet }
+							onChange={ setSendToNewsletterSnippet }
+						/>
+					</>
+				) }
 			</PanelBody>
 		</div>
 	);
