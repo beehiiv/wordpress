@@ -1,12 +1,11 @@
+@use "../../css" as beehiiv;
+
 .wp-block-beehiiv-advertisement {
-	padding: 1.5rem;
-	background: #e8f4fd;
-	border-left: 4px solid #2271b1;
-	border-radius: 4px;
+
+	@include beehiiv.block-callout(#e8f4fd, #2271b1);
 
 	.beehiiv-advertisement-message {
-		margin: 0;
-		font-size: 1.125rem;
-		line-height: 1.5;
+
+		@include beehiiv.block-callout-message;
 	}
 }

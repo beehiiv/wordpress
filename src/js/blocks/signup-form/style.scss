@@ -1,12 +1,11 @@
+@use "../../css" as beehiiv;
+
 .wp-block-beehiiv-signup-form {
-	padding: 1.5rem;
-	background: #fff8e1;
-	border-left: 4px solid #ffb300;
-	border-radius: 4px;
+
+	@include beehiiv.block-callout(#fff8e1, #ffb300);
 
 	.beehiiv-signup-form-message {
-		margin: 0;
-		font-size: 1.125rem;
-		line-height: 1.5;
+
+		@include beehiiv.block-callout-message;
 	}
 }

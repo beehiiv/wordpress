@@ -31,7 +31,9 @@ defined( 'ABSPATH' ) || exit;
  * - `core/separator` — Beehiiv `content_break` (implemented)
  * - `core/more` — snippet newsletters only; Beehiiv Read More `button` via `convert_more_block()` (implemented)
  *
- * All other block types are skipped. Snippet mode stops at `core/more`.
+ * Layout blocks (`core/group`, `core/columns`, etc.) and all other unsupported
+ * block types are skipped along with their inner blocks. Snippet mode stops at
+ * `core/more`.
  *
  * @since 1.0.0
  */
@@ -61,67 +63,101 @@ final class BlockConverter {
 			true
 		);
 
+		$converted_blocks = self::convert_blocks(
+			$wp_blocks,
+			$post_object,
+			$is_send_newsletter_snippet
+		);
+
+		return array_values(
+			array_filter(
+				array_merge( $beehiiv_blocks, $converted_blocks )
+			)
+		);
+	}
+
+	/**
+	 * Recursively convert parsed WordPress blocks to Beehiiv blocks.
+	 *
+	 * @param array<int, array<string, mixed>> $wp_blocks                  Parsed blocks.
+	 * @param WP_Post                          $post_object                Post object.
+	 * @param bool                             $is_send_newsletter_snippet Whether snippet mode is enabled.
+	 * @return array<int, array<string, mixed>>
+	 * @since 1.0.0
+	 */
+	private static function convert_blocks(
+		array $wp_blocks,
+		WP_Post $post_object,
+		bool $is_send_newsletter_snippet
+	): array {
+		$beehiiv_blocks = [];
+
 		foreach ( $wp_blocks as $wp_block ) {
 			if ( empty( $wp_block['blockName'] ) ) {
 				continue;
 			}
 
-			if ( $is_send_newsletter_snippet && 'core/more' === $wp_block['blockName'] ) {
+			$block_name = (string) $wp_block['blockName'];
+
+			if ( $is_send_newsletter_snippet && 'core/more' === $block_name ) {
 				$beehiiv_blocks[] = self::convert_more_block( (string) get_permalink( $post_object ) );
 				break;
 			}
 
-			// Handle buttons block separately as it returns multiple blocks.
-			if ( 'core/buttons' === $wp_block['blockName'] ) {
+			if ( ! SupportedBlocks::is_supported( $block_name, $is_send_newsletter_snippet ) ) {
+				continue;
+			}
+
+			if ( 'core/buttons' === $block_name ) {
 				$button_blocks  = self::convert_buttons_block( $wp_block );
 				$beehiiv_blocks = array_merge( $beehiiv_blocks, $button_blocks );
 				continue;
 			}
 
-			$beehiiv_block = [];
-
-			// Loop through all other blocks and convert them to Beehiiv blocks.
-			switch ( $wp_block['blockName'] ) {
-				case 'core/heading':
-					$beehiiv_block = self::convert_heading_block( $wp_block );
-					break;
-				case 'core/separator':
-					$beehiiv_block = [
-						'type' => 'content_break',
-					];
-					break;
-				case 'core/paragraph':
-					$beehiiv_block = self::convert_paragraph_block( $wp_block );
-					break;
-				case 'core/image':
-					$beehiiv_block = self::convert_image_block( $wp_block );
-					break;
-				case 'core/list':
-					$beehiiv_block = self::convert_list_block( $wp_block );
-					break;
-				case 'core/table':
-					$beehiiv_block = self::convert_table_block( $wp_block );
-					break;
-				case 'core/quote':
-					$beehiiv_block = self::convert_quote_block( $wp_block );
-					break;
-				case 'core/pullquote':
-					$beehiiv_block = self::convert_pullquote_block( $wp_block );
-					break;
-				case 'core/embed':
-					$beehiiv_block = self::convert_embed_block( $wp_block );
-					break;
-				case 'core/media-text':
-					$beehiiv_block = self::convert_media_text_block( $wp_block );
-					break;
-			}
+			$beehiiv_block = self::convert_block( $wp_block );
 
 			if ( ! empty( $beehiiv_block ) ) {
 				$beehiiv_blocks[] = $beehiiv_block;
 			}
 		}
 
-		return array_values( array_filter( $beehiiv_blocks ) );
+		return $beehiiv_blocks;
+	}
+
+	/**
+	 * Convert a single supported WordPress block.
+	 *
+	 * @param array<string, mixed> $wp_block Parsed block.
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	private static function convert_block( array $wp_block ): array {
+		switch ( $wp_block['blockName'] ) {
+			case 'core/heading':
+				return self::convert_heading_block( $wp_block );
+			case 'core/separator':
+				return [
+					'type' => 'content_break',
+				];
+			case 'core/paragraph':
+				return self::convert_paragraph_block( $wp_block );
+			case 'core/image':
+				return self::convert_image_block( $wp_block );
+			case 'core/list':
+				return self::convert_list_block( $wp_block );
+			case 'core/table':
+				return self::convert_table_block( $wp_block );
+			case 'core/quote':
+				return self::convert_quote_block( $wp_block );
+			case 'core/pullquote':
+				return self::convert_pullquote_block( $wp_block );
+			case 'core/embed':
+				return self::convert_embed_block( $wp_block );
+			case 'core/media-text':
+				return self::convert_media_text_block( $wp_block );
+		}
+
+		return [];
 	}
 
 	/**

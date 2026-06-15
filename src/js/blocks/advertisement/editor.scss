@@ -1,4 +1,6 @@
+@use "../../css" as beehiiv;
+
 .wp-block-beehiiv-advertisement {
-	outline: 1px dashed rgba(0, 0, 0, 0.2);
-	outline-offset: 4px;
+
+	@include beehiiv.block-placeholder-outline;
 }
