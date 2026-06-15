@@ -17,8 +17,10 @@ import { store as coreStore } from '@wordpress/core-data';
 import BeehiivSidebarIcon from './icon';
 import NewsletterDatePicker from './components/newsletter-date-picker';
 import SendNewsletterToggle from './components/send-newsletter-toggle';
+import { OmittedBlocksNoticeMessage } from './components/omitted-blocks-notice';
 import { useBeehiivPostMeta } from './hooks/use-beehiiv-post-meta';
 
+import './filters/with-omitted-block-indicator';
 import './editor.scss';
 
 const sidebarIcon = <BeehiivSidebarIcon />;
@@ -71,10 +73,14 @@ function BeehiivPostSettingsPanel() {
 							status="warning"
 							isDismissible={ false }
 						>
-							{ __(
-								'The newsletter can only be sent once and cannot be undone.',
-								'beehiiv'
-							) }
+							<p className="beehiiv-post-settings-notice__text">
+								{ __(
+									'The newsletter can only be sent once and cannot be undone.',
+									'beehiiv'
+								) }
+							</p>
+
+							<OmittedBlocksNoticeMessage />
 						</Notice>
 
 						<NewsletterDatePicker

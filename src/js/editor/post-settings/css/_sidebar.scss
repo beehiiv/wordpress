@@ -1,0 +1,53 @@
+@use "../../../css" as beehiiv;
+
+.beehiiv-sidebar-icon {
+
+	@include beehiiv.icon-mask(
+		"../../../images/beehiiv-for-light-logo.svg",
+		20px
+	);
+}
+
+.beehiiv-post-settings-content {
+	/* stylelint-disable selector-class-pattern -- @wordpress/components */
+	.components-panel__body {
+		border: 0;
+		margin: 0;
+	}
+
+	.components-panel__body .components-base-control {
+		margin-bottom: 0;
+	}
+
+	.beehiiv-post-settings-notice {
+		margin: 12px 0;
+	}
+
+	.beehiiv-post-settings-notice__text,
+	.beehiiv-post-settings-notice__omitted {
+		font-size: 13px;
+		line-height: 1.4;
+		margin: 0;
+	}
+
+	.beehiiv-post-settings-notice__omitted {
+		align-items: flex-start;
+		display: flex;
+		gap: 6px;
+		margin-top: 10px !important;
+	}
+
+	.beehiiv-post-settings-notice__omitted-icon {
+		flex-shrink: 0;
+		font-size: 18px;
+		height: 18px;
+		line-height: 1;
+		margin-top: 1px;
+		width: 18px;
+	}
+
+	.beehiiv-post-settings-snippet {
+		margin-top: 24px;
+	}
+	/* stylelint-enable selector-class-pattern */
+}
