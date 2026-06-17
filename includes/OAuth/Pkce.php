@@ -26,7 +26,7 @@ final class Pkce {
 	public static function generate(): array {
 
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- RFC 7636 PKCE.
-		$code_verifier = rtrim( strtr( base64_encode( random_bytes( 32 ) ), '+/', '-_' ), '=' );
+		$code_verifier  = rtrim( strtr( base64_encode( random_bytes( 32 ) ), '+/', '-_' ), '=' );
 		$code_challenge = rtrim(
 			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- RFC 7636 PKCE.
 			strtr( base64_encode( hash( 'sha256', $code_verifier, true ) ), '+/', '-_' ),

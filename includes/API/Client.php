@@ -178,7 +178,13 @@ final class Client {
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
-	private static function build_log_entry( string $method, string $url, array $args, string $raw, ?array $json ): array {
+	private static function build_log_entry(
+		string $method,
+		string $url,
+		array $args,
+		string $raw,
+		?array $json
+	): array {
 
 		$headers = isset( $args['headers'] ) && is_array( $args['headers'] ) ? $args['headers'] : [];
 

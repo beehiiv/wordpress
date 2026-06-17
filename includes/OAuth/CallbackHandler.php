@@ -60,10 +60,13 @@ final class CallbackHandler {
 	 */
 	public static function maybe_handle(): void {
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth callback route check.
-		if ( ! isset( $_GET['page'] ) || Config::CALLBACK_PAGE !== sanitize_text_field( wp_unslash( (string) $_GET['page'] ) ) ) {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- OAuth callback route check.
+		if (
+			! isset( $_GET['page'] ) ||
+			Config::CALLBACK_PAGE !== sanitize_text_field( wp_unslash( (string) $_GET['page'] ) ) ) {
 			return;
 		}
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		self::process();
 	}
@@ -84,8 +87,10 @@ final class CallbackHandler {
 		$settings_url = admin_url( 'admin.php?page=' . PluginConfig::PLUGIN_SLUG );
 
 		// OAuth callback is validated via the state transient (CSRF), not a WP nonce.
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth state validation.
-		$error = isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['error'] ) ) : '';
+		// OAuth state validation.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
+		$error             = isset( $_GET['error'] ) ?
+			sanitize_text_field( wp_unslash( (string) $_GET['error'] ) ) : '';
 		$error_description = isset( $_GET['error_description'] )
 			? sanitize_text_field( wp_unslash( (string) $_GET['error_description'] ) )
 			: '';

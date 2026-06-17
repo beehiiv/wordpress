@@ -66,7 +66,6 @@ final class Cache {
 	 * @param array<int, array{id: string, name: string}> $items Normalized publications.
 	 *
 	 * @return void
-	 *
 	 */
 	public static function set_publications( array $items ): void {
 
@@ -81,7 +80,6 @@ final class Cache {
 	 * @param string $publication_id Publication ID.
 	 *
 	 * @return array<int, array{id: string, name: string}>|null
-	 *
 	 */
 	public static function get_post_templates( string $publication_id ): ?array {
 

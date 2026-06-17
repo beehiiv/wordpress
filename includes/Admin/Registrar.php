@@ -120,7 +120,12 @@ final class Registrar {
 		$name     = Config::OPTION_NAME . '[publication_id]';
 		$items    = Publications::get_publications();
 		?>
-		<select id="beehiiv_publication_id" class="beehiiv-settings-select" name="<?php echo esc_attr( $name ); ?>" required>
+		<select
+			id="beehiiv_publication_id"
+			class="beehiiv-settings-select"
+			name="<?php echo esc_attr( $name ); ?>"
+			required
+		>
 			<option value="" <?php selected( $selected, '' ); ?>>
 				<?php esc_html_e( 'Select a publication', 'beehiiv' ); ?>
 			</option>
@@ -169,7 +174,12 @@ final class Registrar {
 		$publication_id = (string) $settings['publication_id'];
 		$items          = '' !== $publication_id ? PostTemplates::get_post_templates( $publication_id ) : [];
 		?>
-		<select id="beehiiv_post_template_id" class="beehiiv-settings-select" name="<?php echo esc_attr( $name ); ?>" required>
+		<select
+			id="beehiiv_post_template_id"
+			class="beehiiv-settings-select"
+			name="<?php echo esc_attr( $name ); ?>"
+			required
+		>
 			<option value="" <?php selected( $selected, '' ); ?>>
 				<?php esc_html_e( 'No default template', 'beehiiv' ); ?>
 			</option>

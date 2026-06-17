@@ -65,7 +65,8 @@ final class DataEncryption {
 			return false;
 		}
 
-		return base64_encode( $iv . $raw_value ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+		return base64_encode( $iv . $raw_value );
 	}
 
 	/**
@@ -83,7 +84,8 @@ final class DataEncryption {
 			return $raw_value;
 		}
 
-		$decoded_value = base64_decode( $raw_value, true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+		$decoded_value = base64_decode( $raw_value, true );
 
 		if ( false === $decoded_value ) {
 			return $raw_value;

@@ -36,7 +36,10 @@ final class ClientRegistrar {
 		if ( ! Config::has_registration_token() ) {
 			return new WP_Error(
 				'beehiiv_registration_token_missing',
-				__( 'Beehiiv connection is not configured for this plugin build. Contact your site administrator.', 'beehiiv' )
+				__(
+					'Beehiiv connection is not configured for this plugin build. Contact your site administrator.',
+					'beehiiv'
+				)
 			);
 		}
 

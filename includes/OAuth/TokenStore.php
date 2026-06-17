@@ -327,10 +327,12 @@ final class TokenStore {
 	private static function sanitize_connected_user( array $user ): array {
 
 		return [
-			'first_name'      => isset( $user['first_name'] ) ? sanitize_text_field( (string) $user['first_name'] ) : '',
+			'first_name'      =>
+				isset( $user['first_name'] ) ? sanitize_text_field( (string) $user['first_name'] ) : '',
 			'last_name'       => isset( $user['last_name'] ) ? sanitize_text_field( (string) $user['last_name'] ) : '',
 			'email'           => isset( $user['email'] ) ? sanitize_email( (string) $user['email'] ) : '',
-			'profile_picture' => isset( $user['profile_picture'] ) ? esc_url_raw( (string) $user['profile_picture'] ) : '',
+			'profile_picture' =>
+				isset( $user['profile_picture'] ) ? esc_url_raw( (string) $user['profile_picture'] ) : '',
 		];
 	}
 }
