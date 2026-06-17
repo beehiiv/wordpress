@@ -497,7 +497,8 @@ final class BlockConverter {
 	 * Convert WordPress quote block to Beehiiv quote block.
 	 *
 	 * WordPress quote block uses paragraph block for quote text (first child)
-	 * and optionally has citation. Text formatting is stripped from both.
+	 * and optionally has citation. A quote transformed to a pullquote nests
+	 * `core/pullquote` as the first inner block instead.
 	 *
 	 * @param array<string, mixed> $wp_block WordPress quote block data.
 	 * @return array<string, mixed> Beehiiv quote block data.
@@ -507,6 +508,11 @@ final class BlockConverter {
 
 		$attrs        = $wp_block['attrs'] ?? [];
 		$inner_blocks = $wp_block['innerBlocks'] ?? [];
+
+		// Transforming a quote to a pullquote nests core/pullquote inside core/quote.
+		if ( ! empty( $inner_blocks[0] ) && 'core/pullquote' === $inner_blocks[0]['blockName'] ) {
+			return self::convert_pullquote_block( $inner_blocks[0] );
+		}
 
 		// Get quote text from first paragraph block.
 		$quote_text = '';
