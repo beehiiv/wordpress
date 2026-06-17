@@ -7,6 +7,9 @@
 
 namespace Beehiiv\Editor;
 
+use Beehiiv\Admin\Options;
+use Beehiiv\Config;
+use Beehiiv\Connection\Manager;
 use Beehiiv\Newsletter\SupportedBlocks;
 
 defined( 'ABSPATH' ) || exit;
@@ -163,6 +166,12 @@ final class PostSettings {
 			self::SCRIPT_HANDLE,
 			'beehiivBlockSupport',
 			SupportedBlocks::get_editor_config()
+		);
+
+		wp_localize_script(
+			self::SCRIPT_HANDLE,
+			'beehiivPostSettings',
+			self::get_editor_config()
 		);
 
 		self::enqueue_build_style( $asset['version'] );
