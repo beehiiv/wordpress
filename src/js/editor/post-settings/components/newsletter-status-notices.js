@@ -13,7 +13,7 @@ import { useBeehiivEditorConfig } from '../hooks/use-beehiiv-editor-config';
  * @param {import('../hooks/use-beehiiv-post-meta').BeehiivPostMeta|null} props.beehiivMeta
  */
 export default function NewsletterStatusNotices( { beehiivMeta } ) {
-	const { isConnected, settingsUrl, hasPublication, hasEmailTemplate } =
+	const { isConnected, settingsUrl, hasPublication, hasPostTemplate } =
 		useBeehiivEditorConfig();
 
 	if ( ! isConnected ) {
@@ -34,9 +34,9 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 
 	let errorMessage = '';
 
-	if ( ! hasPublication && ! hasEmailTemplate ) {
+	if ( ! hasPublication && ! hasPostTemplate ) {
 		errorMessage = __(
-			'Setup required: Select a publication and email template in <a>Beehiiv Settings</a> to start sending newsletters.',
+			'Setup required: Select a publication and post template in <a>Beehiiv Settings</a> to start sending newsletters.',
 			'beehiiv'
 		);
 	} else if ( ! hasPublication ) {
@@ -44,9 +44,9 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 			'Setup required: Select a publication in <a>Beehiiv Settings</a> to start sending newsletters.',
 			'beehiiv'
 		);
-	} else if ( ! hasEmailTemplate ) {
+	} else if ( ! hasPostTemplate ) {
 		errorMessage = __(
-			'Setup required: Select an email template in <a>Beehiiv Settings</a> to start sending newsletters.',
+			'Setup required: Select a post template in <a>Beehiiv Settings</a> to start sending newsletters.',
 			'beehiiv'
 		);
 	}

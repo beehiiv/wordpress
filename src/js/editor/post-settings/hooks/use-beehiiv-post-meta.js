@@ -24,14 +24,14 @@ import {
  * @property {boolean}                      sendToNewsletter           Whether this post is queued for Beehiiv.
  * @property {string|null}                  sendToNewsletterDate       ISO 8601 datetime, or null to send on WP post publish.
  * @property {boolean}                      sendToNewsletterSnippet    Whether to send a snippet instead of the full post.
- * @property {string}                       beehiivPostTemplateId      Beehiiv email template ID, or empty for plugin default.
+ * @property {string}                       beehiivPostTemplateId      Beehiiv post template ID, or empty for plugin default.
  * @property {boolean}                      newsletterAlreadySent      Whether this post was already sent to Beehiiv.
  * @property {string|null}                  newsletterError            User-facing save or send error from the server.
  * @property {string|null}                  newsletterErrorType        `save` or `send` when {@link newsletterError} is set.
  * @property {(enabled: boolean) => void}   setSendToNewsletter        Enable or disable newsletter delivery.
  * @property {(date: string|null) => void}  setSendToNewsletterDate    Set scheduled send time.
  * @property {(enabled: boolean) => void}   setSendToNewsletterSnippet Enable or disable snippet delivery.
- * @property {(templateId: string) => void} setBeehiivPostTemplateId   Set the email template for this post.
+ * @property {(templateId: string) => void} setBeehiivPostTemplateId   Set the post template for this post.
  */
 
 /**

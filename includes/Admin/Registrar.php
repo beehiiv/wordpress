@@ -79,7 +79,7 @@ final class Registrar {
 
 		add_settings_field(
 			'beehiiv_post_template_id',
-			__( 'Default email template', 'beehiiv' ),
+			__( 'Default post template', 'beehiiv' ),
 			[ self::class, 'render_post_template_id_field' ],
 			$page_slug,
 			self::PAGE_SETTINGS_SECTION_ID,
@@ -104,7 +104,7 @@ final class Registrar {
 	 */
 	public static function render_page_settings_description(): void {
 		echo '<p>' . esc_html__(
-			'Default Beehiiv publication and email template for newsletters sent from this site.',
+			'Default Beehiiv publication and post template for newsletters sent from this site.',
 			'beehiiv'
 		) . '</p>';
 	}
@@ -201,7 +201,7 @@ final class Registrar {
 				<?php endif; ?>
 		</select>
 		<p class="description">
-			<?php esc_html_e( 'Default email template for newsletters sent from this site.', 'beehiiv' ); ?>
+			<?php esc_html_e( 'Default post template for newsletters sent from this site.', 'beehiiv' ); ?>
 		</p>
 		<?php
 	}

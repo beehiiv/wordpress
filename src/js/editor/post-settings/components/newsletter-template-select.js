@@ -1,5 +1,5 @@
 /**
- * Email template picker for a queued newsletter.
+ * Post template picker for a queued newsletter.
  */
 import { useEffect, useMemo, useState } from '@wordpress/element';
 import { SelectControl, Spinner } from '@wordpress/components';

@@ -13,7 +13,7 @@ use Beehiiv\API\Client;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Post templates endpoints (email templates).
+ * Post templates endpoints.
  *
  * @since 1.0.0
  */

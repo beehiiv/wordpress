@@ -35,7 +35,7 @@ const PRE_PUBLISH_PANEL_NAME = 'beehiiv-send-newsletter';
 
 function BeehiivPostSettingsPanel() {
 	const beehiivMeta = useBeehiivPostMeta();
-	const { isConnected, hasPublication, hasEmailTemplate } =
+	const { isConnected, hasPublication, hasPostTemplate } =
 		useBeehiivEditorConfig();
 
 	if ( ! beehiivMeta ) {
@@ -54,7 +54,7 @@ function BeehiivPostSettingsPanel() {
 		setBeehiivPostTemplateId,
 	} = beehiivMeta;
 
-	const isNewsletterReady = isConnected && hasPublication && hasEmailTemplate;
+	const isNewsletterReady = isConnected && hasPublication && hasPostTemplate;
 
 	return (
 		<div className="beehiiv-post-settings-content">
@@ -169,7 +169,7 @@ function BeehiivPostSettingsSidebar() {
 function BeehiivSendNewsletterPrePublishPanel() {
 	const { postType, canPublishPosts } = useBeehiivPostSettingsEligibility();
 	const beehiivMeta = useBeehiivPostMeta();
-	const { isConnected, hasPublication, hasEmailTemplate } =
+	const { isConnected, hasPublication, hasPostTemplate } =
 		useBeehiivEditorConfig();
 
 	if ( postType && postType !== 'post' ) {
@@ -186,7 +186,7 @@ function BeehiivSendNewsletterPrePublishPanel() {
 
 	const { sendToNewsletter, setSendToNewsletter, newsletterAlreadySent } =
 		beehiivMeta;
-	const isNewsletterReady = isConnected && hasPublication && hasEmailTemplate;
+	const isNewsletterReady = isConnected && hasPublication && hasPostTemplate;
 
 	const sendToNewsletterStatus = sendToNewsletter
 		? __( 'Yes', 'beehiiv' )

@@ -90,10 +90,10 @@ A top-level **Beehiiv** wp-admin menu (not under Settings) is wired from `Plugin
 | `Admin\SettingsPage`      | Registers Settings API fields; renders the screen                |
 | `Admin\Menu`              | Sidebar menu → calls `SettingsPage::render`                      |
 | `Admin\Options`           | `beehiiv_settings` option: defaults, `get()`, sanitize           |
-| `Admin\Registrar`         | Registers publication ID and default email template fields       |
+| `Admin\Registrar`         | Registers publication ID and default post template fields       |
 | `Connection\Manager`      | OAuth connection status and connect/disconnect URLs              |
 | `OAuth\*`                 | Dynamic client registration, PKCE, token storage, refresh        |
-| `REST\PostTemplatesController` | REST endpoint for publication email templates               |
+| `REST\PostTemplatesController` | REST endpoint for publication post templates               |
 | `Views/connection.php`    | Connection card and post-connect next steps                      |
 | `Views/settings-page.php` | Form wrapper (`settings_fields`, `do_settings_sections`)         |
 
@@ -119,7 +119,7 @@ For local development without a release build, set the registration token in `wp
 define( 'BEEHIIV_REGISTRATION_TOKEN', 'your_registration_token_here' );
 ```
 
-Email template for API payloads uses the plugin default `post_template_id`; omit `post_template_id` from the request when unset (`Newsletter\PostSettingsBuilder`).
+Post template for API payloads uses the plugin default `post_template_id`; omit `post_template_id` from the request when unset (`Newsletter\PostSettingsBuilder`).
 
 ## Linting
 

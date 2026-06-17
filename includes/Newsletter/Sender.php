@@ -319,7 +319,7 @@ final class Sender {
 	private static function format_save_error_message( \WP_Error $error ): string {
 		switch ( $error->get_error_code() ) {
 			case 'beehiiv_post_template_id_empty':
-				return __( 'No default email template is configured in Beehiiv settings.', 'beehiiv' );
+				return __( 'No default post template is configured in Beehiiv settings.', 'beehiiv' );
 			case 'beehiiv_post_title_or_content_empty':
 				return __( 'Add a title and content before sending to Beehiiv.', 'beehiiv' );
 			case 'beehiiv_blocks_empty':

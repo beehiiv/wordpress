@@ -6,7 +6,7 @@ const DEFAULT_CONFIG = {
 	isConnected: false,
 	settingsUrl: '',
 	hasPublication: false,
-	hasEmailTemplate: false,
+	hasPostTemplate: false,
 	publicationId: '',
 	defaultPostTemplateId: '',
 };

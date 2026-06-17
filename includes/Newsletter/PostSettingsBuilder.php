@@ -47,7 +47,7 @@ final class PostSettingsBuilder {
 		if ( '' === $post_template_id ) {
 			return new WP_Error(
 				'beehiiv_post_template_id_empty',
-				sprintf( 'Beehiiv email template is not configured for post ID: %d.', $post_id )
+				sprintf( 'Beehiiv post template is not configured for post ID: %d.', $post_id )
 			);
 		}
 
@@ -110,7 +110,7 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Email template for the post: post meta when set and valid, else plugin default.
+	 * Post template for the post: post meta when set and valid, else plugin default.
 	 *
 	 * @since 1.0.0
 	 *
@@ -172,10 +172,11 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Default email template from plugin settings.
+	 * Default post template from plugin settings.
+	 *
+	 * @since 1.0.0
 	 *
 	 * @return string
-	 * @since 1.0.0
 	 */
 	private static function get_site_post_template_id(): string {
 		$settings = Options::get();
