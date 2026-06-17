@@ -32,34 +32,29 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 		);
 	}
 
-	if ( ! hasPublication ) {
-		return (
-			<PostSettingsNotice status="error">
-				{ createInterpolateElement(
-					__(
-						'No Beehiiv publication is configured. <a>Select one in Beehiiv settings</a> before sending newsletters.',
-						'beehiiv'
-					),
-					{
-						a: <ExternalLink href={ settingsUrl } />,
-					}
-				) }
-			</PostSettingsNotice>
+	let errorMessage = '';
+
+	if ( ! hasPublication && ! hasEmailTemplate ) {
+		errorMessage = __(
+			'Setup required: Select a publication and email template in <a>Beehiiv Settings</a> to start sending newsletters.',
+			'beehiiv'
+		);
+	} else if ( ! hasPublication ) {
+		errorMessage = __(
+			'Setup required: Select a publication in <a>Beehiiv Settings</a> to start sending newsletters.',
+			'beehiiv'
+		);
+	} else if ( ! hasEmailTemplate ) {
+		errorMessage = __(
+			'Setup required: Select an email template in <a>Beehiiv Settings</a> to start sending newsletters.',
+			'beehiiv'
 		);
 	}
 
-	if ( ! hasEmailTemplate ) {
+	if ( errorMessage ) {
 		return (
 			<PostSettingsNotice status="error">
-				{ createInterpolateElement(
-					__(
-						'No default email template is configured. <a>Select one in Beehiiv settings</a> before sending newsletters.',
-						'beehiiv'
-					),
-					{
-						a: <ExternalLink href={ settingsUrl } />,
-					}
-				) }
+				{ createInterpolateElement( errorMessage, { a: <ExternalLink href={ settingsUrl } /> } ) }
 			</PostSettingsNotice>
 		);
 	}
