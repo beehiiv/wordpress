@@ -38,6 +38,7 @@ final class Plugin {
 		add_action( 'init', [ Blocks\Registry::class, 'register_blocks' ] );
 		add_action( 'init', [ Editor\PostSettings::class, 'register_meta' ] );
 		add_action( 'enqueue_block_editor_assets', [ Editor\PostSettings::class, 'enqueue_assets' ] );
+		add_action( 'enqueue_block_assets', [ Editor\PostSettings::class, 'enqueue_canvas_styles' ] );
 		add_action( 'admin_menu', [ Admin\Menu::class, 'register' ] );
 		add_action( 'admin_menu', [ OAuth\CallbackHandler::class, 'register_page' ] );
 		add_action( 'admin_init', [ self::class, 'bootstrap_admin_features' ] );
