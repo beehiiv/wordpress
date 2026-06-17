@@ -109,6 +109,51 @@ final class PostSettingsBuilder {
 	}
 
 	/**
+	 * Build a Beehiiv update-post payload for a scheduled newsletter linked to a WordPress post.
+	 *
+	 * Omits `scheduled_at` because Beehiiv only allows that field on draft posts; linked
+	 * newsletters are created as `confirmed`.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array<string, mixed>|WP_Error Update payload or error.
+	 * @since 1.0.0
+	 */
+	public static function get_update_payload( int $post_id ) {
+		$settings = self::get_post_settings( $post_id );
+
+		if ( is_wp_error( $settings ) ) {
+			return $settings;
+		}
+
+		$payload = [
+			'title'               => $settings['title'],
+			'blocks'              => $settings['blocks'],
+			'thumbnail_image_url' => $settings['thumbnail_image_url'],
+			'email_settings'      => $settings['email_settings'],
+			'web_settings'        => $settings['web_settings'],
+			'social_share'        => $settings['social_share'],
+		];
+
+		$post_object = get_post( $post_id );
+
+		/**
+		 * Filters the Beehiiv newsletter update payload before it is sent.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param array        $payload     Payload for the Beehiiv update-post API.
+		 * @param int          $post_id     WordPress post ID.
+		 * @param WP_Post|null $post_object WordPress post object.
+		 */
+		return apply_filters(
+			'beehiiv_newsletter_post_update_payload',
+			$payload,
+			$post_id,
+			$post_object instanceof WP_Post ? $post_object : null
+		);
+	}
+
+	/**
 	 * Default email template from plugin settings.
 	 *
 	 * @return string
