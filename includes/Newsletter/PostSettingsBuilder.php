@@ -8,6 +8,7 @@
 namespace Beehiiv\Newsletter;
 
 use Beehiiv\Admin\Options;
+use Beehiiv\API\Resources\PostTemplates;
 use Beehiiv\Editor\Meta;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -41,7 +42,7 @@ final class PostSettingsBuilder {
 			);
 		}
 
-		$post_template_id = self::get_site_post_template_id();
+		$post_template_id = self::get_post_template_id( $post_id );
 
 		if ( '' === $post_template_id ) {
 			return new WP_Error(
@@ -106,6 +107,68 @@ final class PostSettingsBuilder {
 		 * @param WP_Post $post_object WordPress post object.
 		 */
 		return apply_filters( 'beehiiv_newsletter_post_settings', $settings, $post_id, $post_object );
+	}
+
+	/**
+	 * Email template for the post: post meta when set and valid, else plugin default.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int $post_id Post ID.
+	 *
+	 * @return string
+	 */
+	private static function get_post_template_id( int $post_id ): string {
+
+		$post_template_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, true );
+		$post_template_id = is_string( $post_template_id ) ? trim( $post_template_id ) : '';
+
+		if ( '' !== $post_template_id && self::post_template_exists( $post_template_id ) ) {
+			return $post_template_id;
+		}
+
+		return self::get_site_post_template_id();
+	}
+
+	/**
+	 * Whether a template ID exists for the configured publication.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $template_id Template ID.
+	 *
+	 * @return bool
+	 */
+	private static function post_template_exists( string $template_id ): bool {
+
+		$publication_id = self::get_publication_id();
+
+		if ( '' === $publication_id ) {
+			return false;
+		}
+
+		foreach ( PostTemplates::get_post_templates( $publication_id ) as $template ) {
+
+			if ( isset( $template['id'] ) && (string) $template['id'] === $template_id ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Configured Beehiiv publication ID.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return string
+	 */
+	private static function get_publication_id(): string {
+
+		$settings = Options::get();
+
+		return isset( $settings['publication_id'] ) ? trim( (string) $settings['publication_id'] ) : '';
 	}
 
 	/**

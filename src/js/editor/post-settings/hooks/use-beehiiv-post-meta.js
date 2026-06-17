@@ -15,20 +15,23 @@ import {
 	META_NEWSLETTER_ERROR_TYPE,
 	META_SEND_TO_NEWSLETTER,
 	META_SEND_TO_NEWSLETTER_DATE,
+	META_BEEHIIV_POST_TEMPLATE_ID,
 	META_SEND_TO_NEWSLETTER_SNIPPET,
 } from '../../../shared/meta';
 
 /**
  * @typedef {Object} BeehiivPostMeta
- * @property {boolean}                     sendToNewsletter           Whether this post is queued for Beehiiv.
- * @property {string|null}                 sendToNewsletterDate       ISO 8601 datetime, or null to send on WP post publish.
- * @property {boolean}                     sendToNewsletterSnippet    Whether to send a snippet instead of the full post.
- * @property {boolean}                     newsletterAlreadySent      Whether this post was already sent to Beehiiv.
- * @property {string|null}                 newsletterError            User-facing save or send error from the server.
- * @property {string|null}                 newsletterErrorType        `save` or `send` when {@link newsletterError} is set.
- * @property {(enabled: boolean) => void}  setSendToNewsletter        Enable or disable newsletter delivery.
- * @property {(date: string|null) => void} setSendToNewsletterDate    Set scheduled send time.
- * @property {(enabled: boolean) => void}  setSendToNewsletterSnippet Enable or disable snippet delivery.
+ * @property {boolean}                      sendToNewsletter           Whether this post is queued for Beehiiv.
+ * @property {string|null}                  sendToNewsletterDate       ISO 8601 datetime, or null to send on WP post publish.
+ * @property {boolean}                      sendToNewsletterSnippet    Whether to send a snippet instead of the full post.
+ * @property {string}                       beehiivPostTemplateId      Beehiiv email template ID, or empty for plugin default.
+ * @property {boolean}                      newsletterAlreadySent      Whether this post was already sent to Beehiiv.
+ * @property {string|null}                  newsletterError            User-facing save or send error from the server.
+ * @property {string|null}                  newsletterErrorType        `save` or `send` when {@link newsletterError} is set.
+ * @property {(enabled: boolean) => void}   setSendToNewsletter        Enable or disable newsletter delivery.
+ * @property {(date: string|null) => void}  setSendToNewsletterDate    Set scheduled send time.
+ * @property {(enabled: boolean) => void}   setSendToNewsletterSnippet Enable or disable snippet delivery.
+ * @property {(templateId: string) => void} setBeehiivPostTemplateId   Set the email template for this post.
  */
 
 /**
@@ -114,6 +117,10 @@ export function useBeehiivPostMeta() {
 	const sendToNewsletter = !! meta?.[ META_SEND_TO_NEWSLETTER ];
 	const sendToNewsletterSnippet =
 		!! meta?.[ META_SEND_TO_NEWSLETTER_SNIPPET ];
+	const rawPostTemplateId =
+		meta?.[ META_BEEHIIV_POST_TEMPLATE_ID ];
+	const beehiivPostTemplateId =
+		typeof rawPostTemplateId === 'string' ? rawPostTemplateId : '';
 	const rawDate = meta?.[ META_SEND_TO_NEWSLETTER_DATE ];
 	const sendToNewsletterDate =
 		typeof rawDate === 'string' && rawDate.length > 0 ? rawDate : null;
@@ -140,6 +147,7 @@ export function useBeehiivPostMeta() {
 		sendToNewsletter,
 		sendToNewsletterDate,
 		sendToNewsletterSnippet,
+		beehiivPostTemplateId,
 		newsletterAlreadySent,
 		newsletterError,
 		newsletterErrorType,
@@ -155,6 +163,7 @@ export function useBeehiivPostMeta() {
 					: {
 							[ META_SEND_TO_NEWSLETTER_DATE ]: '',
 							[ META_SEND_TO_NEWSLETTER_SNIPPET ]: false,
+							[ META_BEEHIIV_POST_TEMPLATE_ID ]: '',
 					  } ),
 			} );
 		},
@@ -174,6 +183,15 @@ export function useBeehiivPostMeta() {
 
 			patchMeta( {
 				[ META_SEND_TO_NEWSLETTER_SNIPPET ]: enabled,
+			} );
+		},
+		setBeehiivPostTemplateId( templateId ) {
+			if ( newsletterAlreadySent ) {
+				return;
+			}
+
+			patchMeta( {
+				[ META_BEEHIIV_POST_TEMPLATE_ID ]: templateId ?? '',
 			} );
 		},
 	};

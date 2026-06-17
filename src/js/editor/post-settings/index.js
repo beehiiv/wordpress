@@ -17,6 +17,7 @@ import { store as coreStore } from '@wordpress/core-data';
 import BeehiivSidebarIcon from './icon';
 import NewsletterDatePicker from './components/newsletter-date-picker';
 import NewsletterStatusNotices from './components/newsletter-status-notices';
+import NewsletterTemplateSelect from './components/newsletter-template-select';
 import PostSettingsNotice from './components/post-settings-notice';
 import SendNewsletterToggle from './components/send-newsletter-toggle';
 import { OmittedBlocksNoticeMessage } from './components/omitted-blocks-notice';
@@ -45,10 +46,12 @@ function BeehiivPostSettingsPanel() {
 		sendToNewsletter,
 		sendToNewsletterDate,
 		sendToNewsletterSnippet,
+		beehiivPostTemplateId,
 		newsletterAlreadySent,
 		setSendToNewsletter,
 		setSendToNewsletterDate,
 		setSendToNewsletterSnippet,
+		setBeehiivPostTemplateId,
 	} = beehiivMeta;
 
 	const isNewsletterReady = isConnected && hasPublication && hasEmailTemplate;
@@ -113,6 +116,11 @@ function BeehiivPostSettingsPanel() {
 							}
 							checked={ sendToNewsletterSnippet }
 							onChange={ setSendToNewsletterSnippet }
+						/>
+
+						<NewsletterTemplateSelect
+							value={ beehiivPostTemplateId }
+							onChange={ setBeehiivPostTemplateId }
 						/>
 					</>
 				) }

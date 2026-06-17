@@ -38,6 +38,13 @@ final class Meta {
 	public const SEND_TO_NEWSLETTER_SNIPPET = '_beehiiv_send_to_newsletter_snippet';
 
 	/**
+	 * Beehiiv email template ID for this post. Empty = use plugin default.
+	 *
+	 * @since 1.0.0
+	 */
+	public const BEEHIIV_POST_TEMPLATE_ID = '_beehiiv_post_template_id';
+
+	/**
 	 * Beehiiv post ID after the newsletter has been created via the API.
 	 *
 	 * @since 1.0.0

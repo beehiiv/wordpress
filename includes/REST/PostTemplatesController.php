@@ -65,7 +65,7 @@ final class PostTemplatesController {
 	 */
 	public static function permissions_check(): bool {
 
-		return current_user_can( 'manage_options' );
+		return current_user_can( 'manage_options' ) || current_user_can( 'edit_posts' );
 	}
 
 	/**
