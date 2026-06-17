@@ -222,7 +222,7 @@ final class Sender {
 			return;
 		}
 
-		if ( ! self::should_attempt_send( $post ) ) {
+		if ( ! self::can_sync_newsletter( $post ) ) {
 			return;
 		}
 
@@ -252,7 +252,7 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	public static function maybe_update_post_newsletter( WP_Post $post ): void {
-		if ( ! self::should_attempt_send( $post ) ) {
+		if ( ! self::can_sync_newsletter( $post ) ) {
 			return;
 		}
 
@@ -571,21 +571,29 @@ final class Sender {
 	}
 
 	/**
-	 * Whether this save should trigger a Beehiiv send attempt.
+	 * Whether Beehiiv should sync for this post right now.
 	 *
-	 * Sends on publish or schedule (`publish`, `future`), and on any save while a
-	 * previous send failure is still recorded so the editor can retry.
+	 * Syncs only when the post is published or scheduled, and only when the current
+	 * user can publish posts (system/cron requests are always allowed).
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return bool
 	 * @since 1.0.0
 	 */
-	private static function should_attempt_send( WP_Post $post ): bool {
-		if ( self::has_newsletter_error( $post->ID ) ) {
+	private static function can_sync_newsletter( WP_Post $post ): bool {
+		if ( ! in_array( $post->post_status, [ 'publish', 'future' ], true ) ) {
+			return false;
+		}
+
+		if ( doing_action( 'future_to_publish' ) || wp_doing_cron() ) {
 			return true;
 		}
 
-		return in_array( $post->post_status, [ 'publish', 'future' ], true );
+		if ( ! is_user_logged_in() ) {
+			return true;
+		}
+
+		return current_user_can( 'publish_posts', $post->ID );
 	}
 
 	/**

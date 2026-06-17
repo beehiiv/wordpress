@@ -207,6 +207,12 @@ function BeehiivSendNewsletterPrePublishPanel() {
 }
 
 function BeehiivPostSettingsPlugin() {
+	const { canPublishPosts } = useBeehiivPostSettingsEligibility();
+
+	if ( canPublishPosts === false ) {
+		return null;
+	}
+
 	return (
 		<>
 			<BeehiivPostSettingsSidebar />
@@ -215,7 +221,12 @@ function BeehiivPostSettingsPlugin() {
 	);
 }
 
-registerPlugin( PLUGIN_NAME, {
-	icon: sidebarIcon,
-	render: BeehiivPostSettingsPlugin,
-} );
+if (
+	typeof window !== 'undefined' &&
+	window.beehiivPostSettings?.canPublishPosts
+) {
+	registerPlugin( PLUGIN_NAME, {
+		icon: sidebarIcon,
+		render: BeehiivPostSettingsPlugin,
+	} );
+}
