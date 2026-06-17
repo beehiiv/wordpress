@@ -15,6 +15,8 @@ defined( 'ABSPATH' ) || exit;
  * Create posts (newsletters) in a publication.
  *
  * @link https://developers.beehiiv.com/api-reference/posts/create
+ * @link https://developers.beehiiv.com/api-reference/posts/delete
+ * @link https://developers.beehiiv.com/api-reference/posts/update
  * @since 1.0.0
  */
 final class Posts {
@@ -79,6 +81,123 @@ final class Posts {
 	}
 
 	/**
+	 * Delete or archive a post in a Beehiiv publication.
+	 *
+	 * Confirmed posts are archived; drafts are permanently deleted.
+	 *
+	 * @param string $publication_id Publication ID.
+	 * @param string $post_id        Beehiiv post ID.
+	 * @return array{success: bool, error: string}
+	 * @since 1.0.0
+	 */
+	public static function delete( string $publication_id, string $post_id ): array {
+		$publication_id = trim( $publication_id );
+		$post_id        = trim( $post_id );
+
+		if ( '' === $publication_id || '' === $post_id ) {
+			return [
+				'success' => false,
+				'error'   => 'Publication ID or post ID is empty.',
+			];
+		}
+
+		$path     = sprintf(
+			'/publications/%s/posts/%s',
+			rawurlencode( $publication_id ),
+			rawurlencode( $post_id )
+		);
+		$response = Client::delete( $path );
+
+		$wp_error = Client::get_last_wp_error();
+
+		if ( null !== $wp_error ) {
+			return [
+				'success' => false,
+				'error'   => $wp_error,
+			];
+		}
+
+		$status_code = Client::get_last_status_code();
+
+		if ( null !== $status_code && 204 === $status_code ) {
+			return [
+				'success' => true,
+				'error'   => '',
+			];
+		}
+
+		if ( null !== $status_code && $status_code > 299 ) {
+			return [
+				'success' => false,
+				'error'   => self::format_error_message( $response, $status_code ),
+			];
+		}
+
+		return [
+			'success' => true,
+			'error'   => '',
+		];
+	}
+
+	/**
+	 * Update an existing post in a Beehiiv publication.
+	 *
+	 * @param string              $publication_id Publication ID.
+	 * @param string              $post_id        Beehiiv post ID.
+	 * @param array<string,mixed> $payload        Update-post request body.
+	 * @return array{success: bool, error: string}
+	 * @since 1.0.0
+	 */
+	public static function update( string $publication_id, string $post_id, array $payload ): array {
+		$publication_id = trim( $publication_id );
+		$post_id        = trim( $post_id );
+
+		if ( '' === $publication_id || '' === $post_id ) {
+			return [
+				'success' => false,
+				'error'   => 'Publication ID or post ID is empty.',
+			];
+		}
+
+		if ( empty( $payload ) ) {
+			return [
+				'success' => false,
+				'error'   => 'Update payload is empty.',
+			];
+		}
+
+		$path     = sprintf(
+			'/publications/%s/posts/%s',
+			rawurlencode( $publication_id ),
+			rawurlencode( $post_id )
+		);
+		$response = Client::patch( $path, $payload );
+
+		$wp_error = Client::get_last_wp_error();
+
+		if ( null !== $wp_error ) {
+			return [
+				'success' => false,
+				'error'   => $wp_error,
+			];
+		}
+
+		$status_code = Client::get_last_status_code();
+
+		if ( null !== $status_code && $status_code > 299 ) {
+			return [
+				'success' => false,
+				'error'   => self::format_error_message( $response, $status_code ),
+			];
+		}
+
+		return [
+			'success' => true,
+			'error'   => '',
+		];
+	}
+
+	/**
 	 * Build a log-friendly error string from an API error response.
 	 *
 	 * @param array<string, mixed> $response    Parsed JSON body.
@@ -107,6 +226,6 @@ final class Posts {
 			return sprintf( 'HTTP %d: %s', $status_code, $response['message'] );
 		}
 
-		return sprintf( 'HTTP %d: Beehiiv create post request failed.', $status_code );
+		return sprintf( 'HTTP %d: Beehiiv API request failed.', $status_code );
 	}
 }

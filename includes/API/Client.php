@@ -110,12 +110,37 @@ final class Client {
 	}
 
 	/**
+	 * Make an authenticated DELETE request.
+	 *
+	 * @param string              $path  Relative API path.
+	 * @param array<string,mixed> $query Optional query parameters.
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function delete( string $path, array $query = [] ): array {
+		return self::send( 'DELETE', $path, $query, null );
+	}
+
+	/**
+	 * Make an authenticated PATCH request with a JSON body.
+	 *
+	 * @param string              $path  Relative API path.
+	 * @param array<string,mixed> $body  Request body (JSON-encoded).
+	 * @param array<string,mixed> $query Optional query parameters.
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function patch( string $path, array $body, array $query = [] ): array {
+		return self::send( 'PATCH', $path, $query, $body );
+	}
+
+	/**
 	 * Shared HTTP transport for Beehiiv v2 requests.
 	 *
 	 * @param string                   $method HTTP method.
 	 * @param string                   $path   Relative API path.
 	 * @param array<string,mixed>      $query  Query parameters.
-	 * @param array<string,mixed>|null $body   JSON body for POST; null for GET.
+	 * @param array<string,mixed>|null $body   JSON body for POST and PATCH; null for GET and DELETE.
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */

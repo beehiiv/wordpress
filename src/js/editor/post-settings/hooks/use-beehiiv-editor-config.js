@@ -7,6 +7,7 @@ const DEFAULT_CONFIG = {
 	settingsUrl: '',
 	hasPublication: false,
 	hasEmailTemplate: false,
+	canPublishPosts: false,
 };
 
 /**

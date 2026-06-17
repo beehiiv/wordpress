@@ -107,12 +107,35 @@ final class PostSettings {
 					'single'        => true,
 					'type'          => $config['type'],
 					'default'       => $config['default'],
-					'auth_callback' => static function () {
-						return current_user_can( 'edit_posts' );
-					},
+					'auth_callback' => [ self::class, 'authorize_meta' ],
 				]
 			);
 		}
+	}
+
+	/**
+	 * Whether the current user may read or write a Beehiiv post meta key.
+	 *
+	 * Newsletter send settings require `publish_posts`; other keys allow `edit_posts`.
+	 *
+	 * @param bool   $allowed   Whether the user can add or edit the meta key.
+	 * @param string $meta_key  Meta key.
+	 * @param int    $post_id   Post ID.
+	 * @return bool
+	 * @since 1.0.0
+	 */
+	public static function authorize_meta( $allowed, $meta_key, $post_id ) {
+		$writable_keys = [
+			Meta::SEND_TO_NEWSLETTER,
+			Meta::SEND_TO_NEWSLETTER_DATE,
+			Meta::SEND_TO_NEWSLETTER_SNIPPET,
+		];
+
+		if ( in_array( $meta_key, $writable_keys, true ) ) {
+			return current_user_can( 'publish_posts', (int) $post_id );
+		}
+
+		return current_user_can( 'edit_posts', (int) $post_id );
 	}
 
 	/**
@@ -122,6 +145,10 @@ final class PostSettings {
 	 */
 	public static function enqueue_canvas_styles(): void {
 		if ( ! is_admin() ) {
+			return;
+		}
+
+		if ( ! current_user_can( 'publish_posts' ) ) {
 			return;
 		}
 
@@ -140,6 +167,10 @@ final class PostSettings {
 	 * @since 1.0.0
 	 */
 	public static function enqueue_assets(): void {
+		if ( ! current_user_can( 'publish_posts' ) ) {
+			return;
+		}
+
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 		if ( $screen && self::POST_TYPE !== $screen->post_type ) {
 			return;
@@ -273,6 +304,7 @@ final class PostSettings {
 			'settingsUrl'      => admin_url( 'admin.php?page=' . Config::PLUGIN_SLUG ),
 			'hasPublication'   => '' !== trim( (string) ( $settings['publication_id'] ?? '' ) ),
 			'hasEmailTemplate' => '' !== trim( (string) ( $settings['post_template_id'] ?? '' ) ),
+			'canPublishPosts'  => current_user_can( 'publish_posts' ),
 		];
 	}
 }
