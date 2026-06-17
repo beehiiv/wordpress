@@ -28,7 +28,7 @@ final class Config {
 	 *
 	 * @since 1.0.0
 	 */
-	public const SCOPES = 'identify:read publications:read posts:write';
+	public const SCOPES = 'identify:read publications:read posts:read posts:write';
 
 	/**
 	 * Placeholder replaced at plugin release build time.
