@@ -163,7 +163,7 @@ final class Sender {
 			return;
 		}
 
-		if ( '' !== Manager::get_api_key() ) {
+		if ( Manager::is_connected() ) {
 			$publication_id = self::get_publication_id();
 
 			if ( '' !== $publication_id ) {
@@ -288,7 +288,7 @@ final class Sender {
 			self::fail(
 				$post_id,
 				'send',
-				__( 'Beehiiv is not connected.', 'beehiiv' ),
+				__( 'This site is not connected to Beehiiv.', 'beehiiv' ),
 				'Beehiiv is not connected.'
 			);
 			return;
@@ -370,12 +370,12 @@ final class Sender {
 	public static function update( int $post_id ): void {
 		self::clear_error( $post_id );
 
-		if ( '' === Manager::get_api_key() ) {
+		if ( '' === Manager::is_connected() ) {
 			self::fail(
 				$post_id,
 				'send',
-				__( 'Beehiiv API key is not configured.', 'beehiiv' ),
-				'Beehiiv API key is not configured.'
+				__( 'This site is not connected to Beehiiv.', 'beehiiv' ),
+				'Beehiiv is not connected.'
 			);
 			return;
 		}
