@@ -1,0 +1,25 @@
+.wp-block-beehiiv-subscribe-form {
+
+	&.beehiiv-subscribe-form--is-placeholder {
+
+		.components-placeholder {
+			min-height: 120px;
+		}
+	}
+
+	.beehiiv-subscribe-form__preview {
+		position: relative;
+	}
+
+	.beehiiv-subscribe-form__doc-link {
+		margin-top: 0;
+	}
+
+	.beehiiv-subscribe-form__preview-overlay {
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 0;
+	}
+}
