@@ -9,6 +9,7 @@ const DEFAULT_CONFIG = {
 	hasPostTemplate: false,
 	publicationId: '',
 	defaultPostTemplateId: '',
+	canPublishPosts: false,
 };
 
 /**
