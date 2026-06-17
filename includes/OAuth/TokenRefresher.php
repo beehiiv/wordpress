@@ -60,9 +60,9 @@ final class TokenRefresher {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @return true|WP_Error
+	 * @return bool|WP_Error
 	 */
-	public static function refresh(): true|WP_Error {
+	public static function refresh() {
 
 		if ( self::$refreshing ) {
 			return new WP_Error( 'beehiiv_refresh_loop', __( 'Token refresh already in progress.', 'beehiiv' ) );

@@ -294,7 +294,7 @@ final class TokenStore {
 	 *
 	 * @return string|bool
 	 */
-	private static function encrypt_value( string $value ): string|bool {
+	private static function encrypt_value( string $value ) {
 
 		return self::encryption()->encrypt( $value );
 	}

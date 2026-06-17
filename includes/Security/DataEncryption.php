@@ -50,7 +50,7 @@ final class DataEncryption {
 	 *
 	 * @return string|bool Encrypted value, or false on failure.
 	 */
-	public function encrypt( string $value ): string|bool {
+	public function encrypt( string $value ) {
 
 		if ( ! extension_loaded( 'openssl' ) ) {
 			return $value;
@@ -78,7 +78,7 @@ final class DataEncryption {
 	 *
 	 * @return string|bool Decrypted value, or false on failure.
 	 */
-	public function decrypt( string $raw_value ): string|bool {
+	public function decrypt( string $raw_value ) {
 
 		if ( ! extension_loaded( 'openssl' ) || ! is_string( $raw_value ) ) {
 			return $raw_value;

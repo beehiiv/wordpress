@@ -39,7 +39,7 @@ final class Authorization {
 	 *
 	 * @return string|WP_Error
 	 */
-	public static function get_authorize_url(): string|WP_Error {
+	public static function get_authorize_url() {
 
 		$client_id = TokenStore::get_client_id();
 

@@ -25,7 +25,7 @@ final class ClientRegistrar {
 	 *
 	 * @return string|WP_Error Client ID on success.
 	 */
-	public static function register(): string|WP_Error {
+	public static function register() {
 
 		$existing = TokenStore::get_client_id();
 

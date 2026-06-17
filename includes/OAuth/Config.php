@@ -35,7 +35,7 @@ final class Config {
 	 *
 	 * @since 1.0.0
 	 */
-	public const REGISTRATION_TOKEN_PLACEHOLDER = 'BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER';
+	private const REGISTRATION_TOKEN_PLACEHOLDER = 'BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER';
 
 	/**
 	 * WP-config.php constant for registration token override.
