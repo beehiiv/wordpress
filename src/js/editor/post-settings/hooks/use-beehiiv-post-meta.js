@@ -117,8 +117,7 @@ export function useBeehiivPostMeta() {
 	const sendToNewsletter = !! meta?.[ META_SEND_TO_NEWSLETTER ];
 	const sendToNewsletterSnippet =
 		!! meta?.[ META_SEND_TO_NEWSLETTER_SNIPPET ];
-	const rawPostTemplateId =
-		meta?.[ META_BEEHIIV_POST_TEMPLATE_ID ];
+	const rawPostTemplateId = meta?.[ META_BEEHIIV_POST_TEMPLATE_ID ];
 	const beehiivPostTemplateId =
 		typeof rawPostTemplateId === 'string' ? rawPostTemplateId : '';
 	const rawDate = meta?.[ META_SEND_TO_NEWSLETTER_DATE ];

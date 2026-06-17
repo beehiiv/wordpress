@@ -54,7 +54,9 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 	if ( errorMessage ) {
 		return (
 			<PostSettingsNotice status="error">
-				{ createInterpolateElement( errorMessage, { a: <ExternalLink href={ settingsUrl } /> } ) }
+				{ createInterpolateElement( errorMessage, {
+					a: <ExternalLink href={ settingsUrl } />,
+				} ) }
 			</PostSettingsNotice>
 		);
 	}
