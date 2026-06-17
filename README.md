@@ -90,8 +90,10 @@ A top-level **Beehiiv** wp-admin menu (not under Settings) is wired from `Plugin
 | `Admin\SettingsPage`      | Registers Settings API fields; renders the screen                |
 | `Admin\Menu`              | Sidebar menu → calls `SettingsPage::render`                      |
 | `Admin\Options`           | `beehiiv_settings` option: defaults, `get()`, sanitize           |
-| `Admin\Registrar`         | Registers publication ID and default email template fields       |
-| `Connection\Manager`      | Connection status; temporary API key in `is_connected()`         |
+| `Admin\Registrar`         | Registers publication ID and default post template fields       |
+| `Connection\Manager`      | OAuth connection status and connect/disconnect URLs              |
+| `OAuth\*`                 | Dynamic client registration, PKCE, token storage, refresh        |
+| `REST\PostTemplatesController` | REST endpoint for publication post templates               |
 | `Views/connection.php`    | Connection card and post-connect next steps                      |
 | `Views/settings-page.php` | Form wrapper (`settings_fields`, `do_settings_sections`)         |
 
@@ -109,15 +111,15 @@ Add new fields by keeping these in sync:
 3. `META_KEYS` in `includes/Editor/PostSettings.php` — registration config
 4. Controls in `src/js/editor/post-settings/index.js`
 
-Until OAuth is available, define your Beehiiv API key in `wp-config.php`:
+Connect your Beehiiv account from **Beehiiv → Settings** in wp-admin. OAuth credentials are stored encrypted in the `beehiiv_oauth` option.
+
+For local development without a release build, set the registration token in `wp-config.php`:
 
 ```php
-define( 'BEEHIIV_API_KEY', 'your_beehiiv_api_key_here' );
+define( 'BEEHIIV_REGISTRATION_TOKEN', 'your_registration_token_here' );
 ```
 
-When non-empty, the settings screen treats the site as connected. Remove that temporary key when OAuth ships.
-
-Email template for API payloads uses the plugin default `post_template_id`; omit `post_template_id` from the request when unset (`Newsletter\PostSettingsBuilder`).
+Post template for API payloads uses the plugin default `post_template_id`; omit `post_template_id` from the request when unset (`Newsletter\PostSettingsBuilder`).
 
 ## Linting
 

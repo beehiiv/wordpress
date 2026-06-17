@@ -10,7 +10,8 @@ defined( 'ABSPATH' ) || exit;
 use Beehiiv\Config;
 use Beehiiv\Connection\Manager;
 
-$is_connected = Manager::is_connected();
+$is_connected         = Manager::is_connected();
+$connected_user_label = Manager::get_connected_user_label();
 
 $status_icon_class = $is_connected
 	? 'beehiiv-connection-status__icon beehiiv-connection-status__icon--connected dashicons dashicons-yes-alt'
@@ -24,9 +25,21 @@ $status_icon_class = $is_connected
 	<div class="inside beehiiv-connection-card__inside">
 		<div class="beehiiv-connection-row">
 			<div class="beehiiv-connection-actions">
-				<button type="button" class="button button-primary">
-					<?php echo esc_html( Manager::get_status_label() ); ?>
-				</button>
+				<?php if ( $is_connected ) : ?>
+					<a
+						class="button button-secondary"
+						href="<?php echo esc_url( Manager::get_disconnect_url() ); ?>"
+					>
+						<?php esc_html_e( 'Disconnect', 'beehiiv' ); ?>
+					</a>
+				<?php else : ?>
+					<a
+						class="button button-primary"
+						href="<?php echo esc_url( Manager::get_connect_url() ); ?>"
+					>
+						<?php esc_html_e( 'Connect to Beehiiv', 'beehiiv' ); ?>
+					</a>
+				<?php endif; ?>
 			</div>
 
 			<p class="beehiiv-connection-status">
@@ -35,6 +48,11 @@ $status_icon_class = $is_connected
 					aria-hidden="true"
 				></span>
 				<strong><?php echo esc_html( Manager::get_status_label() ); ?></strong>
+				<?php if ( $is_connected && '' !== $connected_user_label ) : ?>
+					<span class="beehiiv-connection-status__account">
+						<?php echo esc_html( $connected_user_label ); ?>
+					</span>
+				<?php endif; ?>
 			</p>
 		</div>
 

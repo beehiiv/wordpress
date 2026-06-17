@@ -19,6 +19,7 @@ import NewsletterDatePicker, {
 	getNewsletterSendDateValidation,
 } from './components/newsletter-date-picker';
 import NewsletterStatusNotices from './components/newsletter-status-notices';
+import NewsletterTemplateSelect from './components/newsletter-template-select';
 import PostSettingsNotice from './components/post-settings-notice';
 import SendNewsletterToggle from './components/send-newsletter-toggle';
 import { OmittedBlocksNoticeMessage } from './components/omitted-blocks-notice';
@@ -43,7 +44,7 @@ function usePostPublishDate() {
 
 function BeehiivPostSettingsPanel() {
 	const beehiivMeta = useBeehiivPostMeta();
-	const { isConnected, hasPublication, hasEmailTemplate } =
+	const { isConnected, hasPublication, hasPostTemplate } =
 		useBeehiivEditorConfig();
 
 	if ( ! beehiivMeta ) {
@@ -54,13 +55,15 @@ function BeehiivPostSettingsPanel() {
 		sendToNewsletter,
 		sendToNewsletterDate,
 		sendToNewsletterSnippet,
+		beehiivPostTemplateId,
 		newsletterAlreadySent,
 		setSendToNewsletter,
 		setSendToNewsletterDate,
 		setSendToNewsletterSnippet,
+		setBeehiivPostTemplateId,
 	} = beehiivMeta;
 
-	const isNewsletterReady = isConnected && hasPublication && hasEmailTemplate;
+	const isNewsletterReady = isConnected && hasPublication && hasPostTemplate;
 
 	return (
 		<div className="beehiiv-post-settings-content">
@@ -123,6 +126,11 @@ function BeehiivPostSettingsPanel() {
 							checked={ sendToNewsletterSnippet }
 							onChange={ setSendToNewsletterSnippet }
 						/>
+
+						<NewsletterTemplateSelect
+							value={ beehiivPostTemplateId }
+							onChange={ setBeehiivPostTemplateId }
+						/>
 					</>
 				) }
 			</PanelBody>
@@ -171,7 +179,7 @@ function BeehiivSendNewsletterPrePublishPanel() {
 	const { postType, canPublishPosts } = useBeehiivPostSettingsEligibility();
 	const beehiivMeta = useBeehiivPostMeta();
 	const postPublishDate = usePostPublishDate();
-	const { isConnected, hasPublication, hasEmailTemplate } =
+	const { isConnected, hasPublication, hasPostTemplate } =
 		useBeehiivEditorConfig();
 
 	if ( postType && postType !== 'post' ) {
@@ -192,7 +200,7 @@ function BeehiivSendNewsletterPrePublishPanel() {
 		setSendToNewsletter,
 		newsletterAlreadySent,
 	} = beehiivMeta;
-	const isNewsletterReady = isConnected && hasPublication && hasEmailTemplate;
+	const isNewsletterReady = isConnected && hasPublication && hasPostTemplate;
 	const sendDateValidation = getNewsletterSendDateValidation(
 		sendToNewsletterDate,
 		postPublishDate

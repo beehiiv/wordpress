@@ -8,26 +8,20 @@
 namespace Beehiiv\API;
 
 use Beehiiv\Connection\Manager;
+use Beehiiv\OAuth\Config as OAuthConfig;
+use Beehiiv\OAuth\TokenRefresher;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Wraps authenticated Beehiiv v2 API requests used by wp-admin settings.
+ * Wraps authenticated Beehiiv v2 API requests.
  *
  * @since 1.0.0
  */
 final class Client {
 
 	/**
-	 * Base URL for Beehiiv public API.
-	 *
-	 * @since 1.0.0
-	 */
-	private const API_BASE = 'https://api.beehiiv.com/v2';
-
-	/**
 	 * Recent HTTP transport details for temporary admin debugging.
-	 * (Remove when dropdown label issue is resolved.)
 	 *
 	 * @var array<int, array<string, mixed>>
 	 */
@@ -46,6 +40,13 @@ final class Client {
 	 * @var string|null
 	 */
 	private static $last_wp_error = null;
+
+	/**
+	 * Whether a 401 retry is allowed for the current outer request.
+	 *
+	 * @var bool
+	 */
+	private static $allow_retry = true;
 
 	/**
 	 * HTTP timeout in seconds for Beehiiv API requests.
@@ -145,8 +146,9 @@ final class Client {
 	 * @since 1.0.0
 	 */
 	private static function send( string $method, string $path, array $query, ?array $body ): array {
-		$api_key = Manager::get_api_key();
-		$url     = self::API_BASE . $path;
+
+		$access_token = Manager::get_access_token();
+		$url          = OAuthConfig::get_api_base_url() . $path;
 
 		if ( ! empty( $query ) ) {
 			$url = add_query_arg( $query, $url );
@@ -156,7 +158,7 @@ final class Client {
 			'method'  => $method,
 			'timeout' => self::REQUEST_TIMEOUT,
 			'headers' => [
-				'Authorization' => 'Bearer ' . $api_key,
+				'Authorization' => 'Bearer ' . $access_token,
 				'Accept'        => 'application/json',
 			],
 		];
@@ -174,15 +176,55 @@ final class Client {
 		$raw  = is_wp_error( $res ) ? '' : (string) wp_remote_retrieve_body( $res );
 		$json = json_decode( $raw, true );
 
-		self::$request_log[] = [
+		self::$request_log[] = self::build_log_entry( $method, $url, $args, $raw, $json );
+
+		if ( 401 === self::$last_status_code && self::$allow_retry ) {
+			self::$allow_retry = false;
+			$refreshed         = TokenRefresher::refresh();
+
+			if ( ! is_wp_error( $refreshed ) ) {
+				return self::send( $method, $path, $query, $body );
+			}
+		}
+
+		self::$allow_retry = true;
+
+		return is_array( $json ) ? $json : [];
+	}
+
+	/**
+	 * Build a redacted request log entry.
+	 *
+	 * @param string                   $method HTTP method.
+	 * @param string                   $url    Request URL.
+	 * @param array<string,mixed>      $args   Request args.
+	 * @param string                   $raw    Raw response body.
+	 * @param array<string,mixed>|null $json   Parsed JSON.
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	private static function build_log_entry(
+		string $method,
+		string $url,
+		array $args,
+		string $raw,
+		?array $json
+	): array {
+
+		$headers = isset( $args['headers'] ) && is_array( $args['headers'] ) ? $args['headers'] : [];
+
+		if ( isset( $headers['Authorization'] ) ) {
+			$headers['Authorization'] = 'Bearer [redacted]';
+		}
+
+		return [
 			'method'      => $method,
 			'url'         => $url,
+			'headers'     => $headers,
 			'status_code' => self::$last_status_code,
 			'wp_error'    => self::$last_wp_error,
 			'raw_body'    => $raw,
-			'parsed_json' => is_array( $json ) ? $json : null,
+			'parsed_json' => $json,
 		];
-
-		return is_array( $json ) ? $json : [];
 	}
 }

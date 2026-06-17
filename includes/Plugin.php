@@ -22,18 +22,27 @@ final class Plugin {
 	 * Runs on `plugins_loaded` from the main plugin file.
 	 *
 	 * @since 1.0.0
+	 *
+	 * @return void
 	 */
 	public static function init(): void {
+
 		Frontend\Assets::init();
 		Admin\Assets::init();
+		Newsletter\Sender::init();
+		OAuth\Config::register_hooks();
+		OAuth\AdminActions::init();
+		OAuth\CallbackHandler::init();
+
 		add_action( 'init', [ Blocks\Registry::class, 'register_category' ] );
 		add_action( 'init', [ Blocks\Registry::class, 'register_blocks' ] );
 		add_action( 'init', [ Editor\PostSettings::class, 'register_meta' ] );
 		add_action( 'enqueue_block_editor_assets', [ Editor\PostSettings::class, 'enqueue_assets' ] );
 		add_action( 'enqueue_block_assets', [ Editor\PostSettings::class, 'enqueue_canvas_styles' ] );
-		Newsletter\Sender::init();
 		add_action( 'admin_menu', [ Admin\Menu::class, 'register' ] );
+		add_action( 'admin_menu', [ OAuth\CallbackHandler::class, 'register_page' ] );
 		add_action( 'admin_init', [ self::class, 'bootstrap_admin_features' ] );
+		add_action( 'rest_api_init', [ REST\PostTemplatesController::class, 'register_routes' ] );
 	}
 
 	/**

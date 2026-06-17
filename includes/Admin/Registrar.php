@@ -79,7 +79,7 @@ final class Registrar {
 
 		add_settings_field(
 			'beehiiv_post_template_id',
-			__( 'Default email template', 'beehiiv' ),
+			__( 'Default post template', 'beehiiv' ),
 			[ self::class, 'render_post_template_id_field' ],
 			$page_slug,
 			self::PAGE_SETTINGS_SECTION_ID,
@@ -104,7 +104,7 @@ final class Registrar {
 	 */
 	public static function render_page_settings_description(): void {
 		echo '<p>' . esc_html__(
-			'Default Beehiiv publication and email template for newsletters sent from this site.',
+			'Default Beehiiv publication and post template for newsletters sent from this site.',
 			'beehiiv'
 		) . '</p>';
 	}
@@ -120,7 +120,12 @@ final class Registrar {
 		$name     = Config::OPTION_NAME . '[publication_id]';
 		$items    = Publications::get_publications();
 		?>
-		<select id="beehiiv_publication_id" class="beehiiv-settings-select" name="<?php echo esc_attr( $name ); ?>">
+		<select
+			id="beehiiv_publication_id"
+			class="beehiiv-settings-select"
+			name="<?php echo esc_attr( $name ); ?>"
+			required
+		>
 			<option value="" <?php selected( $selected, '' ); ?>>
 				<?php esc_html_e( 'Select a publication', 'beehiiv' ); ?>
 			</option>
@@ -169,7 +174,12 @@ final class Registrar {
 		$publication_id = (string) $settings['publication_id'];
 		$items          = '' !== $publication_id ? PostTemplates::get_post_templates( $publication_id ) : [];
 		?>
-		<select id="beehiiv_post_template_id" class="beehiiv-settings-select" name="<?php echo esc_attr( $name ); ?>">
+		<select
+			id="beehiiv_post_template_id"
+			class="beehiiv-settings-select"
+			name="<?php echo esc_attr( $name ); ?>"
+			required
+		>
 			<option value="" <?php selected( $selected, '' ); ?>>
 				<?php esc_html_e( 'No default template', 'beehiiv' ); ?>
 			</option>
@@ -201,7 +211,7 @@ final class Registrar {
 				<?php endif; ?>
 		</select>
 		<p class="description">
-			<?php esc_html_e( 'Default email template for newsletters sent from this site.', 'beehiiv' ); ?>
+			<?php esc_html_e( 'Default post template for newsletters sent from this site.', 'beehiiv' ); ?>
 		</p>
 		<?php
 	}

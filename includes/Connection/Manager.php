@@ -1,68 +1,49 @@
 <?php
 /**
- * Beehiiv connection UI helpers (OAuth flow added later).
+ * Beehiiv connection helpers.
  *
  * @package beehiiv
  */
 
 namespace Beehiiv\Connection;
 
-use Beehiiv\Admin\Options;
-use Beehiiv\Config;
+use Beehiiv\OAuth\AdminActions;
+use Beehiiv\OAuth\TokenRefresher;
+use Beehiiv\OAuth\TokenStore;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Connection card helpers for the settings screen.
+ * Connection state and OAuth action URLs for the settings screen.
  *
  * @since 1.0.0
  */
 final class Manager {
 
 	/**
-	 * `wp-config.php` constant name for the Beehiiv API key.
-	 *
-	 * @since 1.0.0
-	 */
-	private const API_KEY_CONST = 'BEEHIIV_API_KEY';
-
-	/**
-	 * Whether the site can call the Beehiiv API.
+	 * Whether the site can call the Beehiiv API via OAuth.
 	 *
 	 * @since 1.0.0
 	 */
 	public static function is_connected(): bool {
-		if ( '' !== self::get_api_key() ) {
-			return true;
-		}
 
-		$settings = Options::get();
-
-		return ! empty( $settings['oauth_connected'] );
+		return TokenStore::has_credentials();
 	}
 
 	/**
-	 * API key for Beehiiv API requests.
+	 * Valid OAuth access token for Beehiiv API requests.
 	 *
-	 * Hardcoded temporarily until OAuth is implemented.
+	 * @since 1.0.0
 	 *
 	 * @return string
-	 * @since 1.0.0
 	 */
-	public static function get_api_key(): string {
-		$api_key = '';
+	public static function get_access_token(): string {
 
-		if ( defined( self::API_KEY_CONST ) ) {
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- Consumed from wp-config.php.
-			$api_key = (string) constant( self::API_KEY_CONST );
-		} elseif ( function_exists( 'getenv' ) ) {
-			$env_key = getenv( self::API_KEY_CONST );
-			if ( is_string( $env_key ) ) {
-				$api_key = $env_key;
-			}
+		if ( ! self::is_connected() ) {
+			return '';
 		}
 
-		return trim( $api_key );
+		return TokenRefresher::get_valid_access_token();
 	}
 
 	/**
@@ -71,6 +52,7 @@ final class Manager {
 	 * @since 1.0.0
 	 */
 	public static function get_status_label(): string {
+
 		if ( self::is_connected() ) {
 			return __( 'Connected', 'beehiiv' );
 		}
@@ -79,11 +61,81 @@ final class Manager {
 	}
 
 	/**
+	 * Connected Beehiiv account label for the settings UI.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return string
+	 */
+	public static function get_connected_user_label(): string {
+
+		$user = TokenStore::get_connected_user();
+
+		$first = isset( $user['first_name'] ) ? trim( (string) $user['first_name'] ) : '';
+		$last  = isset( $user['last_name'] ) ? trim( (string) $user['last_name'] ) : '';
+		$email = isset( $user['email'] ) ? trim( (string) $user['email'] ) : '';
+
+		$name = trim( $first . ' ' . $last );
+
+		if ( '' !== $name && '' !== $email ) {
+			return sprintf(
+				/* translators: 1: user name, 2: email address */
+				__( '%1$s (%2$s)', 'beehiiv' ),
+				$name,
+				$email
+			);
+		}
+
+		if ( '' !== $email ) {
+			return $email;
+		}
+
+		if ( '' !== $name ) {
+			return $name;
+		}
+
+		return '';
+	}
+
+	/**
+	 * URL to start the OAuth connect flow.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return string
+	 */
+	public static function get_connect_url(): string {
+
+		return wp_nonce_url(
+			admin_url( 'admin-post.php?action=' . AdminActions::ACTION_CONNECT ),
+			'beehiiv_oauth_action'
+		);
+	}
+
+	/**
+	 * URL to disconnect the Beehiiv account.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return string
+	 */
+	public static function get_disconnect_url(): string {
+
+		return wp_nonce_url(
+			admin_url( 'admin-post.php?action=' . AdminActions::ACTION_DISCONNECT ),
+			'beehiiv_oauth_action'
+		);
+	}
+
+	/**
 	 * URL for users without a Beehiiv account.
 	 *
 	 * @since 1.0.0
+	 *
+	 * @return string
 	 */
 	public static function get_signup_url(): string {
-		return Config::SIGNUP_URL;
+
+		return \Beehiiv\Config::SIGNUP_URL;
 	}
 }

@@ -13,7 +13,7 @@ import { useBeehiivEditorConfig } from '../hooks/use-beehiiv-editor-config';
  * @param {import('../hooks/use-beehiiv-post-meta').BeehiivPostMeta|null} props.beehiivMeta
  */
 export default function NewsletterStatusNotices( { beehiivMeta } ) {
-	const { isConnected, settingsUrl, hasPublication, hasEmailTemplate } =
+	const { isConnected, settingsUrl, hasPublication, hasPostTemplate } =
 		useBeehiivEditorConfig();
 
 	if ( ! isConnected ) {
@@ -32,34 +32,31 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 		);
 	}
 
-	if ( ! hasPublication ) {
-		return (
-			<PostSettingsNotice status="error">
-				{ createInterpolateElement(
-					__(
-						'No Beehiiv publication is configured. <a>Select one in Beehiiv settings</a> before sending newsletters.',
-						'beehiiv'
-					),
-					{
-						a: <ExternalLink href={ settingsUrl } />,
-					}
-				) }
-			</PostSettingsNotice>
+	let errorMessage = '';
+
+	if ( ! hasPublication && ! hasPostTemplate ) {
+		errorMessage = __(
+			'Setup required: Select a publication and post template in <a>Beehiiv Settings</a> to start sending newsletters.',
+			'beehiiv'
+		);
+	} else if ( ! hasPublication ) {
+		errorMessage = __(
+			'Setup required: Select a publication in <a>Beehiiv Settings</a> to start sending newsletters.',
+			'beehiiv'
+		);
+	} else if ( ! hasPostTemplate ) {
+		errorMessage = __(
+			'Setup required: Select a post template in <a>Beehiiv Settings</a> to start sending newsletters.',
+			'beehiiv'
 		);
 	}
 
-	if ( ! hasEmailTemplate ) {
+	if ( errorMessage ) {
 		return (
 			<PostSettingsNotice status="error">
-				{ createInterpolateElement(
-					__(
-						'No default email template is configured. <a>Select one in Beehiiv settings</a> before sending newsletters.',
-						'beehiiv'
-					),
-					{
-						a: <ExternalLink href={ settingsUrl } />,
-					}
-				) }
+				{ createInterpolateElement( errorMessage, {
+					a: <ExternalLink href={ settingsUrl } />,
+				} ) }
 			</PostSettingsNotice>
 		);
 	}

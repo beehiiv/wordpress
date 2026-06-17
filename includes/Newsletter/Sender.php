@@ -163,7 +163,7 @@ final class Sender {
 			return;
 		}
 
-		if ( '' !== Manager::get_api_key() ) {
+		if ( Manager::is_connected() ) {
 			$publication_id = self::get_publication_id();
 
 			if ( '' !== $publication_id ) {
@@ -284,12 +284,12 @@ final class Sender {
 	public static function send( int $post_id ): void {
 		self::clear_error( $post_id );
 
-		if ( '' === Manager::get_api_key() ) {
+		if ( ! Manager::is_connected() ) {
 			self::fail(
 				$post_id,
 				'send',
-				__( 'Beehiiv API key is not configured.', 'beehiiv' ),
-				'Beehiiv API key is not configured.'
+				__( 'This site is not connected to Beehiiv.', 'beehiiv' ),
+				'Beehiiv is not connected.'
 			);
 			return;
 		}
@@ -370,12 +370,12 @@ final class Sender {
 	public static function update( int $post_id ): void {
 		self::clear_error( $post_id );
 
-		if ( '' === Manager::get_api_key() ) {
+		if ( '' === Manager::is_connected() ) {
 			self::fail(
 				$post_id,
 				'send',
-				__( 'Beehiiv API key is not configured.', 'beehiiv' ),
-				'Beehiiv API key is not configured.'
+				__( 'This site is not connected to Beehiiv.', 'beehiiv' ),
+				'Beehiiv is not connected.'
 			);
 			return;
 		}
@@ -524,7 +524,7 @@ final class Sender {
 	private static function format_save_error_message( \WP_Error $error ): string {
 		switch ( $error->get_error_code() ) {
 			case 'beehiiv_post_template_id_empty':
-				return __( 'No default email template is configured in Beehiiv settings.', 'beehiiv' );
+				return __( 'No default post template is configured in Beehiiv settings.', 'beehiiv' );
 			case 'beehiiv_post_title_or_content_empty':
 				return __( 'Add a title and content before sending to Beehiiv.', 'beehiiv' );
 			case 'beehiiv_blocks_empty':
