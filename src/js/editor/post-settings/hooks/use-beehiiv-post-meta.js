@@ -43,6 +43,11 @@ export function useBeehiivPostMeta() {
 	const [ meta, setMeta ] = useEntityProp( 'postType', postType, 'meta' );
 	const registry = useRegistry();
 
+	const postPublishDate = useSelect(
+		( select ) => select( editorStore ).getEditedPostAttribute( 'date' ),
+		[]
+	);
+
 	const { postId, isSavingPost, didPostSaveRequestSucceed } = useSelect(
 		( select ) => {
 			const editor = select( editorStore );
@@ -106,6 +111,45 @@ export function useBeehiivPostMeta() {
 		registry,
 		setMeta,
 	] );
+
+	// When the post is rescheduled later than a custom newsletter send time, bump the
+	// send time to match. Shorter post schedules leave an explicit later send time alone.
+	useEffect( () => {
+		if ( ! postType ) {
+			return;
+		}
+
+		const rawDate = meta?.[ META_SEND_TO_NEWSLETTER_DATE ];
+		const customDate =
+			typeof rawDate === 'string' && rawDate.length > 0 ? rawDate : null;
+		const rawBeehiivPostId = meta?.[ META_BEEHIIV_POST_ID ];
+		const alreadySent =
+			typeof rawBeehiivPostId === 'string' && rawBeehiivPostId.length > 0;
+
+		if ( ! customDate || alreadySent ) {
+			return;
+		}
+
+		const publish = postPublishDate ? new Date( postPublishDate ) : null;
+		const send = new Date( customDate );
+
+		if (
+			! publish ||
+			Number.isNaN( publish.getTime() ) ||
+			Number.isNaN( send.getTime() )
+		) {
+			return;
+		}
+
+		if ( publish > send ) {
+			setMeta( {
+				...meta,
+				[ META_SEND_TO_NEWSLETTER_DATE ]: '',
+			} );
+		}
+		// Only run when the WordPress publish schedule changes.
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- meta read on post date change only.
+	}, [ postPublishDate, postType, setMeta ] );
 
 	if ( ! postType ) {
 		return null;
