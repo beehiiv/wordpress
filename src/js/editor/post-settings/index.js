@@ -15,7 +15,9 @@ import { useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 
 import BeehiivSidebarIcon from './icon';
-import NewsletterDatePicker from './components/newsletter-date-picker';
+import NewsletterDatePicker, {
+	getNewsletterSendDateValidation,
+} from './components/newsletter-date-picker';
 import NewsletterStatusNotices from './components/newsletter-status-notices';
 import NewsletterTemplateSelect from './components/newsletter-template-select';
 import PostSettingsNotice from './components/post-settings-notice';
@@ -32,6 +34,13 @@ const sidebarIcon = <BeehiivSidebarIcon />;
 const PLUGIN_NAME = 'beehiiv-post-settings';
 const SIDEBAR_NAME = 'beehiiv-post-settings';
 const PRE_PUBLISH_PANEL_NAME = 'beehiiv-send-newsletter';
+
+function usePostPublishDate() {
+	return useSelect(
+		( select ) => select( editorStore ).getEditedPostAttribute( 'date' ),
+		[]
+	);
+}
 
 function BeehiivPostSettingsPanel() {
 	const beehiivMeta = useBeehiivPostMeta();
@@ -169,6 +178,7 @@ function BeehiivPostSettingsSidebar() {
 function BeehiivSendNewsletterPrePublishPanel() {
 	const { postType, canPublishPosts } = useBeehiivPostSettingsEligibility();
 	const beehiivMeta = useBeehiivPostMeta();
+	const postPublishDate = usePostPublishDate();
 	const { isConnected, hasPublication, hasPostTemplate } =
 		useBeehiivEditorConfig();
 
@@ -184,9 +194,17 @@ function BeehiivSendNewsletterPrePublishPanel() {
 		return null;
 	}
 
-	const { sendToNewsletter, setSendToNewsletter, newsletterAlreadySent } =
-		beehiivMeta;
+	const {
+		sendToNewsletter,
+		sendToNewsletterDate,
+		setSendToNewsletter,
+		newsletterAlreadySent,
+	} = beehiivMeta;
 	const isNewsletterReady = isConnected && hasPublication && hasPostTemplate;
+	const sendDateValidation = getNewsletterSendDateValidation(
+		sendToNewsletterDate,
+		postPublishDate
+	);
 
 	const sendToNewsletterStatus = sendToNewsletter
 		? __( 'Yes', 'beehiiv' )
@@ -210,6 +228,13 @@ function BeehiivSendNewsletterPrePublishPanel() {
 				onChange={ setSendToNewsletter }
 				disabled={ newsletterAlreadySent || ! isNewsletterReady }
 			/>
+			{ sendToNewsletter &&
+				! newsletterAlreadySent &&
+				! sendDateValidation.valid && (
+					<PostSettingsNotice status="error">
+						{ sendDateValidation.message }
+					</PostSettingsNotice>
+				) }
 		</PluginPrePublishPanel>
 	);
 }

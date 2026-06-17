@@ -93,6 +93,10 @@ final class PostSettingsBuilder {
 
 		$scheduled_at = self::convert_send_date_to_scheduled_at_utc( $post_object );
 
+		if ( is_wp_error( $scheduled_at ) ) {
+			return $scheduled_at;
+		}
+
 		if ( null !== $scheduled_at ) {
 			$settings['scheduled_at'] = $scheduled_at;
 		}
@@ -194,17 +198,28 @@ final class PostSettingsBuilder {
 	 * Uses `_beehiiv_send_to_newsletter_date` when set; otherwise the WordPress post publish
 	 * datetime (`post_date`) for "On publish".
 	 *
-	 * Returns null when send is immediate (past or now) so the field is omitted from the payload.
+	 * Custom send times must be in the future and not before the post publish time when the
+	 * post is not yet public. "On publish" returns null when the publish time is past or now
+	 * so the field is omitted from the payload (immediate send).
 	 *
 	 * @param WP_Post $post Post object.
-	 * @return string|null ISO 8601 UTC datetime (e.g. 2024-12-25T12:00:00Z), or null.
+	 * @return string|WP_Error|null ISO 8601 UTC datetime (e.g. 2024-12-25T12:00:00Z), error, or null.
 	 * @since 1.0.0
 	 */
-	private static function convert_send_date_to_scheduled_at_utc( WP_Post $post ): ?string {
-		$scheduled_date = get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_DATE, true );
-		$scheduled_date = is_string( $scheduled_date ) ? trim( $scheduled_date ) : '';
+	private static function convert_send_date_to_scheduled_at_utc( WP_Post $post ) {
+		$custom_date = get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_DATE, true );
+		$custom_date = is_string( $custom_date ) ? trim( $custom_date ) : '';
+		$has_custom  = '' !== $custom_date;
 
-		if ( '' === $scheduled_date ) {
+		if ( $has_custom ) {
+			$validation = self::validate_custom_send_date( $post, $custom_date );
+
+			if ( is_wp_error( $validation ) ) {
+				return $validation;
+			}
+
+			$scheduled_date = $custom_date;
+		} else {
 			$scheduled_date = trim( (string) $post->post_date );
 		}
 
@@ -217,6 +232,16 @@ final class PostSettingsBuilder {
 			$utc   = $local->setTimezone( new DateTimeZone( 'UTC' ) );
 
 			if ( $utc->getTimestamp() <= time() ) {
+				if ( $has_custom ) {
+					return new WP_Error(
+						'beehiiv_newsletter_in_past',
+						__(
+							'Newsletter cannot be scheduled in the past. Please select a future date and time.',
+							'beehiiv'
+						)
+					);
+				}
+
 				return null;
 			}
 
@@ -231,7 +256,64 @@ final class PostSettingsBuilder {
 				)
 			);
 
-			return null;
+			return new WP_Error(
+				'beehiiv_newsletter_invalid_date',
+				__(
+					'The newsletter send date is not valid. Please select a different date and time.',
+					'beehiiv'
+				)
+			);
+		}
+	}
+
+	/**
+	 * Validate a user-chosen newsletter send datetime.
+	 *
+	 * @param WP_Post $post           Post object.
+	 * @param string  $scheduled_date Send datetime in site timezone.
+	 * @return true|WP_Error
+	 * @since 1.0.0
+	 */
+	private static function validate_custom_send_date( WP_Post $post, string $scheduled_date ) {
+		try {
+			$timezone = wp_timezone();
+			$send     = new DateTimeImmutable( $scheduled_date, $timezone );
+			$now      = new DateTimeImmutable( 'now', $timezone );
+
+			if ( $send <= $now ) {
+				return new WP_Error(
+					'beehiiv_newsletter_in_past',
+					__(
+						'Newsletter cannot be scheduled in the past. Please select a future date and time.',
+						'beehiiv'
+					)
+				);
+			}
+
+			$publish_date = trim( (string) $post->post_date );
+
+			if ( '' === $publish_date ) {
+				return true;
+			}
+
+			$publish = new DateTimeImmutable( $publish_date, $timezone );
+
+			if ( $publish > $now && $send < $publish ) {
+				return new WP_Error(
+					'beehiiv_newsletter_before_publish',
+					__( 'The newsletter cannot be scheduled before this post is published.', 'beehiiv' )
+				);
+			}
+
+			return true;
+		} catch ( Exception $e ) {
+			return new WP_Error(
+				'beehiiv_newsletter_invalid_date',
+				__(
+					'The newsletter send date is not valid. Please select a different date and time.',
+					'beehiiv'
+				)
+			);
 		}
 	}
 

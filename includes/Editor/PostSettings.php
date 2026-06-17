@@ -178,6 +178,12 @@ final class PostSettings {
 			SupportedBlocks::get_editor_config()
 		);
 
+		wp_localize_script(
+			self::SCRIPT_HANDLE,
+			'beehiivPostSettings',
+			self::get_editor_config()
+		);
+
 		self::enqueue_build_style( $asset['version'] );
 	}
 
