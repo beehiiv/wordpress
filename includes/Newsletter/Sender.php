@@ -326,6 +326,18 @@ final class Sender {
 				return __( 'This post has no content blocks supported by Beehiiv.', 'beehiiv' );
 			case 'beehiiv_post_not_found':
 				return __( 'This post could not be found.', 'beehiiv' );
+			case 'beehiiv_newsletter_in_past':
+				return __(
+					'Newsletter cannot be scheduled in the past. Please select a future date and time.',
+					'beehiiv'
+				);
+			case 'beehiiv_newsletter_before_publish':
+				return __( 'The newsletter cannot be scheduled before this post is published.', 'beehiiv' );
+			case 'beehiiv_newsletter_invalid_date':
+				return __(
+					'The newsletter send date is not valid. Please select a different date and time.',
+					'beehiiv'
+				);
 			default:
 				return $error->get_error_message();
 		}

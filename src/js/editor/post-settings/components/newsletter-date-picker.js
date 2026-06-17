@@ -5,8 +5,128 @@ import { __, sprintf } from '@wordpress/i18n';
 import { Button, DateTimePicker, Dropdown, Icon } from '@wordpress/components';
 import { dateI18n, format, getSettings } from '@wordpress/date';
 import { closeSmall } from '@wordpress/icons';
+import { useMemo, useState } from '@wordpress/element';
 import { useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
+
+import PostSettingsNotice from './post-settings-notice';
+
+/**
+ * Validate a custom newsletter send datetime against now and the post publish time.
+ *
+ * @param {string|null|undefined} sendDate        ISO 8601 datetime, or empty for "On publish".
+ * @param {string|null|undefined} postPublishDate WordPress post publish datetime.
+ * @return {{ valid: true } | { valid: false, message: string }} Validation result.
+ */
+export function getNewsletterSendDateValidation( sendDate, postPublishDate ) {
+	if ( ! sendDate ) {
+		return { valid: true };
+	}
+
+	const send = new Date( sendDate );
+
+	if ( Number.isNaN( send.getTime() ) ) {
+		return {
+			valid: false,
+			message: __(
+				'The newsletter send date is not valid. Please select a different date and time.',
+				'beehiiv'
+			),
+		};
+	}
+
+	const now = new Date();
+	const publish = postPublishDate ? new Date( postPublishDate ) : null;
+
+	if ( send <= now ) {
+		return {
+			valid: false,
+			message: __(
+				'Newsletter cannot be scheduled in the past. Please select a future date and time.',
+				'beehiiv'
+			),
+		};
+	}
+
+	if (
+		publish &&
+		! Number.isNaN( publish.getTime() ) &&
+		publish > now &&
+		send < publish
+	) {
+		return {
+			valid: false,
+			message: __(
+				'The newsletter cannot be scheduled before this post is published.',
+				'beehiiv'
+			),
+		};
+	}
+
+	return { valid: true };
+}
+
+/**
+ * Whether the newsletter sends on publish rather than at a later custom time.
+ *
+ * @param {string|null|undefined} sendDate        ISO 8601 datetime, or empty for "On publish".
+ * @param {string|null|undefined} postPublishDate WordPress post publish datetime.
+ * @return {boolean} True when send tracks the post publish time.
+ */
+export function isNewsletterSendOnPublish( sendDate, postPublishDate ) {
+	if ( ! sendDate ) {
+		return true;
+	}
+
+	const send = new Date( sendDate );
+
+	if ( Number.isNaN( send.getTime() ) ) {
+		return false;
+	}
+
+	const publish = postPublishDate ? new Date( postPublishDate ) : null;
+
+	if ( ! publish || Number.isNaN( publish.getTime() ) ) {
+		return false;
+	}
+
+	return send.getTime() <= publish.getTime();
+}
+
+/**
+ * Label for the newsletter send schedule control.
+ *
+ * @param {string|null|undefined} sendDate        ISO 8601 datetime, or empty for "On publish".
+ * @param {string|null|undefined} postPublishDate WordPress post publish datetime.
+ * @return {string} Display label.
+ */
+export function getNewsletterSendDateLabel( sendDate, postPublishDate ) {
+	if ( isNewsletterSendOnPublish( sendDate, postPublishDate ) ) {
+		return __( 'On publish', 'beehiiv' );
+	}
+
+	return `${ format( 'M j, Y g:i a', sendDate ) } ${ dateI18n(
+		'T',
+		sendDate
+	) }`;
+}
+
+/**
+ * Earliest calendar day allowed for newsletter scheduling.
+ *
+ * @param {string|null|undefined} postPublishDate WordPress post publish datetime.
+ * @return {Date} Earliest allowed calendar day for the date picker.
+ */
+function getMinimumSendDay( postPublishDate ) {
+	const now = new Date();
+	const publish = postPublishDate ? new Date( postPublishDate ) : null;
+
+	if ( publish && ! Number.isNaN( publish.getTime() ) && publish > now ) {
+		return publish;
+	}
+
+	return now;
+}
 
 /**
  * @param {Object}                      props
@@ -15,92 +135,130 @@ import { store as editorStore } from '@wordpress/editor';
  */
 export default function NewsletterDatePicker( { date, onChange } ) {
 	const { l10n } = getSettings();
+	const [ pickerDate, setPickerDate ] = useState( null );
 
-	// Get the post publish date from the editor store and use it as the "On Publish" date.
 	const postPublishDate = useSelect(
 		( select ) => select( editorStore ).getEditedPostAttribute( 'date' ),
 		[]
 	);
 
-	const formattedPublishDate = postPublishDate
-		? `${ format( 'M j, Y g:i a', postPublishDate ) } ${ dateI18n(
-				'T',
-				postPublishDate
-		  ) }`
-		: '';
+	const minimumSendDay = useMemo(
+		() => getMinimumSendDay( postPublishDate ),
+		[ postPublishDate ]
+	);
 
-	let dateLabel = __( 'On publish', 'beehiiv' );
+	const validation = getNewsletterSendDateValidation( date, postPublishDate );
+	const dateLabel = getNewsletterSendDateLabel( date, postPublishDate );
 
-	if ( date ) {
-		dateLabel = `${ format( 'M j, Y g:i a', date ) } ${ dateI18n(
-			'T',
-			date
-		) }`;
-	} else if ( formattedPublishDate ) {
-		dateLabel = sprintf(
-			/* translators: %s: WordPress post publish date and time. */
-			__( 'On publish (%s)', 'beehiiv' ),
-			formattedPublishDate
-		);
-	}
+	const isInvalidDate = ( day ) => {
+		const candidate = new Date( day );
+		candidate.setHours( 0, 0, 0, 0 );
+
+		const minimum = new Date( minimumSendDay );
+		minimum.setHours( 0, 0, 0, 0 );
+
+		return candidate < minimum;
+	};
+
+	const openPicker = ( onToggle ) => {
+		setPickerDate( date ?? postPublishDate ?? new Date() );
+		onToggle();
+	};
+
+	const closePicker = ( onToggle ) => {
+		setPickerDate( null );
+		onToggle();
+	};
+
+	const handlePickerChange = ( newDate ) => {
+		setPickerDate( newDate );
+
+		if ( isNewsletterSendOnPublish( newDate, postPublishDate ) ) {
+			onChange( null );
+			return;
+		}
+
+		onChange( newDate );
+	};
+
+	const handleOnPublishClick = () => {
+		setPickerDate( postPublishDate ?? new Date() );
+		onChange( null );
+	};
 
 	return (
-		<Dropdown
-			className="beehiiv-newsletter-date"
-			popoverProps={ { placement: 'left-start' } }
-			focusOnMount
-			renderToggle={ ( { isOpen, onToggle } ) => (
-				<div className="beehiiv-newsletter-date__row">
-					<span className="beehiiv-newsletter-date__label">
-						{ __( 'Send', 'beehiiv' ) }
-					</span>
-					<Button
-						className="beehiiv-newsletter-date__toggle edit-post-post-schedule__toggle"
-						variant="tertiary"
-						label={ dateLabel }
-						showTooltip
-						aria-expanded={ isOpen }
-						aria-label={ sprintf(
-							/* translators: %s: selected send date or "On publish". */
-							__( 'Change newsletter send time: %s', 'beehiiv' ),
-							dateLabel
-						) }
-						onClick={ onToggle }
-					>
-						{ dateLabel }
-					</Button>
-				</div>
-			) }
-			renderContent={ ( { onToggle } ) => (
-				<div className="beehiiv-newsletter-date__popover">
-					<div className="beehiiv-newsletter-date__popover-actions">
-						<span className="beehiiv-newsletter-date__popover-label">
+		<>
+			<Dropdown
+				className="beehiiv-newsletter-date"
+				popoverProps={ { placement: 'left-start' } }
+				focusOnMount
+				onClose={ () => setPickerDate( null ) }
+				renderToggle={ ( { isOpen, onToggle } ) => (
+					<div className="beehiiv-newsletter-date__row">
+						<span className="beehiiv-newsletter-date__label">
 							{ __( 'Send', 'beehiiv' ) }
 						</span>
-						<div className="beehiiv-newsletter-date__popover-controls">
-							<Button
-								variant="tertiary"
-								onClick={ () => onChange( null ) }
-							>
-								{ __( 'On Publish', 'beehiiv' ) }
-							</Button>
-							<Button
-								onClick={ onToggle }
-								aria-label={ __( 'Close', 'beehiiv' ) }
-							>
-								<Icon icon={ closeSmall } />
-							</Button>
-						</div>
+						<Button
+							className="beehiiv-newsletter-date__toggle edit-post-post-schedule__toggle"
+							variant="tertiary"
+							label={ dateLabel }
+							showTooltip
+							aria-expanded={ isOpen }
+							aria-label={ sprintf(
+								/* translators: %s: selected send date or "On publish". */
+								__(
+									'Change newsletter send time: %s',
+									'beehiiv'
+								),
+								dateLabel
+							) }
+							onClick={ () =>
+								isOpen
+									? closePicker( onToggle )
+									: openPicker( onToggle )
+							}
+						>
+							{ dateLabel }
+						</Button>
 					</div>
-					<DateTimePicker
-						currentDate={ date ?? postPublishDate ?? new Date() }
-						onChange={ onChange }
-						startOfWeek={ l10n.startOfWeek }
-						dateOrder="dmy"
-						is12Hour
-					/>
-				</div>
+				) }
+				renderContent={ ( { onToggle } ) => (
+					<div className="beehiiv-newsletter-date__popover">
+						<div className="beehiiv-newsletter-date__popover-actions">
+							<span className="beehiiv-newsletter-date__popover-label">
+								{ __( 'Send', 'beehiiv' ) }
+							</span>
+							<div className="beehiiv-newsletter-date__popover-controls">
+								<Button
+									variant="tertiary"
+									onClick={ handleOnPublishClick }
+								>
+									{ __( 'On Publish', 'beehiiv' ) }
+								</Button>
+								<Button
+									onClick={ () => closePicker( onToggle ) }
+									aria-label={ __( 'Close', 'beehiiv' ) }
+								>
+									<Icon icon={ closeSmall } />
+								</Button>
+							</div>
+						</div>
+						<DateTimePicker
+							currentDate={ pickerDate ?? date ?? new Date() }
+							onChange={ handlePickerChange }
+							startOfWeek={ l10n.startOfWeek }
+							dateOrder="dmy"
+							is12Hour
+							isInvalidDate={ isInvalidDate }
+						/>
+					</div>
+				) }
+			/>
+			{ ! validation.valid && (
+				<PostSettingsNotice status="error">
+					{ validation.message }
+				</PostSettingsNotice>
 			) }
-		/>
+		</>
 	);
 }
