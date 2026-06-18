@@ -31,11 +31,11 @@ final class Config {
 	public const SCOPES = 'identify:read publications:read posts:read posts:write';
 
 	/**
-	 * Placeholder replaced at plugin release build time.
+	 * Built-in registration token; replaced at plugin release build time.
 	 *
 	 * @since 1.0.0
 	 */
-	private const REGISTRATION_TOKEN_PLACEHOLDER = 'BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER';
+	private const REGISTRATION_TOKEN = 'BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER';
 
 	/**
 	 * WP-config.php constant for registration token override.
@@ -99,7 +99,7 @@ final class Config {
 			}
 		}
 
-		return self::REGISTRATION_TOKEN_PLACEHOLDER;
+		return self::REGISTRATION_TOKEN;
 	}
 
 	/**
@@ -111,9 +111,9 @@ final class Config {
 	 */
 	public static function has_registration_token(): bool {
 
-		$token = self::get_registration_token();
+		$token = trim( self::get_registration_token() );
 
-		return '' !== $token && self::REGISTRATION_TOKEN_PLACEHOLDER !== $token;
+		return '' !== $token && 'BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER' !== $token;
 	}
 
 	/**
