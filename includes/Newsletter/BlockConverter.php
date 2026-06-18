@@ -245,8 +245,10 @@ final class BlockConverter {
 		}
 
 		// Include text alignment if specified.
-		if ( ! empty( $attrs['textAlign'] ) ) {
-			$beehiiv_block['textAlignment'] = $attrs['textAlign'];
+		$alignment = self::get_text_align_from_attrs( $attrs );
+
+		if ( null !== $alignment ) {
+			$beehiiv_block['textAlignment'] = $alignment;
 		}
 
 		return $beehiiv_block;
@@ -497,7 +499,8 @@ final class BlockConverter {
 	 * Convert WordPress quote block to Beehiiv quote block.
 	 *
 	 * WordPress quote block uses paragraph block for quote text (first child)
-	 * and optionally has citation. Text formatting is stripped from both.
+	 * and optionally has citation. A quote transformed to a pullquote nests
+	 * `core/pullquote` as the first inner block instead.
 	 *
 	 * @param array<string, mixed> $wp_block WordPress quote block data.
 	 * @return array<string, mixed> Beehiiv quote block data.
@@ -507,6 +510,11 @@ final class BlockConverter {
 
 		$attrs        = $wp_block['attrs'] ?? [];
 		$inner_blocks = $wp_block['innerBlocks'] ?? [];
+
+		// Transforming a quote to a pullquote nests core/pullquote inside core/quote.
+		if ( ! empty( $inner_blocks[0] ) && 'core/pullquote' === $inner_blocks[0]['blockName'] ) {
+			return self::convert_pullquote_block( $inner_blocks[0] );
+		}
 
 		// Get quote text from first paragraph block.
 		$quote_text = '';
@@ -530,8 +538,13 @@ final class BlockConverter {
 			$citation      = trim( $citation );
 		}
 
-		// Get alignment from textAlign attribute.
-		$alignment = $attrs['textAlign'] ?? 'left';
+		$alignment = self::get_text_align_from_attrs( $attrs );
+
+		if ( null === $alignment && ! empty( $inner_blocks[0]['attrs'] ) ) {
+			$alignment = self::get_text_align_from_attrs( $inner_blocks[0]['attrs'] );
+		}
+
+		$alignment = $alignment ?? 'left';
 
 		// Build Beehiiv quote block.
 		$beehiiv_block = [
@@ -614,14 +627,19 @@ final class BlockConverter {
 			return [];
 		}
 
-		// Get alignment from textAlign attribute.
-		$alignment = $attrs['textAlign'] ?? 'left';
+		$alignment = self::get_text_align_from_attrs( $attrs );
+
+		if ( null === $alignment && preg_match( '/has-text-align-(left|center|right)/', $inner_html, $matches ) ) {
+			$alignment = $matches[1];
+		}
+
+		$alignment = $alignment ?? 'center';
 
 		// Build Beehiiv quote block.
 		$beehiiv_block = [
 			'type'      => 'quote',
 			'quote'     => $quote_text,
-			'variant'   => 'inline',
+			'variant'   => 'quotation',
 			'alignment' => $alignment,
 		];
 
@@ -685,5 +703,28 @@ final class BlockConverter {
 			'size'      => 'large',
 			'target'    => '_blank',
 		];
+	}
+
+	/**
+	 * Resolve text alignment from WordPress block attributes.
+	 *
+	 * @param array<string, mixed> $attrs Block attributes.
+	 * @return string|null left, center, or right; null when not set.
+	 * @since 1.0.0
+	 */
+	private static function get_text_align_from_attrs( array $attrs ): ?string {
+		if ( ! empty( $attrs['textAlign'] ) && is_string( $attrs['textAlign'] ) ) {
+			return $attrs['textAlign'];
+		}
+
+		if (
+			isset( $attrs['style']['typography']['textAlign'] )
+			&& is_string( $attrs['style']['typography']['textAlign'] )
+			&& '' !== $attrs['style']['typography']['textAlign']
+		) {
+			return $attrs['style']['typography']['textAlign'];
+		}
+
+		return null;
 	}
 }
