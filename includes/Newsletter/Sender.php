@@ -174,6 +174,7 @@ final class Sender {
 						$post_id,
 						'send',
 						__(
+							// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
 							"We couldn't cancel the scheduled newsletter in Beehiiv. Try saving the post again, or cancel it directly in Beehiiv.",
 							'beehiiv'
 						)
@@ -525,6 +526,7 @@ final class Sender {
 		switch ( $error->get_error_code() ) {
 			case 'beehiiv_post_template_id_empty':
 				return __(
+					// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
 					'Choose a default post template in <a>Beehiiv settings</a>, or pick one for this post in the Beehiiv sidebar.',
 					'beehiiv'
 				);
@@ -544,6 +546,7 @@ final class Sender {
 				);
 			case 'beehiiv_newsletter_before_publish':
 				return __(
+					// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
 					"The newsletter can't send before this post publishes. Choose a later send time, or schedule the post first.",
 					'beehiiv'
 				);
@@ -676,7 +679,10 @@ final class Sender {
 		$mapped = self::format_api_error_message( $error );
 
 		if ( '' === $mapped ) {
-			return __( "Something went wrong and the newsletter couldn't be updated. Try saving the post again.", 'beehiiv' );
+			return __(
+				"Something went wrong and the newsletter couldn't be updated. Try saving the post again.",
+				'beehiiv'
+			);
 		}
 
 		return $mapped;

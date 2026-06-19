@@ -281,6 +281,7 @@ final class PostSettingsBuilder {
 					return new WP_Error(
 						'beehiiv_newsletter_in_past',
 						__(
+							// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
 							'That send date has already passed. Pick a future date and time in the newsletter schedule.',
 							'beehiiv'
 						)
@@ -347,6 +348,7 @@ final class PostSettingsBuilder {
 				return new WP_Error(
 					'beehiiv_newsletter_before_publish',
 					__(
+						// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
 						"The newsletter can't send before this post publishes. Choose a later send time, or schedule the post first.",
 						'beehiiv'
 					)
