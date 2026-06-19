@@ -532,7 +532,7 @@ final class Sender {
 				return __( 'Add a title and body content before sending this newsletter.', 'beehiiv' );
 			case 'beehiiv_blocks_empty':
 				return __(
-					"This post doesn't include any blocks Beehiiv can send (for example paragraphs, headings, or images). Add supported content and try again.",
+					"This post doesn't include any blocks Beehiiv can send. Add supported content and try again.",
 					'beehiiv'
 				);
 			case 'beehiiv_post_not_found':
@@ -583,6 +583,72 @@ final class Sender {
 	}
 
 	/**
+	 * Map raw API and transport error strings to editor-friendly copy.
+	 *
+	 * Log messages keep the original string from {@see Posts} or {@see Client}.
+	 *
+	 * @param string $error Error string from the API client.
+	 * @return string Mapped message, or empty when input is empty.
+	 * @since 1.0.0
+	 */
+	private static function format_api_error_message( string $error ): string {
+		$error = trim( $error );
+
+		if ( '' === $error ) {
+			return '';
+		}
+
+		if ( preg_match( '/^HTTP 404:/i', $error ) ) {
+			return __( 'Post not found.', 'beehiiv' );
+		}
+
+		if ( preg_match( '/^HTTP 401:/i', $error ) || preg_match( '/^HTTP 403:/i', $error ) ) {
+			return __(
+				'Your Beehiiv connection expired. Reconnect in <a>Beehiiv settings</a>.',
+				'beehiiv'
+			);
+		}
+
+		if ( preg_match( '/^HTTP 422:/i', $error ) ) {
+			return __( 'Beehiiv rejected this newsletter.', 'beehiiv' );
+		}
+
+		if ( preg_match( '/^HTTP 429:/i', $error ) ) {
+			return __( 'Too many requests. Try again in a moment.', 'beehiiv' );
+		}
+
+		if ( preg_match( '/^HTTP 5\d\d:/i', $error ) ) {
+			return __( 'Beehiiv is temporarily unavailable. Try again later.', 'beehiiv' );
+		}
+
+		if ( preg_match( '/^HTTP \d+:/i', $error ) ) {
+			return __( 'Something went wrong. Try saving the post again.', 'beehiiv' );
+		}
+
+		if ( 'Publication ID is empty.' === $error ) {
+			return self::no_publication_message();
+		}
+
+		if ( 'Publication ID or post ID is empty.' === $error ) {
+			return __( 'Post not found.', 'beehiiv' );
+		}
+
+		if ( 'Update payload is empty.' === $error || 'No post ID found in the Beehiiv API response.' === $error ) {
+			return __( 'Something went wrong. Try saving the post again.', 'beehiiv' );
+		}
+
+		if ( false !== stripos( $error, 'timed out' ) ) {
+			return __( 'Beehiiv took too long to respond. Try again.', 'beehiiv' );
+		}
+
+		if ( false !== stripos( $error, 'cURL error' ) ) {
+			return __( "Couldn't reach Beehiiv. Try again.", 'beehiiv' );
+		}
+
+		return $error;
+	}
+
+	/**
 	 * Map Beehiiv API failures to editor-friendly copy.
 	 *
 	 * @param string $error Error string from the API client.
@@ -590,13 +656,13 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	private static function format_send_error_message( string $error ): string {
-		$error = trim( $error );
+		$mapped = self::format_api_error_message( $error );
 
-		if ( '' === $error ) {
+		if ( '' === $mapped ) {
 			return __( "Something went wrong and the newsletter wasn't sent. Try saving the post again.", 'beehiiv' );
 		}
 
-		return $error;
+		return $mapped;
 	}
 
 	/**
@@ -607,13 +673,13 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	private static function format_update_error_message( string $error ): string {
-		$error = trim( $error );
+		$mapped = self::format_api_error_message( $error );
 
-		if ( '' === $error ) {
+		if ( '' === $mapped ) {
 			return __( "Something went wrong and the newsletter couldn't be updated. Try saving the post again.", 'beehiiv' );
 		}
 
-		return $error;
+		return $mapped;
 	}
 
 	/**
