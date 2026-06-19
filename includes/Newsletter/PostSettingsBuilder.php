@@ -281,7 +281,8 @@ final class PostSettingsBuilder {
 					return new WP_Error(
 						'beehiiv_newsletter_in_past',
 						__(
-							'Newsletter cannot be scheduled in the past. Please select a future date and time.',
+							// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
+							'That send date has already passed. Pick a future date and time in the newsletter schedule.',
 							'beehiiv'
 						)
 					);
@@ -304,7 +305,7 @@ final class PostSettingsBuilder {
 			return new WP_Error(
 				'beehiiv_newsletter_invalid_date',
 				__(
-					'The newsletter send date is not valid. Please select a different date and time.',
+					"That send date isn't valid. Open the newsletter schedule and choose a different date and time.",
 					'beehiiv'
 				)
 			);
@@ -329,7 +330,7 @@ final class PostSettingsBuilder {
 				return new WP_Error(
 					'beehiiv_newsletter_in_past',
 					__(
-						'Newsletter cannot be scheduled in the past. Please select a future date and time.',
+						'That send date has already passed. Pick a future date and time in the newsletter schedule.',
 						'beehiiv'
 					)
 				);
@@ -346,7 +347,11 @@ final class PostSettingsBuilder {
 			if ( $publish > $now && $send < $publish ) {
 				return new WP_Error(
 					'beehiiv_newsletter_before_publish',
-					__( 'The newsletter cannot be scheduled before this post is published.', 'beehiiv' )
+					__(
+						// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
+						"The newsletter can't send before this post publishes. Choose a later send time, or schedule the post first.",
+						'beehiiv'
+					)
 				);
 			}
 
@@ -355,7 +360,7 @@ final class PostSettingsBuilder {
 			return new WP_Error(
 				'beehiiv_newsletter_invalid_date',
 				__(
-					'The newsletter send date is not valid. Please select a different date and time.',
+					"That send date isn't valid. Open the newsletter schedule and choose a different date and time.",
 					'beehiiv'
 				)
 			);

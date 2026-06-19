@@ -100,7 +100,7 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 			help={
 				! value && defaultPostTemplateId
 					? __(
-							'Using the default template from plugin settings.',
+							'Using the template from plugin settings.',
 							'beehiiv'
 					  )
 					: undefined

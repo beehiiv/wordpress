@@ -29,7 +29,7 @@ export function getNewsletterSendDateValidation( sendDate, postPublishDate ) {
 		return {
 			valid: false,
 			message: __(
-				'The newsletter send date is not valid. Please select a different date and time.',
+				'Invalid date. Please choose a different date and time.',
 				'beehiiv'
 			),
 		};
@@ -42,7 +42,7 @@ export function getNewsletterSendDateValidation( sendDate, postPublishDate ) {
 		return {
 			valid: false,
 			message: __(
-				'Newsletter cannot be scheduled in the past. Please select a future date and time.',
+				'Send date has already passed. Please pick a future date and time.',
 				'beehiiv'
 			),
 		};
@@ -57,7 +57,7 @@ export function getNewsletterSendDateValidation( sendDate, postPublishDate ) {
 		return {
 			valid: false,
 			message: __(
-				'The newsletter cannot be scheduled before this post is published.',
+				"The newsletter can't send before this post is published. Choose a later send time, or schedule the post first.",
 				'beehiiv'
 			),
 		};
