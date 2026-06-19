@@ -7,7 +7,6 @@
 
 namespace Beehiiv\Admin;
 
-use Beehiiv\API\Client;
 use Beehiiv\API\Resources\PostTemplates;
 use Beehiiv\API\Resources\Publications;
 use Beehiiv\Config;
@@ -86,14 +85,6 @@ final class Registrar {
 			[
 				'label_for' => 'beehiiv_post_template_id',
 			]
-		);
-
-		add_settings_field(
-			'beehiiv_api_debug',
-			__( 'API debug', 'beehiiv' ),
-			[ self::class, 'render_api_debug_field' ],
-			$page_slug,
-			self::PAGE_SETTINGS_SECTION_ID
 		);
 	}
 
@@ -214,62 +205,5 @@ final class Registrar {
 			<?php esc_html_e( 'Default post template for newsletters sent from this site.', 'beehiiv' ); ?>
 		</p>
 		<?php
-	}
-
-	/**
-	 * Temporary: show raw Beehiiv API responses from this page load.
-	 *
-	 * @since 1.0.0
-	 */
-	public static function render_api_debug_field(): void {
-		$log = Client::get_request_log();
-
-		if ( empty( $log ) ) {
-			echo '<p class="description">' . esc_html__(
-				'No API requests were made on this page load.',
-				'beehiiv'
-			) . '</p>';
-			return;
-		}
-
-		echo '<p class="description">' . esc_html__(
-			// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
-			'Temporary debug output from Beehiiv API calls made while rendering the fields above. Remove before release.',
-			'beehiiv'
-		) . '</p>';
-
-		foreach ( $log as $index => $entry ) {
-			$label = sprintf(
-				/* translators: %d: 1-based request number. */
-				__( 'Request %d', 'beehiiv' ),
-				$index + 1
-			);
-			?>
-			<details class="beehiiv-api-debug" open>
-				<summary>
-					<strong><?php echo esc_html( $label ); ?></strong>
-					<?php if ( ! empty( $entry['url'] ) ) : ?>
-						<code><?php echo esc_html( (string) $entry['url'] ); ?></code>
-					<?php endif; ?>
-					<?php if ( isset( $entry['status_code'] ) && null !== $entry['status_code'] ) : ?>
-						— <?php echo esc_html( 'HTTP ' . (string) $entry['status_code'] ); ?>
-					<?php endif; ?>
-					<?php if ( ! empty( $entry['wp_error'] ) ) : ?>
-						— <?php echo esc_html( (string) $entry['wp_error'] ); ?>
-					<?php endif; ?>
-				</summary>
-				<pre class="beehiiv-api-debug__body">
-					<?php
-					echo esc_html(
-						wp_json_encode(
-							$entry,
-							JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-						)
-					);
-					?>
-				</pre>
-			</details>
-			<?php
-		}
 	}
 }

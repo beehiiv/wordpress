@@ -6,27 +6,3 @@
 	width: 420px;
 	max-width: 100%;
 }
-
-/* Debug API requests - REMOVE LATER */
-.beehiiv-api-debug {
-	margin: 1em 0;
-	max-width: 960px;
-
-	summary code {
-		font-size: 12px;
-		word-break: break-all;
-	}
-
-	&__body {
-		margin: 0.5em 0 0;
-		padding: 12px;
-		overflow: auto;
-		max-height: 420px;
-		background: #f6f7f7;
-		border: 1px solid #c3c4c7;
-		font-size: 12px;
-		line-height: 1.45;
-		white-space: pre-wrap;
-		word-break: break-word;
-	}
-}
