@@ -1,12 +1,11 @@
 /**
  * Connection, configuration, and newsletter send error notices.
  */
-import { __, sprintf } from '@wordpress/i18n';
-import { createInterpolateElement } from '@wordpress/element';
-import { ExternalLink } from '@wordpress/components';
+import { __ } from '@wordpress/i18n';
 
 import PostSettingsNotice from './post-settings-notice';
 import { useBeehiivEditorConfig } from '../hooks/use-beehiiv-editor-config';
+import renderSettingsLinkMessage from '../utils/render-settings-link-message';
 
 /**
  * @param {Object}                                                        props
@@ -19,14 +18,12 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 	if ( ! isConnected ) {
 		return (
 			<PostSettingsNotice status="error">
-				{ createInterpolateElement(
+				{ renderSettingsLinkMessage(
 					__(
-						'This site is not connected to Beehiiv. <a>Connect in Beehiiv settings</a> to send newsletters.',
+						'Connect your Beehiiv account in <a>Beehiiv settings</a> before you can send newsletters.',
 						'beehiiv'
 					),
-					{
-						a: <ExternalLink href={ settingsUrl } />,
-					}
+					settingsUrl
 				) }
 			</PostSettingsNotice>
 		);
@@ -36,17 +33,17 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 
 	if ( ! hasPublication && ! hasPostTemplate ) {
 		errorMessage = __(
-			'Setup required: Select a publication and post template in <a>Beehiiv Settings</a> to start sending newsletters.',
+			'Choose a publication and default post template in <a>Beehiiv settings</a>.',
 			'beehiiv'
 		);
 	} else if ( ! hasPublication ) {
 		errorMessage = __(
-			'Setup required: Select a publication in <a>Beehiiv Settings</a> to start sending newsletters.',
+			'Choose a publication in <a>Beehiiv settings</a> to send newsletters.',
 			'beehiiv'
 		);
 	} else if ( ! hasPostTemplate ) {
 		errorMessage = __(
-			'Setup required: Select a post template in <a>Beehiiv Settings</a> to start sending newsletters.',
+			'Choose a default post template in <a>Beehiiv settings</a> to send newsletters.',
 			'beehiiv'
 		);
 	}
@@ -54,9 +51,7 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 	if ( errorMessage ) {
 		return (
 			<PostSettingsNotice status="error">
-				{ createInterpolateElement( errorMessage, {
-					a: <ExternalLink href={ settingsUrl } />,
-				} ) }
+				{ renderSettingsLinkMessage( errorMessage, settingsUrl ) }
 			</PostSettingsNotice>
 		);
 	}
@@ -70,22 +65,16 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 	if ( newsletterErrorType === 'save' ) {
 		return (
 			<PostSettingsNotice status="error">
-				{ sprintf(
-					/* translators: %s: error message from the server. */
-					__( 'Could not save this post to Beehiiv: %s', 'beehiiv' ),
-					newsletterError
-				) }
+				{ __( 'Could not save this post to Beehiiv:', 'beehiiv' ) }{ ' ' }
+				{ renderSettingsLinkMessage( newsletterError, settingsUrl ) }
 			</PostSettingsNotice>
 		);
 	}
 
 	return (
 		<PostSettingsNotice status="error">
-			{ sprintf(
-				/* translators: %s: error message from the server or Beehiiv API. */
-				__( 'Could not send this post to Beehiiv: %s', 'beehiiv' ),
-				newsletterError
-			) }
+			{ __( 'Could not send this post to Beehiiv:', 'beehiiv' ) }{ ' ' }
+			{ renderSettingsLinkMessage( newsletterError, settingsUrl ) }
 		</PostSettingsNotice>
 	);
 }

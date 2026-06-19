@@ -174,7 +174,7 @@ final class Sender {
 						$post_id,
 						'send',
 						__(
-							'Beehiiv could not cancel this scheduled newsletter. Please try again.',
+							"We couldn't cancel the scheduled newsletter in Beehiiv. Try saving the post again, or cancel it directly in Beehiiv.",
 							'beehiiv'
 						)
 					);
@@ -230,7 +230,7 @@ final class Sender {
 			self::record_error(
 				$post->ID,
 				'send',
-				__( 'This site is not connected to Beehiiv.', 'beehiiv' )
+				self::not_connected_message()
 			);
 			return;
 		}
@@ -260,7 +260,7 @@ final class Sender {
 			self::record_error(
 				$post->ID,
 				'send',
-				__( 'This site is not connected to Beehiiv.', 'beehiiv' )
+				self::not_connected_message()
 			);
 			return;
 		}
@@ -288,7 +288,7 @@ final class Sender {
 			self::fail(
 				$post_id,
 				'send',
-				__( 'This site is not connected to Beehiiv.', 'beehiiv' ),
+				self::not_connected_message(),
 				'Beehiiv is not connected.'
 			);
 			return;
@@ -300,7 +300,7 @@ final class Sender {
 			self::fail(
 				$post_id,
 				'send',
-				__( 'No Beehiiv publication is configured.', 'beehiiv' ),
+				self::no_publication_message(),
 				'Publication ID is not configured.'
 			);
 			return;
@@ -312,7 +312,7 @@ final class Sender {
 			self::fail(
 				$post_id,
 				'save',
-				__( 'This post could not be found.', 'beehiiv' ),
+				__( 'This post no longer exists. Save or reload the editor and try again.', 'beehiiv' ),
 				'Post not found.'
 			);
 			return;
@@ -374,7 +374,7 @@ final class Sender {
 			self::fail(
 				$post_id,
 				'send',
-				__( 'This site is not connected to Beehiiv.', 'beehiiv' ),
+				self::not_connected_message(),
 				'Beehiiv is not connected.'
 			);
 			return;
@@ -386,7 +386,7 @@ final class Sender {
 			self::fail(
 				$post_id,
 				'send',
-				__( 'No Beehiiv publication is configured.', 'beehiiv' ),
+				self::no_publication_message(),
 				'Publication ID is not configured.'
 			);
 			return;
@@ -405,7 +405,7 @@ final class Sender {
 			self::fail(
 				$post_id,
 				'save',
-				__( 'This post could not be found.', 'beehiiv' ),
+				__( 'This post no longer exists. Save or reload the editor and try again.', 'beehiiv' ),
 				'Post not found.'
 			);
 			return;
@@ -524,28 +524,62 @@ final class Sender {
 	private static function format_save_error_message( \WP_Error $error ): string {
 		switch ( $error->get_error_code() ) {
 			case 'beehiiv_post_template_id_empty':
-				return __( 'No default post template is configured in Beehiiv settings.', 'beehiiv' );
+				return __(
+					'Choose a default post template in <a>Beehiiv settings</a>, or pick one for this post in the Beehiiv sidebar.',
+					'beehiiv'
+				);
 			case 'beehiiv_post_title_or_content_empty':
-				return __( 'Add a title and content before sending to Beehiiv.', 'beehiiv' );
+				return __( 'Add a title and body content before sending this newsletter.', 'beehiiv' );
 			case 'beehiiv_blocks_empty':
-				return __( 'This post has no content blocks supported by Beehiiv.', 'beehiiv' );
+				return __(
+					"This post doesn't include any blocks Beehiiv can send (for example paragraphs, headings, or images). Add supported content and try again.",
+					'beehiiv'
+				);
 			case 'beehiiv_post_not_found':
-				return __( 'This post could not be found.', 'beehiiv' );
+				return __( 'This post no longer exists. Save or reload the editor and try again.', 'beehiiv' );
 			case 'beehiiv_newsletter_in_past':
 				return __(
-					'Newsletter cannot be scheduled in the past. Please select a future date and time.',
+					'That send date has already passed. Pick a future date and time in the newsletter schedule.',
 					'beehiiv'
 				);
 			case 'beehiiv_newsletter_before_publish':
-				return __( 'The newsletter cannot be scheduled before this post is published.', 'beehiiv' );
+				return __(
+					"The newsletter can't send before this post publishes. Choose a later send time, or schedule the post first.",
+					'beehiiv'
+				);
 			case 'beehiiv_newsletter_invalid_date':
 				return __(
-					'The newsletter send date is not valid. Please select a different date and time.',
+					"That send date isn't valid. Open the newsletter schedule and choose a different date and time.",
 					'beehiiv'
 				);
 			default:
 				return $error->get_error_message();
 		}
+	}
+
+	/**
+	 * User-facing message when the site is not connected to Beehiiv.
+	 *
+	 * Uses an `<a>` placeholder rendered as a settings link in the block editor.
+	 *
+	 * @return string
+	 * @since 1.0.0
+	 */
+	private static function not_connected_message(): string {
+		return __(
+			'Connect your Beehiiv account in <a>Beehiiv settings</a> to send this newsletter.',
+			'beehiiv'
+		);
+	}
+
+	/**
+	 * User-facing message when no publication is configured.
+	 *
+	 * @return string
+	 * @since 1.0.0
+	 */
+	private static function no_publication_message(): string {
+		return __( 'Choose a publication in <a>Beehiiv settings</a>, then try again.', 'beehiiv' );
 	}
 
 	/**
@@ -559,7 +593,7 @@ final class Sender {
 		$error = trim( $error );
 
 		if ( '' === $error ) {
-			return __( 'Beehiiv could not send this newsletter. Please try again.', 'beehiiv' );
+			return __( "Something went wrong and the newsletter wasn't sent. Try saving the post again.", 'beehiiv' );
 		}
 
 		return $error;
@@ -576,7 +610,7 @@ final class Sender {
 		$error = trim( $error );
 
 		if ( '' === $error ) {
-			return __( 'Beehiiv could not update this newsletter. Please try again.', 'beehiiv' );
+			return __( "Something went wrong and the newsletter couldn't be updated. Try saving the post again.", 'beehiiv' );
 		}
 
 		return $error;
