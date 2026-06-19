@@ -102,6 +102,11 @@ function BeehiivPostSettingsPanel() {
 							onChange={ setSendToNewsletterDate }
 						/>
 
+						<NewsletterTemplateSelect
+							value={ beehiivPostTemplateId }
+							onChange={ setBeehiivPostTemplateId }
+						/>
+
 						<ToggleControl
 							className="beehiiv-post-settings-snippet"
 							label={ __( 'Snippet newsletter', 'beehiiv' ) }
@@ -125,11 +130,6 @@ function BeehiivPostSettingsPanel() {
 							}
 							checked={ sendToNewsletterSnippet }
 							onChange={ setSendToNewsletterSnippet }
-						/>
-
-						<NewsletterTemplateSelect
-							value={ beehiivPostTemplateId }
-							onChange={ setBeehiivPostTemplateId }
 						/>
 					</>
 				) }
