@@ -47,27 +47,47 @@ final class Sender {
 		add_action( 'future_to_publish', [ self::class, 'on_future_to_publish' ], 10, 1 );
 		add_action( 'transition_post_status', [ self::class, 'on_transition_post_status' ], 10, 3 );
 		add_action( 'before_delete_post', [ self::class, 'on_before_delete_post' ], 10, 1 );
-		add_filter( 'update_post_metadata', [ self::class, 'guard_beehiiv_post_id' ], 10, 3 );
+		add_filter( 'update_post_metadata', [ self::class, 'guard_beehiiv_post_id' ], 10, 4 );
 	}
 
 	/**
 	 * Prevent clearing or changing the Beehiiv post ID after a successful send.
 	 *
-	 * @param mixed  $check    Whether to allow updating metadata for the given type.
-	 * @param int    $post_id  Post ID.
-	 * @param string $meta_key Meta key.
-	 * @return mixed False to block the update, or $check to proceed.
+	 * During block editor publish, newsletter sync can run on `transition_post_status`
+	 * before REST meta is applied. The REST payload may include `_beehiiv_post_id`
+	 * as an empty string even though the database already has a linked ID. Do not
+	 * overwrite the stored value; short-circuit as success so the REST save does not fail.
+	 *
 	 * @since 1.0.0
+	 *
+	 * @param mixed  $check      Whether to allow updating metadata for the given type.
+	 * @param int    $post_id    Post ID.
+	 * @param string $meta_key   Meta key.
+	 * @param mixed  $meta_value Proposed meta value.
+	 *
+	 * @return mixed Null to proceed, true to allow without updating, false to block.
 	 */
-	public static function guard_beehiiv_post_id( $check, $post_id, $meta_key ) {
-		if (
-			Meta::BEEHIIV_POST_ID === $meta_key
-			&& self::has_beehiiv_post_id( (int) $post_id )
-		) {
-			return false;
+	public static function guard_beehiiv_post_id( $check, $post_id, $meta_key, $meta_value ) {
+
+		if ( Meta::BEEHIIV_POST_ID !== $meta_key ) {
+			return $check;
 		}
 
-		return $check;
+		$existing = get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true );
+		$existing = is_string( $existing ) ? trim( $existing ) : '';
+
+		if ( '' === $existing ) {
+			return $check;
+		}
+
+		$incoming = is_string( $meta_value ) ? trim( wp_unslash( $meta_value ) ) : '';
+
+		if ( $incoming === $existing ) {
+			return $check;
+		}
+
+		// Keep the stored ID when REST sends empty or attempts to change it.
+		return true;
 	}
 
 	/**
