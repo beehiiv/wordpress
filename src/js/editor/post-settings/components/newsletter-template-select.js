@@ -3,7 +3,7 @@
  */
 import { useEffect, useMemo, useState } from '@wordpress/element';
 import { SelectControl, Spinner } from '@wordpress/components';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import apiFetch from '@wordpress/api-fetch';
 
 import { useBeehiivEditorConfig } from '../hooks/use-beehiiv-editor-config';
@@ -54,29 +54,66 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 	}, [ publicationId ] );
 
 	const options = useMemo( () => {
-		const opts = templates
-			.filter( ( item ) => item?.id )
-			.map( ( item ) => ( {
-				value: item.id,
-				label: item.name || item.id,
-			} ) );
+		const opts = [
+			{
+				value: '',
+				label: __( 'Default (from Beehiiv settings)', 'beehiiv' ),
+			},
+			...templates
+				.filter( ( item ) => item?.id )
+				.map( ( item ) => ( {
+					value: item.id,
+					label: item.name || item.id,
+				} ) ),
+		];
 
-		const effectiveValue = value || defaultPostTemplateId;
-
-		if (
-			effectiveValue &&
-			! opts.some( ( option ) => option.value === effectiveValue )
-		) {
+		if ( value && ! opts.some( ( option ) => option.value === value ) ) {
 			opts.push( {
-				value: effectiveValue,
-				label: effectiveValue,
+				value,
+				label: value,
 			} );
 		}
 
 		return opts;
-	}, [ templates, value, defaultPostTemplateId ] );
+	}, [ templates, value ] );
 
-	const selectedValue = value || defaultPostTemplateId || '';
+	const defaultTemplateName = useMemo( () => {
+		if ( ! defaultPostTemplateId ) {
+			return '';
+		}
+
+		const match = templates.find(
+			( item ) => item?.id === defaultPostTemplateId
+		);
+
+		return match?.name || defaultPostTemplateId;
+	}, [ templates, defaultPostTemplateId ] );
+
+	const helpText = useMemo( () => {
+		if ( value ) {
+			return undefined;
+		}
+
+		if ( defaultTemplateName ) {
+			return sprintf(
+				/* translators: %s: post template name from Beehiiv settings */
+				__( 'Uses %s from Beehiiv settings.', 'beehiiv' ),
+				defaultTemplateName
+			);
+		}
+
+		if ( defaultPostTemplateId ) {
+			return __(
+				'Uses the template configured in Beehiiv settings.',
+				'beehiiv'
+			);
+		}
+
+		return __(
+			'No site default is set. Choose a template or configure one in Beehiiv settings.',
+			'beehiiv'
+		);
+	}, [ value, defaultTemplateName, defaultPostTemplateId ] );
 
 	if ( isLoading && options.length === 0 ) {
 		return (
@@ -94,17 +131,10 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 		<SelectControl
 			className="beehiiv-newsletter-template"
 			label={ __( 'Post template', 'beehiiv' ) }
-			value={ selectedValue }
+			value={ value }
 			options={ options }
 			onChange={ onChange }
-			help={
-				! value && defaultPostTemplateId
-					? __(
-							'Using the template from plugin settings.',
-							'beehiiv'
-					  )
-					: undefined
-			}
+			help={ helpText }
 		/>
 	);
 }
