@@ -462,10 +462,10 @@ final class Sender {
 	 * The update API rejects `scheduled_at` changes on confirmed posts, so we archive the
 	 * existing post and create a new one with the same content and a later schedule.
 	 *
-	 * @param int                                                              $post_id         Post ID.
-	 * @param string                                                           $publication_id  Publication ID.
-	 * @param string                                                           $beehiiv_post_id Linked Beehiiv post ID.
-	 * @param string                                                           $scheduled_at    New UTC `scheduled_at`.
+	 * @param int                                                       $post_id         Post ID.
+	 * @param string                                                    $publication_id  Publication ID.
+	 * @param string                                                    $beehiiv_post_id Linked Beehiiv post ID.
+	 * @param string                                                    $scheduled_at    New UTC `scheduled_at`.
 	 * @param array{scheduled_at: string|null, clear_custom_date: bool} $meta            Meta updates.
 	 * @return void
 	 * @since 1.0.0
@@ -546,7 +546,7 @@ final class Sender {
 	/**
 	 * Apply post meta changes after a successful Beehiiv newsletter update.
 	 *
-	 * @param int                                                              $post_id Post ID.
+	 * @param int                                                       $post_id Post ID.
 	 * @param array{scheduled_at: string|null, clear_custom_date: bool} $meta    Meta updates.
 	 * @return void
 	 * @since 1.0.0

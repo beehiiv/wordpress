@@ -29,7 +29,9 @@ function formatSiteDateTime( dateValue ) {
 }
 
 /**
- * @param {string|null|undefined} scheduledAtUtc UTC ISO 8601 `scheduled_at` from Beehiiv sync.
+ * Resolve the next future Beehiiv send datetime string.
+ *
+ * @param {string|null|undefined} scheduledAtUtc       UTC ISO 8601 `scheduled_at` from Beehiiv sync.
  * @param {string|null|undefined} sendToNewsletterDate Custom send datetime from post meta.
  * @return {string|null} Raw datetime string for a future send, or null when not scheduled.
  */
@@ -59,7 +61,7 @@ function getFutureNewsletterSendDateString(
  *
  * @param {string|null|undefined} scheduledAtUtc       UTC ISO 8601 `scheduled_at` from Beehiiv sync.
  * @param {string|null|undefined} sendToNewsletterDate Custom send datetime from post meta.
- * @return {string}
+ * @return {string} User-facing notice for the linked newsletter state.
  */
 export function getNewsletterLinkedNoticeMessage(
 	scheduledAtUtc,

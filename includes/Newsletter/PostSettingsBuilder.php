@@ -124,7 +124,10 @@ final class PostSettingsBuilder {
 	 * does not allow updating `scheduled_at` on confirmed posts.
 	 *
 	 * @param int $post_id Post ID.
-	 * @return array{payload: array<string, mixed>, meta: array{scheduled_at: string|null, clear_custom_date: bool}}|WP_Error
+	 * @return array{
+	 *     payload: array<string, mixed>,
+	 *     meta: array{scheduled_at: string|null, clear_custom_date: bool}
+	 * }|WP_Error
 	 * @since 1.0.0
 	 */
 	public static function build_update( int $post_id ) {
@@ -430,8 +433,8 @@ final class PostSettingsBuilder {
 			$stored_timestamp = self::infer_stored_timestamp_from_meta( $post );
 		}
 
-		$custom_date = get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_DATE, true );
-		$custom_date = is_string( $custom_date ) ? trim( $custom_date ) : '';
+		$custom_date       = get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_DATE, true );
+		$custom_date       = is_string( $custom_date ) ? trim( $custom_date ) : '';
 		$clear_custom_date = false;
 
 		$wp_publish_ts = self::get_wp_publish_utc_timestamp( $post );
@@ -443,6 +446,7 @@ final class PostSettingsBuilder {
 				return new WP_Error(
 					'beehiiv_newsletter_invalid_date',
 					__(
+						// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
 						"That send date isn't valid. Open the newsletter schedule and choose a different date and time.",
 						'beehiiv'
 					)
