@@ -1,5 +1,5 @@
 /**
- * Beehiiv post settings plugin sidebar.
+ * beehiiv post settings plugin sidebar.
  *
  * Registers a dedicated editor sidebar on the default `post` post type.
  */
@@ -160,7 +160,7 @@ function BeehiivPostSettingsSidebar() {
 	return (
 		<PluginSidebar
 			name={ SIDEBAR_NAME }
-			title={ __( 'Beehiiv', 'beehiiv' ) }
+			title={ __( 'beehiiv', 'beehiiv' ) }
 			icon={ sidebarIcon }
 			className="beehiiv-post-settings"
 		>

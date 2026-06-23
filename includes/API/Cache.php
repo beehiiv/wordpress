@@ -1,6 +1,6 @@
 <?php
 /**
- * Transient cache for Beehiiv publications and templates.
+ * Transient cache for beehiiv publications and templates.
  *
  * @package beehiiv
  */

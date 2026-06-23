@@ -91,21 +91,21 @@ final class TokenRefresher {
 		if ( null !== $response['error'] ) {
 			return new WP_Error(
 				'beehiiv_refresh_transport',
-				__( 'Could not reach Beehiiv to refresh the connection.', 'beehiiv' )
+				__( 'Could not reach beehiiv to refresh the connection.', 'beehiiv' )
 			);
 		}
 
 		if ( 200 !== $response['status'] || ! is_array( $response['body'] ) ) {
 			return new WP_Error(
 				'beehiiv_refresh_failed',
-				__( 'Beehiiv rejected the token refresh request.', 'beehiiv' )
+				__( 'beehiiv rejected the token refresh request.', 'beehiiv' )
 			);
 		}
 
 		if ( ! TokenStore::save_tokens( $client_id, $response['body'], TokenStore::get_connected_user() ) ) {
 			return new WP_Error(
 				'beehiiv_refresh_storage',
-				__( 'Could not save refreshed Beehiiv credentials.', 'beehiiv' )
+				__( 'Could not save refreshed beehiiv credentials.', 'beehiiv' )
 			);
 		}
 

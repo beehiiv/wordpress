@@ -1,6 +1,6 @@
 <?php
 /**
- * Beehiiv connection helpers.
+ * Connection helpers for beehiiv.
  *
  * @package beehiiv
  */
@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 final class Manager {
 
 	/**
-	 * Whether the site can call the Beehiiv API via OAuth.
+	 * Whether the site can call the beehiiv API via OAuth.
 	 *
 	 * @since 1.0.0
 	 */
@@ -31,7 +31,7 @@ final class Manager {
 	}
 
 	/**
-	 * Valid OAuth access token for Beehiiv API requests.
+	 * Valid OAuth access token for beehiiv API requests.
 	 *
 	 * @since 1.0.0
 	 *
@@ -61,7 +61,7 @@ final class Manager {
 	}
 
 	/**
-	 * Connected Beehiiv account label for the settings UI.
+	 * Connected beehiiv account label for the settings UI.
 	 *
 	 * @since 1.0.0
 	 *
@@ -113,7 +113,7 @@ final class Manager {
 	}
 
 	/**
-	 * URL to disconnect the Beehiiv account.
+	 * URL to disconnect the beehiiv account.
 	 *
 	 * @since 1.0.0
 	 *
@@ -128,7 +128,7 @@ final class Manager {
 	}
 
 	/**
-	 * URL for users without a Beehiiv account.
+	 * URL for users without a beehiiv account.
 	 *
 	 * @since 1.0.0
 	 *

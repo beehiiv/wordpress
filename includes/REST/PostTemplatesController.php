@@ -1,6 +1,6 @@
 <?php
 /**
- * REST API controller for Beehiiv post templates.
+ * REST API controller for beehiiv post templates.
  *
  * @package beehiiv
  */
@@ -83,7 +83,7 @@ final class PostTemplatesController {
 			return new WP_REST_Response(
 				[
 					'code'    => 'beehiiv_not_connected',
-					'message' => __( 'Beehiiv is not connected.', 'beehiiv' ),
+					'message' => __( 'beehiiv is not connected.', 'beehiiv' ),
 				],
 				400
 			);

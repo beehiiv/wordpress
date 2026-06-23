@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Beehiiv E2E Test Options
+ * Plugin Name: beehiiv E2E Test Options
  */
 
 defined( 'ABSPATH' ) || exit;

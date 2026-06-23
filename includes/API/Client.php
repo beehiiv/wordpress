@@ -1,6 +1,6 @@
 <?php
 /**
- * Minimal Beehiiv API client (server-side only).
+ * Minimal beehiiv API client (server-side only).
  *
  * @package beehiiv
  */
@@ -14,7 +14,7 @@ use Beehiiv\OAuth\TokenRefresher;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Wraps authenticated Beehiiv v2 API requests.
+ * Wraps authenticated beehiiv v2 API requests.
  *
  * @since 1.0.0
  */
@@ -42,14 +42,14 @@ final class Client {
 	private static $allow_retry = true;
 
 	/**
-	 * HTTP timeout in seconds for Beehiiv API requests.
+	 * HTTP timeout in seconds for beehiiv API requests.
 	 *
 	 * @since 1.0.0
 	 */
 	private const REQUEST_TIMEOUT = 30;
 
 	/**
-	 * Make an authenticated GET request to Beehiiv v2.
+	 * Make an authenticated GET request to beehiiv v2.
 	 *
 	 * @param string              $path Relative API path (e.g. `/publications`).
 	 * @param array<string,mixed> $query Query parameters.
@@ -119,7 +119,7 @@ final class Client {
 	}
 
 	/**
-	 * Shared HTTP transport for Beehiiv v2 requests.
+	 * Shared HTTP transport for beehiiv v2 requests.
 	 *
 	 * @param string                   $method HTTP method.
 	 * @param string                   $path   Relative API path.

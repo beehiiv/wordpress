@@ -38,7 +38,7 @@ final class Config {
 	public const SETTINGS_GROUP = 'beehiiv_settings';
 
 	/**
-	 * Beehiiv sign-up URL for users without an account.
+	 * beehiiv sign-up URL for users without an account.
 	 *
 	 * @since 1.0.0
 	 */

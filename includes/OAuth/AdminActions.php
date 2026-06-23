@@ -73,7 +73,7 @@ final class AdminActions {
 	}
 
 	/**
-	 * Disconnect the Beehiiv account.
+	 * Disconnect the beehiiv account.
 	 *
 	 * @since 1.0.0
 	 *
@@ -88,7 +88,7 @@ final class AdminActions {
 		self::redirect_with_notice(
 			admin_url( 'admin.php?page=' . PluginConfig::PLUGIN_SLUG ),
 			'beehiiv_oauth_disconnected',
-			__( 'Disconnected from Beehiiv.', 'beehiiv' ),
+			__( 'Disconnected from beehiiv.', 'beehiiv' ),
 			'success'
 		);
 	}
@@ -135,7 +135,7 @@ final class AdminActions {
 	private static function verify_request(): void {
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to manage Beehiiv settings.', 'beehiiv' ) );
+			wp_die( esc_html__( 'You do not have permission to manage beehiiv settings.', 'beehiiv' ) );
 		}
 
 		check_admin_referer( 'beehiiv_oauth_action' );

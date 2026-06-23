@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
 final class Meta {
 
 	/**
-	 * Whether the post should be sent to the Beehiiv newsletter on publish.
+	 * Whether the post should be sent to the beehiiv newsletter on publish.
 	 *
 	 * @since 1.0.0
 	 */
@@ -38,21 +38,21 @@ final class Meta {
 	public const SEND_TO_NEWSLETTER_SNIPPET = '_beehiiv_send_to_newsletter_snippet';
 
 	/**
-	 * Beehiiv post template ID for this post. Empty = use plugin default.
+	 * beehiiv post template ID for this post. Empty = use plugin default.
 	 *
 	 * @since 1.0.0
 	 */
 	public const BEEHIIV_POST_TEMPLATE_ID = '_beehiiv_post_template_id';
 
 	/**
-	 * Beehiiv post ID after the newsletter has been created via the API.
+	 * beehiiv post ID after the newsletter has been created via the API.
 	 *
 	 * @since 1.0.0
 	 */
 	public const BEEHIIV_POST_ID = '_beehiiv_post_id';
 
 	/**
-	 * UTC ISO 8601 datetime last synced to Beehiiv `scheduled_at` for a linked post.
+	 * UTC ISO 8601 datetime last synced to beehiiv `scheduled_at` for a linked post.
 	 *
 	 * @since 1.0.0
 	 */

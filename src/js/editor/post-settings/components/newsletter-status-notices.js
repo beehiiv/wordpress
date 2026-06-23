@@ -20,7 +20,7 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 			<PostSettingsNotice status="error">
 				{ renderSettingsLinkMessage(
 					__(
-						'Connect your Beehiiv account in <a>Beehiiv settings</a> before you can send newsletters.',
+						'Connect your beehiiv account in <a>beehiiv settings</a> before you can send newsletters.',
 						'beehiiv'
 					),
 					settingsUrl
@@ -33,17 +33,17 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 
 	if ( ! hasPublication && ! hasPostTemplate ) {
 		errorMessage = __(
-			'Choose a publication and default post template in <a>Beehiiv settings</a>.',
+			'Choose a publication and default post template in <a>beehiiv settings</a>.',
 			'beehiiv'
 		);
 	} else if ( ! hasPublication ) {
 		errorMessage = __(
-			'Choose a publication in <a>Beehiiv settings</a> to send newsletters.',
+			'Choose a publication in <a>beehiiv settings</a> to send newsletters.',
 			'beehiiv'
 		);
 	} else if ( ! hasPostTemplate ) {
 		errorMessage = __(
-			'Choose a default post template in <a>Beehiiv settings</a> to send newsletters.',
+			'Choose a default post template in <a>beehiiv settings</a> to send newsletters.',
 			'beehiiv'
 		);
 	}
@@ -65,7 +65,7 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 	if ( newsletterErrorType === 'save' ) {
 		return (
 			<PostSettingsNotice status="error">
-				{ __( 'Could not save this post to Beehiiv:', 'beehiiv' ) }{ ' ' }
+				{ __( 'Could not save this post to beehiiv:', 'beehiiv' ) }{ ' ' }
 				{ renderSettingsLinkMessage( newsletterError, settingsUrl ) }
 			</PostSettingsNotice>
 		);
@@ -73,7 +73,7 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 
 	return (
 		<PostSettingsNotice status="error">
-			{ __( 'Could not send this post to Beehiiv:', 'beehiiv' ) }{ ' ' }
+			{ __( 'Could not send this post to beehiiv:', 'beehiiv' ) }{ ' ' }
 			{ renderSettingsLinkMessage( newsletterError, settingsUrl ) }
 		</PostSettingsNotice>
 	);

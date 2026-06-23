@@ -1,6 +1,6 @@
 <?php
 /**
- * WordPress blocks supported for Beehiiv newsletter conversion.
+ * WordPress blocks supported for beehiiv newsletter conversion.
  *
  * @package beehiiv
  */
@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
 final class SupportedBlocks {
 
 	/**
-	 * Blocks converted to Beehiiv newsletter blocks.
+	 * Blocks converted to beehiiv newsletter blocks.
 	 *
 	 * @var array<int, string>
 	 */
@@ -72,7 +72,7 @@ final class SupportedBlocks {
 	}
 
 	/**
-	 * Whether a block is converted for Beehiiv newsletters.
+	 * Whether a block is converted for beehiiv newsletters.
 	 *
 	 * @param string $block_name   Block name (e.g. core/paragraph).
 	 * @param bool   $snippet_mode Whether snippet newsletter mode is enabled.

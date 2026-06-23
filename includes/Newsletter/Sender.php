@@ -1,6 +1,6 @@
 <?php
 /**
- * Sends WordPress posts to Beehiiv as newsletter posts.
+ * Sends WordPress posts to beehiiv as newsletter posts.
  *
  * @package beehiiv
  */
@@ -17,10 +17,10 @@ use WP_REST_Request;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Creates or schedules a Beehiiv post in the configured publication when newsletter
- * send is enabled and the post is published (or scheduled). Updates linked Beehiiv posts
+ * Creates or schedules a beehiiv post in the configured publication when newsletter
+ * send is enabled and the post is published (or scheduled). Updates linked beehiiv posts
  * when the WordPress post changes before the newsletter sends. Draft saves are skipped
- * unless retrying after a previous failed send. Future send times use Beehiiv
+ * unless retrying after a previous failed send. Future send times use beehiiv
  * `scheduled_at` (UTC).
  *
  * @link https://developers.beehiiv.com/api-reference/posts/create
@@ -30,14 +30,14 @@ defined( 'ABSPATH' ) || exit;
 final class Sender {
 
 	/**
-	 * Post type that supports Beehiiv newsletters.
+	 * Post type that supports beehiiv newsletters.
 	 *
 	 * @since 1.0.0
 	 */
 	private const POST_TYPE = 'post';
 
 	/**
-	 * Register hooks that sync newsletters to Beehiiv on save.
+	 * Register hooks that sync newsletters to beehiiv on save.
 	 *
 	 * @return void
 	 * @since 1.0.0
@@ -51,7 +51,7 @@ final class Sender {
 	}
 
 	/**
-	 * Prevent clearing or changing the Beehiiv post ID after a successful send.
+	 * Prevent clearing or changing the beehiiv post ID after a successful send.
 	 *
 	 * During block editor publish, newsletter sync can run on `transition_post_status`
 	 * before REST meta is applied. The REST payload may include `_beehiiv_post_id`
@@ -124,7 +124,7 @@ final class Sender {
 	}
 
 	/**
-	 * Cancel or resend Beehiiv newsletters when post visibility changes.
+	 * Cancel or resend beehiiv newsletters when post visibility changes.
 	 *
 	 * @param string  $new_status New post status.
 	 * @param string  $old_status Old post status.
@@ -148,7 +148,7 @@ final class Sender {
 	}
 
 	/**
-	 * Cancel a linked Beehiiv newsletter before the WordPress post is deleted.
+	 * Cancel a linked beehiiv newsletter before the WordPress post is deleted.
 	 *
 	 * @param int $post_id Post ID.
 	 * @return void
@@ -165,7 +165,7 @@ final class Sender {
 	}
 
 	/**
-	 * Delete or archive the linked Beehiiv post and re-queue send for republication.
+	 * Delete or archive the linked beehiiv post and re-queue send for republication.
 	 *
 	 * @param int $post_id Post ID.
 	 * @return void
@@ -195,14 +195,14 @@ final class Sender {
 						'send',
 						__(
 							// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
-							"We couldn't cancel the scheduled newsletter in Beehiiv. Try saving the post again, or cancel it directly in Beehiiv.",
+							"We couldn't cancel the scheduled newsletter in beehiiv. Try saving the post again, or cancel it directly in beehiiv.",
 							'beehiiv'
 						)
 					);
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log(
 						sprintf(
-							'Beehiiv newsletter cancel failed for post ID %d: %s',
+							'beehiiv newsletter cancel failed for post ID %d: %s',
 							$post_id,
 							$result['error']
 						)
@@ -219,10 +219,10 @@ final class Sender {
 	}
 
 	/**
-	 * Create or schedule a Beehiiv newsletter when post meta and status allow.
+	 * Create or schedule a beehiiv newsletter when post meta and status allow.
 	 *
 	 * Draft saves are skipped unless retrying after a failed send. Future send times use
-	 * Beehiiv `scheduled_at` (UTC).
+	 * beehiiv `scheduled_at` (UTC).
 	 *
 	 * @param WP_Post              $post    Post object.
 	 * @param WP_REST_Request|null $request Optional REST request from the block editor save.
@@ -261,7 +261,7 @@ final class Sender {
 	}
 
 	/**
-	 * Update a linked Beehiiv newsletter when the WordPress post changes before send.
+	 * Update a linked beehiiv newsletter when the WordPress post changes before send.
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return void
@@ -285,7 +285,7 @@ final class Sender {
 	}
 
 	/**
-	 * Send a WordPress post to Beehiiv as a newsletter (immediate or via scheduled_at).
+	 * Send a WordPress post to beehiiv as a newsletter (immediate or via scheduled_at).
 	 *
 	 * @param int $post_id Post ID.
 	 * @return void
@@ -299,7 +299,7 @@ final class Sender {
 				$post_id,
 				'send',
 				self::not_connected_message(),
-				'Beehiiv is not connected.'
+				'beehiiv is not connected.'
 			);
 			return;
 		}
@@ -357,7 +357,7 @@ final class Sender {
 		}
 
 		// Post created successfully for sending the newsletter.
-		// Save the Beehiiv post ID in the post meta.
+		// Save the beehiiv post ID in the post meta.
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, false );
 		self::persist_scheduled_at_meta( $post_id, $beehiiv_post_data['scheduled_at'] ?? null );
@@ -365,7 +365,7 @@ final class Sender {
 	}
 
 	/**
-	 * Update a linked Beehiiv newsletter before it is sent.
+	 * Update a linked beehiiv newsletter before it is sent.
 	 *
 	 * @param int $post_id Post ID.
 	 * @return void
@@ -379,7 +379,7 @@ final class Sender {
 				$post_id,
 				'send',
 				self::not_connected_message(),
-				'Beehiiv is not connected.'
+				'beehiiv is not connected.'
 			);
 			return;
 		}
@@ -457,14 +457,14 @@ final class Sender {
 	}
 
 	/**
-	 * Recreate a linked Beehiiv post when its send time must move later.
+	 * Recreate a linked beehiiv post when its send time must move later.
 	 *
 	 * The update API rejects `scheduled_at` changes on confirmed posts, so we archive the
 	 * existing post and create a new one with the same content and a later schedule.
 	 *
 	 * @param int                                                       $post_id         Post ID.
 	 * @param string                                                    $publication_id  Publication ID.
-	 * @param string                                                    $beehiiv_post_id Linked Beehiiv post ID.
+	 * @param string                                                    $beehiiv_post_id Linked beehiiv post ID.
 	 * @param string                                                    $scheduled_at    New UTC `scheduled_at`.
 	 * @param array{scheduled_at: string|null, clear_custom_date: bool} $meta            Meta updates.
 	 * @return void
@@ -525,7 +525,7 @@ final class Sender {
 	}
 
 	/**
-	 * Persist the Beehiiv `scheduled_at` value synced for a linked post.
+	 * Persist the beehiiv `scheduled_at` value synced for a linked post.
 	 *
 	 * @param int         $post_id      Post ID.
 	 * @param string|null $scheduled_at UTC ISO 8601 datetime, or null when omitted.
@@ -544,7 +544,7 @@ final class Sender {
 	}
 
 	/**
-	 * Apply post meta changes after a successful Beehiiv newsletter update.
+	 * Apply post meta changes after a successful beehiiv newsletter update.
 	 *
 	 * @param int                                                       $post_id Post ID.
 	 * @param array{scheduled_at: string|null, clear_custom_date: bool} $meta    Meta updates.
@@ -562,7 +562,7 @@ final class Sender {
 	}
 
 	/**
-	 * Site-wide Beehiiv publication ID from plugin settings.
+	 * Site-wide beehiiv publication ID from plugin settings.
 	 *
 	 * @return string
 	 * @since 1.0.0
@@ -576,7 +576,7 @@ final class Sender {
 	}
 
 	/**
-	 * Whether this WordPress post already has a linked Beehiiv post.
+	 * Whether this WordPress post already has a linked beehiiv post.
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
@@ -601,7 +601,7 @@ final class Sender {
 	private static function fail( int $post_id, string $type, string $user_message, string $log_message ): void {
 		self::record_error( $post_id, $type, $user_message );
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( sprintf( 'Beehiiv newsletter send failed for post ID %d: %s', $post_id, $log_message ) );
+		error_log( sprintf( 'beehiiv newsletter send failed for post ID %d: %s', $post_id, $log_message ) );
 	}
 
 	/**
@@ -649,14 +649,14 @@ final class Sender {
 			case 'beehiiv_post_template_id_empty':
 				return __(
 					// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
-					'Choose a default post template in <a>Beehiiv settings</a>, or pick one for this post in the Beehiiv sidebar.',
+					'Choose a default post template in <a>beehiiv settings</a>, or pick one for this post in the beehiiv sidebar.',
 					'beehiiv'
 				);
 			case 'beehiiv_post_title_or_content_empty':
 				return __( 'Add a title and body content before sending this newsletter.', 'beehiiv' );
 			case 'beehiiv_blocks_empty':
 				return __(
-					"This post doesn't include any blocks Beehiiv can send. Add supported content and try again.",
+					"This post doesn't include any blocks beehiiv can send. Add supported content and try again.",
 					'beehiiv'
 				);
 			case 'beehiiv_post_not_found':
@@ -683,7 +683,7 @@ final class Sender {
 	}
 
 	/**
-	 * User-facing message when the site is not connected to Beehiiv.
+	 * User-facing message when the site is not connected to beehiiv.
 	 *
 	 * Uses an `<a>` placeholder rendered as a settings link in the block editor.
 	 *
@@ -692,7 +692,7 @@ final class Sender {
 	 */
 	private static function not_connected_message(): string {
 		return __(
-			'Connect your Beehiiv account in <a>Beehiiv settings</a> to send this newsletter.',
+			'Connect your beehiiv account in <a>beehiiv settings</a> to send this newsletter.',
 			'beehiiv'
 		);
 	}
@@ -704,7 +704,7 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	private static function no_publication_message(): string {
-		return __( 'Choose a publication in <a>Beehiiv settings</a>, then try again.', 'beehiiv' );
+		return __( 'Choose a publication in <a>beehiiv settings</a>, then try again.', 'beehiiv' );
 	}
 
 	/**
@@ -729,15 +729,15 @@ final class Sender {
 
 		if ( preg_match( '/^HTTP 401:/i', $error ) || preg_match( '/^HTTP 403:/i', $error ) ) {
 			return __(
-				'Your Beehiiv connection expired. Reconnect in <a>Beehiiv settings</a>.',
+				'Your beehiiv connection expired. Reconnect in <a>beehiiv settings</a>.',
 				'beehiiv'
 			);
 		}
 
 		if ( preg_match( '/^HTTP 422:\s*(.+)/i', $error, $matches ) ) {
 			return sprintf(
-				/* translators: %s: error message from the Beehiiv API. */
-				__( 'Beehiiv rejected this newsletter: %s', 'beehiiv' ),
+				/* translators: %s: error message from the beehiiv API. */
+				__( 'beehiiv rejected this newsletter: %s', 'beehiiv' ),
 				$matches[1]
 			);
 		}
@@ -747,7 +747,7 @@ final class Sender {
 		}
 
 		if ( preg_match( '/^HTTP 5\d\d:/i', $error ) ) {
-			return __( 'Beehiiv is temporarily unavailable. Try again later.', 'beehiiv' );
+			return __( 'beehiiv is temporarily unavailable. Try again later.', 'beehiiv' );
 		}
 
 		if ( preg_match( '/^HTTP \d+:/i', $error ) ) {
@@ -762,23 +762,23 @@ final class Sender {
 			return __( 'Post not found.', 'beehiiv' );
 		}
 
-		if ( 'Update payload is empty.' === $error || 'No post ID found in the Beehiiv API response.' === $error ) {
+		if ( 'Update payload is empty.' === $error || 'No post ID found in the beehiiv API response.' === $error ) {
 			return __( 'Something went wrong. Try saving the post again.', 'beehiiv' );
 		}
 
 		if ( false !== stripos( $error, 'timed out' ) ) {
-			return __( 'Beehiiv took too long to respond. Try again.', 'beehiiv' );
+			return __( 'beehiiv took too long to respond. Try again.', 'beehiiv' );
 		}
 
 		if ( false !== stripos( $error, 'cURL error' ) ) {
-			return __( "Couldn't reach Beehiiv. Try again.", 'beehiiv' );
+			return __( "Couldn't reach beehiiv. Try again.", 'beehiiv' );
 		}
 
 		return $error;
 	}
 
 	/**
-	 * Map Beehiiv API failures to editor-friendly copy.
+	 * Map beehiiv API failures to editor-friendly copy.
 	 *
 	 * @param string $error Error string from the API client.
 	 * @return string
@@ -795,7 +795,7 @@ final class Sender {
 	}
 
 	/**
-	 * Map Beehiiv update API failures to editor-friendly copy.
+	 * Map beehiiv update API failures to editor-friendly copy.
 	 *
 	 * @param string $error Error string from the API client.
 	 * @return string
@@ -815,7 +815,7 @@ final class Sender {
 	}
 
 	/**
-	 * Whether Beehiiv should sync for this post right now.
+	 * Whether beehiiv should sync for this post right now.
 	 *
 	 * Syncs only when the post is published or scheduled, and only when the current
 	 * user can publish posts (system/cron requests are always allowed).
@@ -854,7 +854,7 @@ final class Sender {
 	}
 
 	/**
-	 * Whether the post is marked to send to the Beehiiv newsletter.
+	 * Whether the post is marked to send to the beehiiv newsletter.
 	 *
 	 * @param int                  $post_id Post ID.
 	 * @param WP_REST_Request|null $request REST request when syncing on editor save.
@@ -876,7 +876,7 @@ final class Sender {
 	}
 
 	/**
-	 * Whether a status change should cancel a linked Beehiiv newsletter.
+	 * Whether a status change should cancel a linked beehiiv newsletter.
 	 *
 	 * @param string  $new_status New post status.
 	 * @param WP_Post $post       Post object.
@@ -913,7 +913,7 @@ final class Sender {
 	}
 
 	/**
-	 * Post statuses that allow creating or scheduling a Beehiiv newsletter.
+	 * Post statuses that allow creating or scheduling a beehiiv newsletter.
 	 *
 	 * @param string $status Post status.
 	 * @return bool

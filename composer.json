@@ -1,6 +1,6 @@
 {
 	"name": "beehiiv/beehiiv",
-	"description": "Official Beehiiv WordPress plugin",
+	"description": "Official beehiiv WordPress plugin",
 	"type": "wordpress-plugin",
 	"license": "GPL-2.0-or-later",
 	"autoload": {

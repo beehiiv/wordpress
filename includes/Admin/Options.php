@@ -1,6 +1,6 @@
 <?php
 /**
- * Beehiiv settings option (read / sanitize / defaults).
+ * Settings option for beehiiv (read / sanitize / defaults).
  *
  * @package beehiiv
  */

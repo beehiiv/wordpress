@@ -1,5 +1,5 @@
 /**
- * Site-wide Beehiiv editor settings from PHP (`beehiivPostSettings`).
+ * Site-wide beehiiv editor settings from PHP (`beehiivPostSettings`).
  */
 
 const DEFAULT_CONFIG = {
@@ -13,7 +13,7 @@ const DEFAULT_CONFIG = {
 };
 
 /**
- * @return {typeof DEFAULT_CONFIG} Site-wide Beehiiv connection and settings state.
+ * @return {typeof DEFAULT_CONFIG} Site-wide beehiiv connection and settings state.
  */
 export function useBeehiivEditorConfig() {
 	if (

@@ -1,6 +1,6 @@
 <?php
 /**
- * HTTP transport for Beehiiv OAuth endpoints.
+ * HTTP transport for beehiiv OAuth endpoints.
  *
  * @package beehiiv
  */

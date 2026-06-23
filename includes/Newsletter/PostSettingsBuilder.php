@@ -1,6 +1,6 @@
 <?php
 /**
- * Builds Beehiiv API post payload from a WordPress post.
+ * Builds beehiiv API post payload from a WordPress post.
  *
  * @package beehiiv
  */
@@ -19,18 +19,18 @@ use WP_Post;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Gets newsletter post settings, prepares them for Beehiiv create-post API.
+ * Gets newsletter post settings, prepares them for beehiiv create-post API.
  *
  * @since 1.0.0
  */
 final class PostSettingsBuilder {
 
 	/**
-	 * Create Beehiiv post settings array for the WordPress post.
+	 * Create beehiiv post settings array for the WordPress post.
 	 *
 	 * @param int  $post_id    Post ID.
 	 * @param bool $for_update When true, omit schedule validation and `scheduled_at` (used for linked-post updates).
-	 * @return array<string, mixed>|WP_Error Beehiiv post settings or error.
+	 * @return array<string, mixed>|WP_Error beehiiv post settings or error.
 	 * @since 1.0.0
 	 */
 	public static function get_post_settings( int $post_id, bool $for_update = false ) {
@@ -48,7 +48,7 @@ final class PostSettingsBuilder {
 		if ( '' === $post_template_id ) {
 			return new WP_Error(
 				'beehiiv_post_template_id_empty',
-				sprintf( 'Beehiiv post template is not configured for post ID: %d.', $post_id )
+				sprintf( 'beehiiv post template is not configured for post ID: %d.', $post_id )
 			);
 		}
 
@@ -64,7 +64,7 @@ final class PostSettingsBuilder {
 		if ( empty( $beehiiv_blocks ) ) {
 			return new WP_Error(
 				'beehiiv_blocks_empty',
-				sprintf( 'No supported Beehiiv blocks for post ID: %d.', $post_id )
+				sprintf( 'No supported beehiiv blocks for post ID: %d.', $post_id )
 			);
 		}
 
@@ -105,11 +105,11 @@ final class PostSettingsBuilder {
 		}
 
 		/**
-		 * Filters the Beehiiv newsletter post settings before they are sent.
+		 * Filters the beehiiv newsletter post settings before they are sent.
 		 *
 		 * @since 1.0.0
 		 *
-		 * @param array   $settings    Payload for the Beehiiv create-post API.
+		 * @param array   $settings    Payload for the beehiiv create-post API.
 		 * @param int     $post_id     WordPress post ID.
 		 * @param WP_Post $post_object WordPress post object.
 		 */
@@ -117,10 +117,10 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Build a Beehiiv update request for a linked newsletter.
+	 * Build a beehiiv update request for a linked newsletter.
 	 *
 	 * Content is always refreshed via PATCH. When the send time must move later,
-	 * {@see Sender::reschedule_linked_post()} recreates the Beehiiv post because the API
+	 * {@see Sender::reschedule_linked_post()} recreates the beehiiv post because the API
 	 * does not allow updating `scheduled_at` on confirmed posts.
 	 *
 	 * @param int $post_id Post ID.
@@ -162,11 +162,11 @@ final class PostSettingsBuilder {
 		}
 
 		/**
-		 * Filters the Beehiiv newsletter update payload before it is sent.
+		 * Filters the beehiiv newsletter update payload before it is sent.
 		 *
 		 * @since 1.0.0
 		 *
-		 * @param array        $payload     Payload for the Beehiiv update-post API.
+		 * @param array        $payload     Payload for the beehiiv update-post API.
 		 * @param int          $post_id     WordPress post ID.
 		 * @param WP_Post|null $post_object WordPress post object.
 		 */
@@ -187,7 +187,7 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Build a Beehiiv update-post payload for a scheduled newsletter linked to a WordPress post.
+	 * Build a beehiiv update-post payload for a scheduled newsletter linked to a WordPress post.
 	 *
 	 * @param int $post_id Post ID.
 	 * @return array<string, mixed>|WP_Error Update payload or error.
@@ -252,7 +252,7 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Configured Beehiiv publication ID.
+	 * Configured beehiiv publication ID.
 	 *
 	 * @since 1.0.0
 	 *
@@ -283,7 +283,7 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Convert the send datetime (site timezone) to Beehiiv scheduled_at (UTC).
+	 * Convert the send datetime (site timezone) to beehiiv scheduled_at (UTC).
 	 *
 	 * Uses `_beehiiv_send_to_newsletter_date` when set; otherwise the WordPress post publish
 	 * datetime (`post_date`) for "On publish".
@@ -417,7 +417,7 @@ final class PostSettingsBuilder {
 	 *
 	 * The newsletter send time only moves later: when the WordPress publish date passes a
 	 * custom send time the newsletter switches to send on publish, and any later publish
-	 * date pushes Beehiiv forward. Earlier publish dates or publishing immediately never
+	 * date pushes beehiiv forward. Earlier publish dates or publishing immediately never
 	 * reschedule the newsletter earlier.
 	 *
 	 * @param WP_Post $post Post object.
@@ -524,7 +524,7 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Infer the last known Beehiiv send time from newsletter post meta.
+	 * Infer the last known beehiiv send time from newsletter post meta.
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return int|null UTC unix timestamp, or null when unknown.
@@ -586,7 +586,7 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Parse a Beehiiv UTC `scheduled_at` string to a Unix timestamp.
+	 * Parse a beehiiv UTC `scheduled_at` string to a Unix timestamp.
 	 *
 	 * @param string $scheduled_at UTC ISO 8601 datetime.
 	 * @return int|null Timestamp, or null when empty or invalid.
@@ -605,7 +605,7 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Format a UTC Unix timestamp for Beehiiv `scheduled_at`.
+	 * Format a UTC Unix timestamp for beehiiv `scheduled_at`.
 	 *
 	 * @param int $timestamp UTC Unix timestamp.
 	 * @return string
@@ -627,6 +627,6 @@ final class PostSettingsBuilder {
 	 */
 	private static function log_error( int $post_id, string $message ): void {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( sprintf( 'Beehiiv newsletter post settings failed for post ID %d: %s', $post_id, $message ) );
+		error_log( sprintf( 'beehiiv newsletter post settings failed for post ID %d: %s', $post_id, $message ) );
 	}
 }

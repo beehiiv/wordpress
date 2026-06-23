@@ -43,8 +43,8 @@ final class CallbackHandler {
 
 		add_submenu_page(
 			null,
-			__( 'Beehiiv OAuth Callback', 'beehiiv' ),
-			__( 'Beehiiv OAuth Callback', 'beehiiv' ),
+			__( 'beehiiv OAuth Callback', 'beehiiv' ),
+			__( 'beehiiv OAuth Callback', 'beehiiv' ),
 			'manage_options',
 			Config::CALLBACK_PAGE,
 			'__return_null'
@@ -81,7 +81,7 @@ final class CallbackHandler {
 	private static function process(): void {
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to connect Beehiiv.', 'beehiiv' ) );
+			wp_die( esc_html__( 'You do not have permission to connect beehiiv.', 'beehiiv' ) );
 		}
 
 		$settings_url = admin_url( 'admin.php?page=' . PluginConfig::PLUGIN_SLUG );
@@ -103,7 +103,7 @@ final class CallbackHandler {
 
 			$message = '' !== $error_description
 				? $error_description
-				: __( 'Beehiiv connection was cancelled or denied.', 'beehiiv' );
+				: __( 'beehiiv connection was cancelled or denied.', 'beehiiv' );
 
 			self::redirect_with_notice(
 				$settings_url,
@@ -122,7 +122,7 @@ final class CallbackHandler {
 			self::redirect_with_notice(
 				$settings_url,
 				'beehiiv_oauth_invalid',
-				__( 'Invalid Beehiiv connection response. Please try again.', 'beehiiv' ),
+				__( 'Invalid beehiiv connection response. Please try again.', 'beehiiv' ),
 				'error'
 			);
 		}
@@ -133,7 +133,7 @@ final class CallbackHandler {
 			self::redirect_with_notice(
 				$settings_url,
 				'beehiiv_oauth_expired',
-				__( 'The Beehiiv connection session expired. Please try again.', 'beehiiv' ),
+				__( 'The beehiiv connection session expired. Please try again.', 'beehiiv' ),
 				'error'
 			);
 		}
@@ -144,7 +144,7 @@ final class CallbackHandler {
 			self::redirect_with_notice(
 				$settings_url,
 				'beehiiv_oauth_client_missing',
-				__( 'Beehiiv client credentials are missing. Please try again.', 'beehiiv' ),
+				__( 'beehiiv client credentials are missing. Please try again.', 'beehiiv' ),
 				'error'
 			);
 		}
@@ -164,7 +164,7 @@ final class CallbackHandler {
 			self::redirect_with_notice(
 				$settings_url,
 				'beehiiv_oauth_token_failed',
-				__( 'Could not complete the Beehiiv connection. Please try again.', 'beehiiv' ),
+				__( 'Could not complete the beehiiv connection. Please try again.', 'beehiiv' ),
 				'error'
 			);
 		}
@@ -173,7 +173,7 @@ final class CallbackHandler {
 			self::redirect_with_notice(
 				$settings_url,
 				'beehiiv_oauth_storage_failed',
-				__( 'Could not save Beehiiv credentials on this site.', 'beehiiv' ),
+				__( 'Could not save beehiiv credentials on this site.', 'beehiiv' ),
 				'error'
 			);
 		}
@@ -189,7 +189,7 @@ final class CallbackHandler {
 		self::redirect_with_notice(
 			$settings_url,
 			'beehiiv_oauth_connected',
-			__( 'Successfully connected to Beehiiv.', 'beehiiv' ),
+			__( 'Successfully connected to beehiiv.', 'beehiiv' ),
 			'success'
 		);
 	}
