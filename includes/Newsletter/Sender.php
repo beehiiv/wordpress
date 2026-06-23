@@ -221,8 +221,8 @@ final class Sender {
 	/**
 	 * Create or schedule a Beehiiv newsletter when post meta and status allow.
 	 *
-	 * Draft saves are skipped unless retrying after a failed send. Snippet newsletters
-	 * require a public permalink for Read more; defer until `publish`.
+	 * Draft saves are skipped unless retrying after a failed send. Future send times use
+	 * Beehiiv `scheduled_at` (UTC).
 	 *
 	 * @param WP_Post              $post    Post object.
 	 * @param WP_REST_Request|null $request Optional REST request from the block editor save.
@@ -257,12 +257,6 @@ final class Sender {
 			return;
 		}
 
-		$send_newsletter_snippet = (bool) get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_SNIPPET, true );
-
-		if ( $send_newsletter_snippet && 'publish' !== $post->post_status ) {
-			return;
-		}
-
 		self::send( $post->ID );
 	}
 
@@ -284,12 +278,6 @@ final class Sender {
 				'send',
 				self::not_connected_message()
 			);
-			return;
-		}
-
-		$send_newsletter_snippet = (bool) get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_SNIPPET, true );
-
-		if ( $send_newsletter_snippet && 'publish' !== $post->post_status ) {
 			return;
 		}
 
@@ -341,13 +329,6 @@ final class Sender {
 		}
 
 		if ( self::has_beehiiv_post_id( $post_id ) ) {
-			return;
-		}
-
-		$send_newsletter_snippet = (bool) get_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER_SNIPPET, true );
-
-		// If snippet newsletter is enabled and post is not published, do nothing.
-		if ( $send_newsletter_snippet && 'publish' !== $post_object->post_status ) {
 			return;
 		}
 
