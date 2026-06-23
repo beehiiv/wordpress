@@ -52,6 +52,13 @@ final class Meta {
 	public const BEEHIIV_POST_ID = '_beehiiv_post_id';
 
 	/**
+	 * UTC ISO 8601 datetime last synced to Beehiiv `scheduled_at` for a linked post.
+	 *
+	 * @since 1.0.0
+	 */
+	public const BEEHIIV_SCHEDULED_AT = '_beehiiv_scheduled_at';
+
+	/**
 	 * User-facing error after a failed newsletter save or send (`save` or `send`).
 	 *
 	 * @since 1.0.0

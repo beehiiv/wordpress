@@ -28,11 +28,12 @@ final class PostSettingsBuilder {
 	/**
 	 * Create Beehiiv post settings array for the WordPress post.
 	 *
-	 * @param int $post_id Post ID.
+	 * @param int  $post_id    Post ID.
+	 * @param bool $for_update When true, omit schedule validation and `scheduled_at` (used for linked-post updates).
 	 * @return array<string, mixed>|WP_Error Beehiiv post settings or error.
 	 * @since 1.0.0
 	 */
-	public static function get_post_settings( int $post_id ) {
+	public static function get_post_settings( int $post_id, bool $for_update = false ) {
 		$post_object = get_post( $post_id );
 
 		if ( ! $post_object instanceof WP_Post ) {
@@ -91,14 +92,16 @@ final class PostSettingsBuilder {
 			'social_share'        => 'none',
 		];
 
-		$scheduled_at = self::convert_send_date_to_scheduled_at_utc( $post_object );
+		if ( ! $for_update ) {
+			$scheduled_at = self::convert_send_date_to_scheduled_at_utc( $post_object );
 
-		if ( is_wp_error( $scheduled_at ) ) {
-			return $scheduled_at;
-		}
+			if ( is_wp_error( $scheduled_at ) ) {
+				return $scheduled_at;
+			}
 
-		if ( null !== $scheduled_at ) {
-			$settings['scheduled_at'] = $scheduled_at;
+			if ( null !== $scheduled_at ) {
+				$settings['scheduled_at'] = $scheduled_at;
+			}
 		}
 
 		/**
@@ -114,20 +117,33 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Build a Beehiiv update-post payload for a scheduled newsletter linked to a WordPress post.
+	 * Build a Beehiiv update request for a linked newsletter.
 	 *
-	 * Omits `scheduled_at` because Beehiiv only allows that field on draft posts; linked
-	 * newsletters are created as `confirmed`.
+	 * Content is always refreshed via PATCH. When the send time must move later,
+	 * {@see Sender::reschedule_linked_post()} recreates the Beehiiv post because the API
+	 * does not allow updating `scheduled_at` on confirmed posts.
 	 *
 	 * @param int $post_id Post ID.
-	 * @return array<string, mixed>|WP_Error Update payload or error.
+	 * @return array{
+	 *     payload: array<string, mixed>,
+	 *     meta: array{scheduled_at: string|null, clear_custom_date: bool}
+	 * }|WP_Error
 	 * @since 1.0.0
 	 */
-	public static function get_update_payload( int $post_id ) {
-		$settings = self::get_post_settings( $post_id );
+	public static function build_update( int $post_id ) {
+		$settings = self::get_post_settings( $post_id, true );
 
 		if ( is_wp_error( $settings ) ) {
 			return $settings;
+		}
+
+		$post_object = get_post( $post_id );
+
+		if ( ! $post_object instanceof WP_Post ) {
+			return new WP_Error(
+				'beehiiv_post_not_found',
+				sprintf( 'Post not found for ID: %d.', $post_id )
+			);
 		}
 
 		$payload = [
@@ -139,7 +155,11 @@ final class PostSettingsBuilder {
 			'social_share'        => $settings['social_share'],
 		];
 
-		$post_object = get_post( $post_id );
+		$schedule = self::resolve_update_scheduled_at( $post_object );
+
+		if ( is_wp_error( $schedule ) ) {
+			return $schedule;
+		}
 
 		/**
 		 * Filters the Beehiiv newsletter update payload before it is sent.
@@ -150,12 +170,37 @@ final class PostSettingsBuilder {
 		 * @param int          $post_id     WordPress post ID.
 		 * @param WP_Post|null $post_object WordPress post object.
 		 */
-		return apply_filters(
+		$payload = apply_filters(
 			'beehiiv_newsletter_post_update_payload',
 			$payload,
 			$post_id,
-			$post_object instanceof WP_Post ? $post_object : null
+			$post_object
 		);
+
+		return [
+			'payload' => $payload,
+			'meta'    => [
+				'scheduled_at'      => $schedule['scheduled_at'],
+				'clear_custom_date' => $schedule['clear_custom_date'],
+			],
+		];
+	}
+
+	/**
+	 * Build a Beehiiv update-post payload for a scheduled newsletter linked to a WordPress post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array<string, mixed>|WP_Error Update payload or error.
+	 * @since 1.0.0
+	 */
+	public static function get_update_payload( int $post_id ) {
+		$update = self::build_update( $post_id );
+
+		if ( is_wp_error( $update ) ) {
+			return $update;
+		}
+
+		return $update['payload'];
 	}
 
 	/**
@@ -365,6 +410,211 @@ final class PostSettingsBuilder {
 				)
 			);
 		}
+	}
+
+	/**
+	 * Resolve whether a linked newsletter `scheduled_at` should move forward on update.
+	 *
+	 * The newsletter send time only moves later: when the WordPress publish date passes a
+	 * custom send time the newsletter switches to send on publish, and any later publish
+	 * date pushes Beehiiv forward. Earlier publish dates or publishing immediately never
+	 * reschedule the newsletter earlier.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return array{scheduled_at: string|null, clear_custom_date: bool}|WP_Error
+	 * @since 1.0.0
+	 */
+	private static function resolve_update_scheduled_at( WP_Post $post ) {
+		$stored_scheduled_at = get_post_meta( $post->ID, Meta::BEEHIIV_SCHEDULED_AT, true );
+		$stored_scheduled_at = is_string( $stored_scheduled_at ) ? trim( $stored_scheduled_at ) : '';
+		$stored_timestamp    = self::utc_scheduled_at_to_timestamp( $stored_scheduled_at );
+
+		if ( null === $stored_timestamp ) {
+			$stored_timestamp = self::infer_stored_timestamp_from_meta( $post );
+		}
+
+		$custom_date       = get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_DATE, true );
+		$custom_date       = is_string( $custom_date ) ? trim( $custom_date ) : '';
+		$clear_custom_date = false;
+
+		$wp_publish_ts = self::get_wp_publish_utc_timestamp( $post );
+
+		if ( '' !== $custom_date ) {
+			$custom_ts = self::parse_datetime_to_utc_timestamp( $custom_date );
+
+			if ( null === $custom_ts ) {
+				return new WP_Error(
+					'beehiiv_newsletter_invalid_date',
+					__(
+						// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
+						"That send date isn't valid. Open the newsletter schedule and choose a different date and time.",
+						'beehiiv'
+					)
+				);
+			}
+
+			if ( null !== $wp_publish_ts && $wp_publish_ts > $custom_ts ) {
+				$clear_custom_date = true;
+				$desired_timestamp = $wp_publish_ts;
+			} else {
+				$desired_timestamp = $custom_ts;
+			}
+		} elseif ( null !== $wp_publish_ts ) {
+			$desired_timestamp = $wp_publish_ts;
+		} else {
+			return [
+				'scheduled_at'      => null,
+				'clear_custom_date' => false,
+			];
+		}
+
+		if ( null !== $stored_timestamp ) {
+			$final_timestamp = max( $stored_timestamp, $desired_timestamp );
+		} else {
+			$final_timestamp = $desired_timestamp;
+		}
+
+		if ( null !== $stored_timestamp && $final_timestamp <= $stored_timestamp ) {
+			return [
+				'scheduled_at'      => null,
+				'clear_custom_date' => $clear_custom_date,
+			];
+		}
+
+		if ( $final_timestamp <= time() ) {
+			return [
+				'scheduled_at'      => null,
+				'clear_custom_date' => $clear_custom_date,
+			];
+		}
+
+		return [
+			'scheduled_at'      => self::utc_timestamp_to_scheduled_at( $final_timestamp ),
+			'clear_custom_date' => $clear_custom_date,
+		];
+	}
+
+	/**
+	 * UTC unix timestamp for when the WordPress post publishes.
+	 *
+	 * Prefers `post_date_gmt` (already UTC); falls back to `post_date` in the site timezone.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return int|null Timestamp, or null when unavailable.
+	 * @since 1.0.0
+	 */
+	private static function get_wp_publish_utc_timestamp( WP_Post $post ): ?int {
+		$gmt_date = trim( (string) $post->post_date_gmt );
+
+		if ( '' !== $gmt_date && '0000-00-00 00:00:00' !== $gmt_date ) {
+			$gmt_timestamp = self::parse_gmt_mysql_datetime_to_timestamp( $gmt_date );
+
+			if ( null !== $gmt_timestamp ) {
+				return $gmt_timestamp;
+			}
+		}
+
+		$local_date = trim( (string) $post->post_date );
+
+		if ( '' === $local_date ) {
+			return null;
+		}
+
+		return self::parse_datetime_to_utc_timestamp( $local_date );
+	}
+
+	/**
+	 * Infer the last known Beehiiv send time from newsletter post meta.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return int|null UTC unix timestamp, or null when unknown.
+	 * @since 1.0.0
+	 */
+	private static function infer_stored_timestamp_from_meta( WP_Post $post ): ?int {
+		$custom_date = get_post_meta( $post->ID, Meta::SEND_TO_NEWSLETTER_DATE, true );
+		$custom_date = is_string( $custom_date ) ? trim( $custom_date ) : '';
+
+		if ( '' === $custom_date ) {
+			return null;
+		}
+
+		return self::parse_datetime_to_utc_timestamp( $custom_date );
+	}
+
+	/**
+	 * Parse a datetime string to a UTC Unix timestamp.
+	 *
+	 * Handles ISO 8601 values from the block editor and MySQL datetimes in the site timezone.
+	 *
+	 * @param string $datetime Datetime string.
+	 * @return int|null Timestamp, or null when invalid.
+	 * @since 1.0.0
+	 */
+	private static function parse_datetime_to_utc_timestamp( string $datetime ): ?int {
+		$datetime = trim( $datetime );
+
+		if ( '' === $datetime ) {
+			return null;
+		}
+
+		try {
+			if ( preg_match( '/[Tt].*(?:Z|[+-]\d{2}:?\d{2})$/', $datetime ) ) {
+				return ( new DateTimeImmutable( $datetime ) )->getTimestamp();
+			}
+
+			return ( new DateTimeImmutable( $datetime, wp_timezone() ) )
+				->setTimezone( new DateTimeZone( 'UTC' ) )
+				->getTimestamp();
+		} catch ( Exception $e ) {
+			return null;
+		}
+	}
+
+	/**
+	 * Parse a MySQL datetime stored in UTC (`post_date_gmt`) to a Unix timestamp.
+	 *
+	 * @param string $datetime MySQL datetime in UTC.
+	 * @return int|null Timestamp, or null when invalid.
+	 * @since 1.0.0
+	 */
+	private static function parse_gmt_mysql_datetime_to_timestamp( string $datetime ): ?int {
+		try {
+			return ( new DateTimeImmutable( $datetime, new DateTimeZone( 'UTC' ) ) )->getTimestamp();
+		} catch ( Exception $e ) {
+			return null;
+		}
+	}
+
+	/**
+	 * Parse a Beehiiv UTC `scheduled_at` string to a Unix timestamp.
+	 *
+	 * @param string $scheduled_at UTC ISO 8601 datetime.
+	 * @return int|null Timestamp, or null when empty or invalid.
+	 * @since 1.0.0
+	 */
+	private static function utc_scheduled_at_to_timestamp( string $scheduled_at ): ?int {
+		if ( '' === $scheduled_at ) {
+			return null;
+		}
+
+		try {
+			return ( new DateTimeImmutable( $scheduled_at ) )->getTimestamp();
+		} catch ( Exception $e ) {
+			return null;
+		}
+	}
+
+	/**
+	 * Format a UTC Unix timestamp for Beehiiv `scheduled_at`.
+	 *
+	 * @param int $timestamp UTC Unix timestamp.
+	 * @return string
+	 * @since 1.0.0
+	 */
+	private static function utc_timestamp_to_scheduled_at( int $timestamp ): string {
+		return ( new DateTimeImmutable( '@' . $timestamp ) )
+			->setTimezone( new DateTimeZone( 'UTC' ) )
+			->format( 'Y-m-d\TH:i:s\Z' );
 	}
 
 	/**
