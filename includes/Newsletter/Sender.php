@@ -213,6 +213,7 @@ final class Sender {
 		}
 
 		delete_post_meta( $post_id, Meta::BEEHIIV_POST_ID );
+		delete_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
 		self::clear_error( $post_id );
 	}
@@ -378,6 +379,7 @@ final class Sender {
 		// Save the Beehiiv post ID in the post meta.
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, false );
+		self::persist_scheduled_at_meta( $post_id, $beehiiv_post_data['scheduled_at'] ?? null );
 		self::clear_error( $post_id );
 	}
 
@@ -432,19 +434,32 @@ final class Sender {
 			return;
 		}
 
-		$payload = PostSettingsBuilder::get_update_payload( $post_id );
+		$update = PostSettingsBuilder::build_update( $post_id );
 
-		if ( is_wp_error( $payload ) ) {
+		if ( is_wp_error( $update ) ) {
 			self::fail(
 				$post_id,
 				'save',
-				self::format_save_error_message( $payload ),
-				$payload->get_error_message()
+				self::format_save_error_message( $update ),
+				$update->get_error_message()
 			);
 			return;
 		}
 
-		$result = Posts::update( $publication_id, $beehiiv_post_id, $payload );
+		$new_scheduled_at = $update['meta']['scheduled_at'];
+
+		if ( is_string( $new_scheduled_at ) && '' !== trim( $new_scheduled_at ) ) {
+			self::reschedule_linked_post(
+				$post_id,
+				$publication_id,
+				$beehiiv_post_id,
+				$new_scheduled_at,
+				$update['meta']
+			);
+			return;
+		}
+
+		$result = Posts::update( $publication_id, $beehiiv_post_id, $update['payload'] );
 
 		if ( ! $result['success'] ) {
 			self::fail(
@@ -456,7 +471,113 @@ final class Sender {
 			return;
 		}
 
+		self::apply_update_meta( $post_id, $update['meta'] );
 		self::clear_error( $post_id );
+	}
+
+	/**
+	 * Recreate a linked Beehiiv post when its send time must move later.
+	 *
+	 * The update API rejects `scheduled_at` changes on confirmed posts, so we archive the
+	 * existing post and create a new one with the same content and a later schedule.
+	 *
+	 * @param int                                                              $post_id         Post ID.
+	 * @param string                                                           $publication_id  Publication ID.
+	 * @param string                                                           $beehiiv_post_id Linked Beehiiv post ID.
+	 * @param string                                                           $scheduled_at    New UTC `scheduled_at`.
+	 * @param array{scheduled_at: string|null, clear_custom_date: bool} $meta            Meta updates.
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private static function reschedule_linked_post(
+		int $post_id,
+		string $publication_id,
+		string $beehiiv_post_id,
+		string $scheduled_at,
+		array $meta
+	): void {
+		$create_payload = PostSettingsBuilder::get_post_settings( $post_id, true );
+
+		if ( is_wp_error( $create_payload ) ) {
+			self::fail(
+				$post_id,
+				'save',
+				self::format_save_error_message( $create_payload ),
+				$create_payload->get_error_message()
+			);
+			return;
+		}
+
+		$create_payload['scheduled_at'] = $scheduled_at;
+
+		$delete_result = Posts::delete( $publication_id, $beehiiv_post_id );
+
+		if ( ! $delete_result['success'] ) {
+			self::fail(
+				$post_id,
+				'send',
+				self::format_update_error_message( $delete_result['error'] ),
+				$delete_result['error']
+			);
+			return;
+		}
+
+		$result = Posts::create( $publication_id, $create_payload );
+
+		if ( ! $result['success'] ) {
+			delete_post_meta( $post_id, Meta::BEEHIIV_POST_ID );
+			delete_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT );
+			update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
+
+			self::fail(
+				$post_id,
+				'send',
+				self::format_send_error_message( $result['error'] ),
+				$result['error']
+			);
+			return;
+		}
+
+		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
+		self::apply_update_meta( $post_id, $meta );
+		self::clear_error( $post_id );
+	}
+
+	/**
+	 * Persist the Beehiiv `scheduled_at` value synced for a linked post.
+	 *
+	 * @param int         $post_id      Post ID.
+	 * @param string|null $scheduled_at UTC ISO 8601 datetime, or null when omitted.
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private static function persist_scheduled_at_meta( int $post_id, ?string $scheduled_at ): void {
+		$scheduled_at = is_string( $scheduled_at ) ? trim( $scheduled_at ) : '';
+
+		if ( '' === $scheduled_at ) {
+			delete_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT );
+			return;
+		}
+
+		update_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT, $scheduled_at );
+	}
+
+	/**
+	 * Apply post meta changes after a successful Beehiiv newsletter update.
+	 *
+	 * @param int                                                              $post_id Post ID.
+	 * @param array{scheduled_at: string|null, clear_custom_date: bool} $meta    Meta updates.
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private static function apply_update_meta( int $post_id, array $meta ): void {
+		if ( ! empty( $meta['clear_custom_date'] ) ) {
+			update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER_DATE, '' );
+		}
+
+		if ( null !== $meta['scheduled_at'] ) {
+			self::persist_scheduled_at_meta( $post_id, $meta['scheduled_at'] );
+		}
 	}
 
 	/**
@@ -632,8 +753,12 @@ final class Sender {
 			);
 		}
 
-		if ( preg_match( '/^HTTP 422:/i', $error ) ) {
-			return __( 'Beehiiv rejected this newsletter.', 'beehiiv' );
+		if ( preg_match( '/^HTTP 422:\s*(.+)/i', $error, $matches ) ) {
+			return sprintf(
+				/* translators: %s: error message from the Beehiiv API. */
+				__( 'Beehiiv rejected this newsletter: %s', 'beehiiv' ),
+				$matches[1]
+			);
 		}
 
 		if ( preg_match( '/^HTTP 429:/i', $error ) ) {
