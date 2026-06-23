@@ -1,6 +1,6 @@
 <?php
 /**
- * beehiiv API: Post templates resource.
+ * Beehiiv API: Post templates resource.
  *
  * @package beehiiv
  */

@@ -209,7 +209,7 @@ final class BlockConverter {
 	/**
 	 * Convert WordPress heading block to beehiiv heading block.
 	 *
-	 * beehiiv heading block supports H1 to H6 heading tags.
+	 * Beehiiv heading block supports H1 to H6 heading tags.
 	 *
 	 * @param array<string, mixed> $wp_block WordPress heading block data.
 	 * @return array<string, mixed> beehiiv heading block data.

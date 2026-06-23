@@ -71,7 +71,7 @@ final class Config {
 	}
 
 	/**
-	 * beehiiv public API base URL.
+	 * Beehiiv public API base URL.
 	 *
 	 * @since 1.0.0
 	 *

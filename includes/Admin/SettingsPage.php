@@ -1,6 +1,6 @@
 <?php
 /**
- * beehiiv settings screen (Settings API + view).
+ * Beehiiv settings screen (Settings API + view).
  *
  * @package beehiiv
  */

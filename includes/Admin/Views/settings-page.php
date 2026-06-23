@@ -1,6 +1,6 @@
 <?php
 /**
- * beehiiv settings page template.
+ * Beehiiv settings page template.
  *
  * @package beehiiv
  */

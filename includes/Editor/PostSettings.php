@@ -1,6 +1,6 @@
 <?php
 /**
- * beehiiv post-level editor settings.
+ * Beehiiv post-level editor settings.
  *
  * @package beehiiv
  */

@@ -1,6 +1,6 @@
 <?php
 /**
- * beehiiv connection card (above the settings form).
+ * Beehiiv connection card (above the settings form).
  *
  * @package beehiiv
  */

@@ -1,6 +1,6 @@
 <?php
 /**
- * beehiiv top-level admin menu.
+ * Beehiiv top-level admin menu.
  *
  * @package beehiiv
  */
