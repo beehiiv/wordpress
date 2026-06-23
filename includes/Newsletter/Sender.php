@@ -51,12 +51,15 @@ final class Sender {
 	}
 
 	/**
-	 * Prevent clearing or changing the beehiiv post ID after a successful send.
+	 * Prevent clearing the beehiiv post ID after a successful send.
 	 *
-	 * During block editor publish, newsletter sync can run on `transition_post_status`
-	 * before REST meta is applied. The REST payload may include `_beehiiv_post_id`
+	 * During block editor publish, newsletter sync can run on `rest_after_insert_post`
+	 * after REST meta is applied. The REST payload may include `_beehiiv_post_id`
 	 * as an empty string even though the database already has a linked ID. Do not
 	 * overwrite the stored value; short-circuit as success so the REST save does not fail.
+	 *
+	 * Intentional ID changes (for example after {@see reschedule_linked_post()}) must
+	 * still be allowed so later updates target the active beehiiv post.
 	 *
 	 * @since 1.0.0
 	 *
@@ -86,8 +89,12 @@ final class Sender {
 			return $check;
 		}
 
-		// Keep the stored ID when REST sends empty or attempts to change it.
-		return true;
+		// Keep the stored ID when REST sends an empty value.
+		if ( '' === $incoming ) {
+			return true;
+		}
+
+		return $check;
 	}
 
 	/**
