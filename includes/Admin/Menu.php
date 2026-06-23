@@ -12,7 +12,7 @@ use Beehiiv\Config;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Adds the Beehiiv item to the wp-admin sidebar.
+ * Adds the beehiiv item to the wp-admin sidebar.
  *
  * @since 1.0.0
  */
@@ -28,8 +28,8 @@ final class Menu {
 	 */
 	public static function register(): void {
 		add_menu_page(
-			__( 'Beehiiv Settings', 'beehiiv' ),
-			__( 'Beehiiv', 'beehiiv' ),
+			__( 'beehiiv Settings', 'beehiiv' ),
+			__( 'beehiiv', 'beehiiv' ),
 			'manage_options',
 			Config::PLUGIN_SLUG,
 			[ SettingsPage::class, 'render' ],

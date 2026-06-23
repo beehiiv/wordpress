@@ -101,7 +101,7 @@ final class TokenStore {
 	}
 
 	/**
-	 * Connected Beehiiv user info for admin UI.
+	 * Connected beehiiv user info for admin UI.
 	 *
 	 * @since 1.0.0
 	 *

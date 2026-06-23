@@ -1,5 +1,5 @@
 /**
- * Tracks blocks omitted from the Beehiiv newsletter payload.
+ * Tracks blocks omitted from the beehiiv newsletter payload.
  */
 import { useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';

@@ -1,5 +1,5 @@
-=== Beehiiv ===
-Contributors: Beehiiv
+=== beehiiv ===
+Contributors: beehiiv
 Tags: newsletter, email, publishing
 Requires at least: 6.5
 Tested up to: 6.8
@@ -8,12 +8,12 @@ Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Official Beehiiv WordPress plugin.
+Official beehiiv WordPress plugin.
 
 
 == Description ==
 
-Connect WordPress with Beehiiv to publish posts as newsletters.
+Connect WordPress with beehiiv to publish posts as newsletters.
 
 
 == Installation ==
@@ -25,9 +25,9 @@ Connect WordPress with Beehiiv to publish posts as newsletters.
 
 == Frequently Asked Questions ==
 
-= Does this require a Beehiiv account? =
+= Does this require a beehiiv account? =
 
-Yes. You will need an active Beehiiv account.
+Yes. You will need an active beehiiv account.
 
 == Changelog ==
 

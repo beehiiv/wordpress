@@ -10,7 +10,7 @@ namespace Beehiiv\OAuth;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Beehiiv OAuth endpoints and scopes.
+ * OAuth endpoints and scopes for beehiiv.
  *
  * @since 1.0.0
  */
@@ -141,7 +141,7 @@ final class Config {
 	}
 
 	/**
-	 * Whitelist Beehiiv OAuth hosts for wp_safe_redirect().
+	 * Whitelist beehiiv OAuth hosts for wp_safe_redirect().
 	 *
 	 * @since 1.0.0
 	 *
@@ -155,7 +155,7 @@ final class Config {
 	}
 
 	/**
-	 * Known Beehiiv OAuth app hostnames.
+	 * Known beehiiv OAuth app hostnames.
 	 *
 	 * @since 1.0.0
 	 *

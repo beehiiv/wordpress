@@ -22,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
 final class Posts {
 
 	/**
-	 * Create a post in a Beehiiv publication.
+	 * Create a post in a beehiiv publication.
 	 *
 	 * @param string              $publication_id Publication ID.
 	 * @param array<string,mixed> $payload        Create-post request body.
@@ -69,7 +69,7 @@ final class Posts {
 			return [
 				'success' => false,
 				'post_id' => '',
-				'error'   => 'No post ID found in the Beehiiv API response.',
+				'error'   => 'No post ID found in the beehiiv API response.',
 			];
 		}
 
@@ -81,12 +81,12 @@ final class Posts {
 	}
 
 	/**
-	 * Delete or archive a post in a Beehiiv publication.
+	 * Delete or archive a post in a beehiiv publication.
 	 *
 	 * Confirmed posts are archived; drafts are permanently deleted.
 	 *
 	 * @param string $publication_id Publication ID.
-	 * @param string $post_id        Beehiiv post ID.
+	 * @param string $post_id        beehiiv post ID.
 	 * @return array{success: bool, error: string}
 	 * @since 1.0.0
 	 */
@@ -140,10 +140,10 @@ final class Posts {
 	}
 
 	/**
-	 * Update an existing post in a Beehiiv publication.
+	 * Update an existing post in a beehiiv publication.
 	 *
 	 * @param string              $publication_id Publication ID.
-	 * @param string              $post_id        Beehiiv post ID.
+	 * @param string              $post_id        beehiiv post ID.
 	 * @param array<string,mixed> $payload        Update-post request body.
 	 * @return array{success: bool, error: string}
 	 * @since 1.0.0
@@ -226,6 +226,6 @@ final class Posts {
 			return sprintf( 'HTTP %d: %s', $status_code, $response['message'] );
 		}
 
-		return sprintf( 'HTTP %d: Beehiiv API request failed.', $status_code );
+		return sprintf( 'HTTP %d: beehiiv API request failed.', $status_code );
 	}
 }

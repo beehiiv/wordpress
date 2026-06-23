@@ -37,7 +37,7 @@ $status_icon_class = $is_connected
 						class="button button-primary"
 						href="<?php echo esc_url( Manager::get_connect_url() ); ?>"
 					>
-						<?php esc_html_e( 'Connect to Beehiiv', 'beehiiv' ); ?>
+						<?php esc_html_e( 'Connect to beehiiv', 'beehiiv' ); ?>
 					</a>
 				<?php endif; ?>
 			</div>
@@ -62,11 +62,11 @@ $status_icon_class = $is_connected
 				$signup_link = sprintf(
 					'<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
 					esc_url( Manager::get_signup_url() ),
-					esc_html__( 'Create a Beehiiv account now', 'beehiiv' )
+					esc_html__( 'Create a beehiiv account now', 'beehiiv' )
 				);
 				printf(
-					/* translators: %s: link to Beehiiv sign-up. */
-					esc_html__( "Don't have a Beehiiv account? %s", 'beehiiv' ),
+					/* translators: %s: link to beehiiv sign-up. */
+					esc_html__( "Don't have a beehiiv account? %s", 'beehiiv' ),
 					wp_kses(
 						$signup_link,
 						[
@@ -85,7 +85,7 @@ $status_icon_class = $is_connected
 				<p class="description">
 					<?php
 					esc_html_e(
-						'You are now connected to Beehiiv. To send WordPress posts to your newsletter:',
+						'You are now connected to beehiiv. To send WordPress posts to your newsletter:',
 						'beehiiv'
 					);
 					?>
@@ -122,7 +122,7 @@ $status_icon_class = $is_connected
 						<?php
 						echo wp_kses(
 							// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
-							__( 'Open the <strong>Beehiiv</strong> panel in the editor sidebar (Beehiiv icon in the top toolbar).', 'beehiiv' ),
+							__( 'Open the <strong>beehiiv</strong> panel in the editor sidebar (beehiiv icon in the top toolbar).', 'beehiiv' ),
 							[ 'strong' => [] ]
 						);
 						?>
@@ -131,7 +131,7 @@ $status_icon_class = $is_connected
 						<?php
 						echo wp_kses(
 							// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
-							__( 'Turn on <strong>Send to newsletter</strong> before you publish, and the post will be queued for delivery via Beehiiv.', 'beehiiv' ),
+							__( 'Turn on <strong>Send to newsletter</strong> before you publish, and the post will be queued for delivery via beehiiv.', 'beehiiv' ),
 							[ 'strong' => [] ]
 						);
 						?>

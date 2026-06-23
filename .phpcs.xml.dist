@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
-<ruleset name="Beehiiv WordPress Coding Standards">
+<ruleset name="beehiiv WordPress Coding Standards">
 
 	<description>
-		PHPCS rules for the Beehiiv WordPress plugin.
+		PHPCS rules for the beehiiv WordPress plugin.
 	</description>
 
 	<!-- Scan these files/folders -->

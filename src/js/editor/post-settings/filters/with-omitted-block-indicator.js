@@ -1,5 +1,5 @@
 /**
- * Visual indicators for blocks omitted from Beehiiv newsletters.
+ * Visual indicators for blocks omitted from beehiiv newsletters.
  */
 import { __ } from '@wordpress/i18n';
 import { createHigherOrderComponent } from '@wordpress/compose';
@@ -36,11 +36,11 @@ const withOmittedBlockIndicator = createHigherOrderComponent( ( BlockEdit ) => {
 				<span
 					className="beehiiv-omitted-block__icon dashicons dashicons-hidden"
 					title={ __(
-						'Not included in Beehiiv newsletter',
+						'Not included in beehiiv newsletter',
 						'beehiiv'
 					) }
 					aria-label={ __(
-						'Not included in Beehiiv newsletter',
+						'Not included in beehiiv newsletter',
 						'beehiiv'
 					) }
 				/>

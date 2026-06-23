@@ -1,6 +1,6 @@
 <?php
 /**
- * Converts WordPress block content to Beehiiv newsletter blocks.
+ * Converts WordPress block content to beehiiv newsletter blocks.
  *
  * @package beehiiv
  */
@@ -13,7 +13,7 @@ use WP_Post;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Walks parsed block editor content and builds the Beehiiv `blocks` array.
+ * Walks parsed block editor content and builds the beehiiv `blocks` array.
  *
  * Supported WordPress blocks (mapped in `convert_supported_blocks()`):
  *
@@ -28,8 +28,8 @@ defined( 'ABSPATH' ) || exit;
  * - `core/embed` — `convert_embed_block()`
  * - `core/media-text` — `convert_media_text_block()` (not implemented yet)
  * - `core/buttons` / inner `core/button` — `convert_buttons_block()`, `convert_button_block()`
- * - `core/separator` — Beehiiv `content_break`
- * - `core/more` — snippet newsletters only; Beehiiv Read More `button` via `convert_more_block()`
+ * - `core/separator` — beehiiv `content_break`
+ * - `core/more` — snippet newsletters only; beehiiv Read More `button` via `convert_more_block()`
  *
  * Layout blocks (`core/group`, `core/columns`, etc.) and all other unsupported
  * block types are skipped along with their inner blocks. Snippet mode stops at
@@ -40,7 +40,7 @@ defined( 'ABSPATH' ) || exit;
 final class BlockConverter {
 
 	/**
-	 * Convert a WordPress post's blocks to Beehiiv blocks.
+	 * Convert a WordPress post's blocks to beehiiv blocks.
 	 *
 	 * @param WP_Post $post_object Post object.
 	 * @return array<int, array<string, mixed>>
@@ -77,7 +77,7 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Recursively convert parsed WordPress blocks to Beehiiv blocks.
+	 * Recursively convert parsed WordPress blocks to beehiiv blocks.
 	 *
 	 * @param array<int, array<string, mixed>> $wp_blocks                  Parsed blocks.
 	 * @param WP_Post                          $post_object                Post object.
@@ -161,7 +161,7 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Convert post thumbnail to Beehiiv image block.
+	 * Convert post thumbnail to beehiiv image block.
 	 *
 	 * @param int $thumbnail_id Thumbnail ID.
 	 * @return array<string, mixed>
@@ -182,7 +182,7 @@ final class BlockConverter {
 		$alt_text = trim( wp_strip_all_tags( get_post_meta( $thumbnail_id, '_wp_attachment_image_alt', true ) ) );
 		$caption  = wp_get_attachment_caption( $thumbnail_id );
 
-		// Build Beehiiv image block.
+		// Build beehiiv image block.
 		$beehiiv_block = [
 			'type'                => 'image',
 			'imageUrl'            => $thumbnail_url,
@@ -207,12 +207,12 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Convert WordPress heading block to Beehiiv heading block.
+	 * Convert WordPress heading block to beehiiv heading block.
 	 *
 	 * Beehiiv heading block supports H1 to H6 heading tags.
 	 *
 	 * @param array<string, mixed> $wp_block WordPress heading block data.
-	 * @return array<string, mixed> Beehiiv heading block data.
+	 * @return array<string, mixed> beehiiv heading block data.
 	 * @since 1.0.0
 	 */
 	public static function convert_heading_block( array $wp_block ): array {
@@ -231,7 +231,7 @@ final class BlockConverter {
 			return [];
 		}
 
-		// Build Beehiiv heading block.
+		// Build beehiiv heading block.
 		$beehiiv_block = [
 			'type'         => 'heading',
 			'level'        => (string) $level,
@@ -268,13 +268,13 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Convert WordPress image block to Beehiiv image block.
+	 * Convert WordPress image block to beehiiv image block.
 	 *
 	 * Extracts image URL, alt text, caption, link URL and alignment from the HTML.
 	 * WordPress Image block stores these in img tag attributes, not block attributes.
 	 *
 	 * @param array<string, mixed> $wp_block WordPress image block data.
-	 * @return array<string, mixed> Beehiiv image block data.
+	 * @return array<string, mixed> beehiiv image block data.
 	 * @since 1.0.0
 	 */
 	public static function convert_image_block( array $wp_block ): array {
@@ -348,7 +348,7 @@ final class BlockConverter {
 			return [];
 		}
 
-		// Build Beehiiv image block.
+		// Build beehiiv image block.
 		$beehiiv_block = [
 			'type'     => 'image',
 			'imageUrl' => $image_url,
@@ -402,14 +402,14 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Convert WordPress buttons block to Beehiiv button blocks.
+	 * Convert WordPress buttons block to beehiiv button blocks.
 	 *
 	 * WordPress buttons block is a parent block with core/button as child blocks.
-	 * Each child button is converted to a separate Beehiiv button block.
+	 * Each child button is converted to a separate beehiiv button block.
 	 * Parent's justifyContent attribute is applied as alignment to each button.
 	 *
 	 * @param array<string, mixed> $wp_block WordPress buttons block data.
-	 * @return array<int, array<string, mixed>> Array of Beehiiv button blocks.
+	 * @return array<int, array<string, mixed>> Array of beehiiv button blocks.
 	 * @since 1.0.0
 	 */
 	public static function convert_buttons_block( array $wp_block ): array {
@@ -442,14 +442,14 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Convert WordPress button block to Beehiiv button block.
+	 * Convert WordPress button block to beehiiv button block.
 	 *
 	 * Extracts href, text, and target from the anchor tag in innerHTML.
 	 * WordPress button block always uses anchor tag even for plain text buttons.
 	 *
 	 * @param array<string, mixed> $wp_block  WordPress button block data.
 	 * @param string               $alignment Button alignment from parent buttons block.
-	 * @return array<string, mixed> Beehiiv button block data.
+	 * @return array<string, mixed> beehiiv button block data.
 	 * @since 1.0.0
 	 */
 	public static function convert_button_block( array $wp_block, string $alignment = 'left' ): array {
@@ -482,7 +482,7 @@ final class BlockConverter {
 			return [];
 		}
 
-		// Build Beehiiv button block.
+		// Build beehiiv button block.
 		$beehiiv_block = [
 			'type'      => 'button',
 			'href'      => ! empty( $href ) ? $href : '#',
@@ -496,14 +496,14 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Convert WordPress quote block to Beehiiv quote block.
+	 * Convert WordPress quote block to beehiiv quote block.
 	 *
 	 * WordPress quote block uses paragraph block for quote text (first child)
 	 * and optionally has citation. A quote transformed to a pullquote nests
 	 * `core/pullquote` as the first inner block instead.
 	 *
 	 * @param array<string, mixed> $wp_block WordPress quote block data.
-	 * @return array<string, mixed> Beehiiv quote block data.
+	 * @return array<string, mixed> beehiiv quote block data.
 	 * @since 1.0.0
 	 */
 	public static function convert_quote_block( array $wp_block ): array {
@@ -546,7 +546,7 @@ final class BlockConverter {
 
 		$alignment = $alignment ?? 'left';
 
-		// Build Beehiiv quote block.
+		// Build beehiiv quote block.
 		$beehiiv_block = [
 			'type'      => 'quote',
 			'quote'     => $quote_text,
@@ -562,14 +562,14 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Convert WordPress pullquote block to Beehiiv quote block.
+	 * Convert WordPress pullquote block to beehiiv quote block.
 	 *
 	 * WordPress pullquote block stores quote HTML in innerHTML attribute.
 	 * Quote text is extracted from p tag inside blockquote, citation from cite tag.
 	 * Text formatting is stripped from both.
 	 *
 	 * @param array<string, mixed> $wp_block WordPress pullquote block data.
-	 * @return array<string, mixed> Beehiiv quote block data.
+	 * @return array<string, mixed> beehiiv quote block data.
 	 * @since 1.0.0
 	 */
 	public static function convert_pullquote_block( array $wp_block ): array {
@@ -635,7 +635,7 @@ final class BlockConverter {
 
 		$alignment = $alignment ?? 'center';
 
-		// Build Beehiiv quote block.
+		// Build beehiiv quote block.
 		$beehiiv_block = [
 			'type'      => 'quote',
 			'quote'     => $quote_text,
@@ -651,12 +651,12 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Convert WordPress embed block to Beehiiv embed_link block.
+	 * Convert WordPress embed block to beehiiv embed_link block.
 	 *
 	 * WordPress embed block stores the embed URL in the url attribute.
 	 *
 	 * @param array<string, mixed> $wp_block WordPress embed block data.
-	 * @return array<string, mixed> Beehiiv embed_link block data.
+	 * @return array<string, mixed> beehiiv embed_link block data.
 	 * @since 1.0.0
 	 */
 	public static function convert_embed_block( array $wp_block ): array {

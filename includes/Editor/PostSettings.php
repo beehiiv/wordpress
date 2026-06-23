@@ -15,7 +15,7 @@ use Beehiiv\Newsletter\SupportedBlocks;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers post meta and enqueues the Beehiiv plugin sidebar for the default
+ * Registers post meta and enqueues the beehiiv plugin sidebar for the default
  * `post` post type.
  *
  * @since 1.0.0
@@ -38,7 +38,7 @@ final class PostSettings {
 	private const STYLE_HANDLE = 'beehiiv-post-settings';
 
 	/**
-	 * Post type that receives Beehiiv post meta and editor settings.
+	 * Post type that receives beehiiv post meta and editor settings.
 	 */
 	private const POST_TYPE = 'post';
 
@@ -87,7 +87,7 @@ final class PostSettings {
 	];
 
 	/**
-	 * Expose Beehiiv post meta to the REST API so the block editor can read
+	 * Expose beehiiv post meta to the REST API so the block editor can read
 	 * and write it.
 	 *
 	 * @since 1.0.0
@@ -123,7 +123,7 @@ final class PostSettings {
 	}
 
 	/**
-	 * Whether the current user may read or write a Beehiiv post meta key.
+	 * Whether the current user may read or write a beehiiv post meta key.
 	 *
 	 * Newsletter send settings require `publish_posts`; other keys allow `edit_posts`.
 	 *
@@ -252,7 +252,7 @@ final class PostSettings {
 	}
 
 	/**
-	 * Ensure Beehiiv meta in REST responses reflects the database after save.
+	 * Ensure beehiiv meta in REST responses reflects the database after save.
 	 *
 	 * Newsletter send runs on `rest_after_insert_post` and may update meta after the
 	 * request payload is applied; refresh those keys so the block editor clears errors

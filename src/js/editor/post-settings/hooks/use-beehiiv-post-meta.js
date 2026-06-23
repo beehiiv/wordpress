@@ -1,5 +1,5 @@
 /**
- * Beehiiv post meta for the block editor.
+ * beehiiv post meta for the block editor.
  *
  * Uses `useEntityProp` so meta reads/writes stay in sync with the post entity
  * store (same pattern as core post fields).
@@ -22,12 +22,12 @@ import {
 
 /**
  * @typedef {Object} BeehiivPostMeta
- * @property {boolean}                      sendToNewsletter           Whether this post is queued for Beehiiv.
+ * @property {boolean}                      sendToNewsletter           Whether this post is queued for beehiiv.
  * @property {string|null}                  sendToNewsletterDate       ISO 8601 datetime, or null to send on WP post publish.
  * @property {boolean}                      sendToNewsletterSnippet    Whether to send a snippet instead of the full post.
- * @property {string}                       beehiivPostTemplateId      Beehiiv post template ID, or empty for plugin default.
- * @property {boolean}                      newsletterAlreadySent      Whether this post is linked to a Beehiiv newsletter.
- * @property {string|null}                  beehiivScheduledAt         UTC ISO 8601 Beehiiv send time, or null when sent immediately.
+ * @property {string}                       beehiivPostTemplateId      beehiiv post template ID, or empty for plugin default.
+ * @property {boolean}                      newsletterAlreadySent      Whether this post is linked to a beehiiv newsletter.
+ * @property {string|null}                  beehiivScheduledAt         UTC ISO 8601 beehiiv send time, or null when sent immediately.
  * @property {string|null}                  newsletterError            User-facing save or send error from the server.
  * @property {string|null}                  newsletterErrorType        `save` or `send` when {@link newsletterError} is set.
  * @property {(enabled: boolean) => void}   setSendToNewsletter        Enable or disable newsletter delivery.

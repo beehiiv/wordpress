@@ -1,5 +1,5 @@
 /**
- * Shared notice styling for the Beehiiv post settings sidebar.
+ * Shared notice styling for the beehiiv post settings sidebar.
  */
 import { Notice } from '@wordpress/components';
 

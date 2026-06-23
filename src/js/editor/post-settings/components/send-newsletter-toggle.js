@@ -1,5 +1,5 @@
 /**
- * Toggle whether this post is queued for Beehiiv newsletter delivery.
+ * Toggle whether this post is queued for beehiiv newsletter delivery.
  */
 import { __ } from '@wordpress/i18n';
 import { ToggleControl } from '@wordpress/components';
@@ -20,7 +20,7 @@ export default function SendNewsletterToggle( {
 			className="beehiiv-send-newsletter-toggle"
 			label={ __( 'Send to newsletter', 'beehiiv' ) }
 			help={ __(
-				'Queue this post for delivery via Beehiiv when published.',
+				'Queue this post for delivery via beehiiv when published.',
 				'beehiiv'
 			) }
 			checked={ checked }

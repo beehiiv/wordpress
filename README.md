@@ -1,6 +1,6 @@
-# Beehiiv for WordPress
+# beehiiv for WordPress
 
-Your Beehiiv newsletters, launched straight from the WordPress editor.
+Your beehiiv newsletters, launched straight from the WordPress editor.
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ npm run env:start
 
 Site: [http://localhost:8888](http://localhost:8888) · Admin: [http://localhost:8888/wp-admin](http://localhost:8888/wp-admin) · Login: `admin` / `password`
 
-**Local WordPress** — place the plugin in `wp-content/plugins/beehiiv`, run the setup commands above if needed, then activate **Beehiiv** under **Plugins** in wp-admin.
+**Local WordPress** — place the plugin in `wp-content/plugins/beehiiv`, run the setup commands above if needed, then activate **beehiiv** under **Plugins** in wp-admin.
 
 While developing JS/CSS, run `npm run start` in a second terminal.
 
@@ -62,7 +62,7 @@ includes/                                # PSR-4 PHP (Beehiiv\)
   Frontend/Assets.php                    # Public site assets
 src/js/                                  # JS / SCSS sources
   admin/                                 # wp-admin styles
-  editor/post-settings/                  # Beehiiv editor sidebar
+  editor/post-settings/                  # beehiiv editor sidebar
   frontend/                              # Public site bundle
   blocks/<block-name>/                   # Block sources (auto-detected)
   shared/meta.js                         # Post meta keys (sync with Editor/Meta.php)
@@ -82,7 +82,7 @@ See `src/js/blocks/signup-form/` and `src/js/blocks/advertisement/` for block sc
 
 ### Dashboard settings
 
-A top-level **Beehiiv** wp-admin menu (not under Settings) is wired from `Plugin::bootstrap_admin_features()`:
+A top-level **beehiiv** wp-admin menu (not under Settings) is wired from `Plugin::bootstrap_admin_features()`:
 
 | Class                     | Responsibility                                                   |
 | ------------------------- | ---------------------------------------------------------------- |
@@ -99,7 +99,7 @@ A top-level **Beehiiv** wp-admin menu (not under Settings) is wired from `Plugin
 
 ### Post settings sidebar
 
-`src/js/editor/post-settings/index.js` registers a **Beehiiv** `PluginSidebar` (editor sidebar icon, not the Post → Settings document panel) on the default `post` post type via `@wordpress/plugins`. It is shown only to users who can publish posts. Server-side, `includes/Editor/PostSettings.php`:
+`src/js/editor/post-settings/index.js` registers a **beehiiv** `PluginSidebar` (editor sidebar icon, not the Post → Settings document panel) on the default `post` post type via `@wordpress/plugins`. It is shown only to users who can publish posts. Server-side, `includes/Editor/PostSettings.php`:
 
 -   Registers each meta key with `register_post_meta()` and `show_in_rest => true` so the editor can read/write it.
 -   Enqueues `build/post-settings.js` (and CSS when present) only on `post` edit screens via `enqueue_block_editor_assets`.
@@ -111,7 +111,7 @@ Add new fields by keeping these in sync:
 3. `META_KEYS` in `includes/Editor/PostSettings.php` — registration config
 4. Controls in `src/js/editor/post-settings/index.js`
 
-Connect your Beehiiv account from **Beehiiv → Settings** in wp-admin. OAuth credentials are stored encrypted in the `beehiiv_oauth` option.
+Connect your beehiiv account from **beehiiv → Settings** in wp-admin. OAuth credentials are stored encrypted in the `beehiiv_oauth` option.
 
 For local development without a release build, set the registration token in `wp-config.php`:
 

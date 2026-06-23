@@ -57,7 +57,7 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 		const opts = [
 			{
 				value: '',
-				label: __( 'Default (from Beehiiv settings)', 'beehiiv' ),
+				label: __( 'Default (from beehiiv settings)', 'beehiiv' ),
 			},
 			...templates
 				.filter( ( item ) => item?.id )
@@ -96,21 +96,21 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 
 		if ( defaultTemplateName ) {
 			return sprintf(
-				/* translators: %s: post template name from Beehiiv settings */
-				__( 'Uses %s from Beehiiv settings.', 'beehiiv' ),
+				/* translators: %s: post template name from beehiiv settings */
+				__( 'Uses %s from beehiiv settings.', 'beehiiv' ),
 				defaultTemplateName
 			);
 		}
 
 		if ( defaultPostTemplateId ) {
 			return __(
-				'Uses the template configured in Beehiiv settings.',
+				'Uses the template configured in beehiiv settings.',
 				'beehiiv'
 			);
 		}
 
 		return __(
-			'No site default is set. Choose a template or configure one in Beehiiv settings.',
+			'No site default is set. Choose a template or configure one in beehiiv settings.',
 			'beehiiv'
 		);
 	}, [ value, defaultTemplateName, defaultPostTemplateId ] );

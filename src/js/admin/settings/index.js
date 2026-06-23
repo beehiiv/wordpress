@@ -1,5 +1,5 @@
 /**
- * Beehiiv wp-admin settings screen.
+ * beehiiv wp-admin settings screen.
  */
 import './settings.scss';
 

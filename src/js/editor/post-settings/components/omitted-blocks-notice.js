@@ -1,5 +1,5 @@
 /**
- * Omitted-block message for the Beehiiv sidebar send notice.
+ * Omitted-block message for the beehiiv sidebar send notice.
  */
 import { _n, sprintf } from '@wordpress/i18n';
 

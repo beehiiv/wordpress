@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
 final class Meta {
 
 	/**
-	 * Whether the post should be sent to the Beehiiv newsletter on publish.
+	 * Whether the post should be sent to the beehiiv newsletter on publish.
 	 *
 	 * @since 1.0.0
 	 */
@@ -52,7 +52,7 @@ final class Meta {
 	public const BEEHIIV_POST_ID = '_beehiiv_post_id';
 
 	/**
-	 * UTC ISO 8601 datetime last synced to Beehiiv `scheduled_at` for a linked post.
+	 * UTC ISO 8601 datetime last synced to beehiiv `scheduled_at` for a linked post.
 	 *
 	 * @since 1.0.0
 	 */

@@ -37,7 +37,7 @@ final class ClientRegistrar {
 			return new WP_Error(
 				'beehiiv_registration_token_missing',
 				__(
-					'Beehiiv connection is not configured for this plugin build. Contact your site administrator.',
+					'beehiiv connection is not configured for this plugin build. Contact your site administrator.',
 					'beehiiv'
 				)
 			);
@@ -58,14 +58,14 @@ final class ClientRegistrar {
 		if ( null !== $response['error'] ) {
 			return new WP_Error(
 				'beehiiv_register_transport',
-				__( 'Could not reach Beehiiv to register this site. Please try again.', 'beehiiv' )
+				__( 'Could not reach beehiiv to register this site. Please try again.', 'beehiiv' )
 			);
 		}
 
 		if ( 201 !== $response['status'] ) {
 			return new WP_Error(
 				'beehiiv_register_failed',
-				__( 'Beehiiv rejected client registration for this site. Please try again.', 'beehiiv' )
+				__( 'beehiiv rejected client registration for this site. Please try again.', 'beehiiv' )
 			);
 		}
 
@@ -76,14 +76,14 @@ final class ClientRegistrar {
 		if ( '' === $client_id ) {
 			return new WP_Error(
 				'beehiiv_register_invalid',
-				__( 'Beehiiv returned an invalid client registration response.', 'beehiiv' )
+				__( 'beehiiv returned an invalid client registration response.', 'beehiiv' )
 			);
 		}
 
 		if ( ! TokenStore::save_client_id( $client_id ) ) {
 			return new WP_Error(
 				'beehiiv_register_storage',
-				__( 'Could not save Beehiiv client credentials on this site.', 'beehiiv' )
+				__( 'Could not save beehiiv client credentials on this site.', 'beehiiv' )
 			);
 		}
 

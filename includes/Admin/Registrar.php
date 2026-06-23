@@ -1,6 +1,6 @@
 <?php
 /**
- * WordPress Settings API registration for the Beehiiv admin page.
+ * WordPress Settings API registration for the beehiiv admin page.
  *
  * @package beehiiv
  */
@@ -95,7 +95,7 @@ final class Registrar {
 	 */
 	public static function render_page_settings_description(): void {
 		echo '<p>' . esc_html__(
-			'Default Beehiiv publication and post template for newsletters sent from this site.',
+			'Default beehiiv publication and post template for newsletters sent from this site.',
 			'beehiiv'
 		) . '</p>';
 	}

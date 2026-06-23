@@ -22,7 +22,7 @@ final class Registry {
 	public const CATEGORY_SLUG = 'beehiiv-blocks';
 
 	/**
-	 * Register the Beehiiv block category for the block editor.
+	 * Register the beehiiv block category for the block editor.
 	 *
 	 * @since 1.0.0
 	 */
@@ -31,7 +31,7 @@ final class Registry {
 	}
 
 	/**
-	 * Prepend the Beehiiv category to the block inserter.
+	 * Prepend the beehiiv category to the block inserter.
 	 *
 	 * @param array<int, array<string, mixed>> $categories Registered block categories.
 	 * @return array<int, array<string, mixed>>
@@ -42,7 +42,7 @@ final class Registry {
 			$categories,
 			[
 				'slug'  => self::CATEGORY_SLUG,
-				'title' => __( 'Beehiiv', 'beehiiv' ),
+				'title' => __( 'beehiiv', 'beehiiv' ),
 			]
 		);
 

@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name: Beehiiv
- * Description: Official Beehiiv WordPress plugin.
+ * Plugin Name: beehiiv
+ * Description: Official beehiiv WordPress plugin.
  * Version: 1.0.0
- * Author: Beehiiv
+ * Author: beehiiv
  * Text Domain: beehiiv
  * Domain Path: /languages
  * Requires at least: 6.5

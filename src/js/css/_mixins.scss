@@ -1,5 +1,5 @@
 /**
- * Shared Beehiiv SCSS mixins.
+ * Shared beehiiv SCSS mixins.
  */
 @use "sass:color";
 @use "colors";
@@ -22,7 +22,7 @@
 	outline-offset: 4px;
 }
 
-/// Diagonal stripe background for blocks omitted from the Beehiiv newsletter.
+/// Diagonal stripe background for blocks omitted from the beehiiv newsletter.
 /// @param {Color} $warning-color Base warning color (defaults to status disconnected).
 @mixin omitted-block-background($warning-color: colors.$beehiiv-status-disconnected) {
 	background-color: color.change($warning-color, $alpha: 0.06);
@@ -35,7 +35,7 @@
 	);
 }
 
-/// Left-accent callout panel for Beehiiv blocks on the front end.
+/// Left-accent callout panel for beehiiv blocks on the front end.
 /// @param {Color} $background Panel background.
 /// @param {Color} $accent Left border color.
 @mixin block-callout($background, $accent) {

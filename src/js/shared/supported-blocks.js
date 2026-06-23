@@ -1,12 +1,12 @@
 /**
- * WordPress blocks supported for Beehiiv newsletter conversion.
+ * WordPress blocks supported for beehiiv newsletter conversion.
  *
  * Config is localized from `Beehiiv\Newsletter\SupportedBlocks` (PHP).
  */
 
 /**
  * @typedef {Object} BeehiivBlockSupportConfig
- * @property {string[]} supported   Blocks converted to Beehiiv newsletter blocks.
+ * @property {string[]} supported   Blocks converted to beehiiv newsletter blocks.
  * @property {string[]} nestedOnly  Inner blocks handled by a parent.
  * @property {string[]} snippetOnly Blocks only used in snippet newsletter mode.
  */
@@ -34,7 +34,7 @@ function getConfig() {
 }
 
 /**
- * Whether a block is converted for Beehiiv newsletters.
+ * Whether a block is converted for beehiiv newsletters.
  *
  * @param {string}  blockName   Block name (e.g. core/paragraph).
  * @param {boolean} snippetMode Whether snippet newsletter mode is enabled.

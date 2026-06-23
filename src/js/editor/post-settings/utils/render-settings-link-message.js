@@ -6,7 +6,7 @@ import { ExternalLink } from '@wordpress/components';
 
 /**
  * @param {string} message     Message text; use `<a>…</a>` for the settings link label.
- * @param {string} settingsUrl Beehiiv plugin settings admin URL.
+ * @param {string} settingsUrl beehiiv plugin settings admin URL.
  * @return {import('react').ReactNode} Message with an optional external link.
  */
 export default function renderSettingsLinkMessage( message, settingsUrl ) {
