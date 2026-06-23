@@ -18,6 +18,7 @@ import BeehiivSidebarIcon from './icon';
 import NewsletterDatePicker, {
 	getNewsletterSendDateValidation,
 } from './components/newsletter-date-picker';
+import NewsletterLinkedNotice from './components/newsletter-linked-notice';
 import NewsletterStatusNotices from './components/newsletter-status-notices';
 import NewsletterTemplateSelect from './components/newsletter-template-select';
 import PostSettingsNotice from './components/post-settings-notice';
@@ -76,14 +77,7 @@ function BeehiivPostSettingsPanel() {
 
 				<NewsletterStatusNotices beehiivMeta={ beehiivMeta } />
 
-				{ newsletterAlreadySent && (
-					<PostSettingsNotice status="success">
-						{ __(
-							'This post was sent to your Beehiiv newsletter.',
-							'beehiiv'
-						) }
-					</PostSettingsNotice>
-				) }
+				<NewsletterLinkedNotice beehiivMeta={ beehiivMeta } />
 				{ sendToNewsletter && ! newsletterAlreadySent && (
 					<>
 						<PostSettingsNotice status="warning">
