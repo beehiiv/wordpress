@@ -36,6 +36,7 @@ final class SupportedBlocks {
 		'core/media-text',
 		'core/buttons',
 		'core/separator',
+		'beehiiv/advertisement',
 	];
 
 	/**

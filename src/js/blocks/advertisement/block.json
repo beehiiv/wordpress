@@ -6,20 +6,24 @@
 	"title": "beehiiv Advertisement",
 	"category": "beehiiv-blocks",
 	"icon": "megaphone",
-	"description": "beehiiv advertisement placement (placeholder).",
-	"keywords": [ "beehiiv", "advertisement", "ad", "sponsor" ],
+	"description": "Places a beehiiv advertisement in the newsletter. Outputs nothing on the website.",
+	"keywords": [ "beehiiv", "advertisement", "ad" ],
 	"textdomain": "beehiiv",
+	"multiple": false,
 	"supports": {
 		"html": false,
 		"anchor": true
 	},
 	"attributes": {
-		"message": {
+		"adId": {
 			"type": "string",
-			"default": "Advertisement placeholder"
+			"default": ""
+		},
+		"adLabel": {
+			"type": "string",
+			"default": ""
 		}
 	},
 	"editorScript": "file:./index.js",
-	"editorStyle": "file:./index.css",
-	"style": "file:./style-index.css"
+	"editorStyle": "file:./index.css"
 }

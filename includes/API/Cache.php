@@ -45,6 +45,20 @@ final class Cache {
 	private const TEMPLATE_INDEX_KEY = 'beehiiv_template_cache_index';
 
 	/**
+	 * Transient key prefix for advertisement opportunity lists.
+	 *
+	 * @since 1.0.0
+	 */
+	private const AD_OPPORTUNITIES_KEY_PREFIX = 'beehiiv_ad_opportunities_';
+
+	/**
+	 * Index of cached advertisement opportunity publication IDs.
+	 *
+	 * @since 1.0.0
+	 */
+	private const AD_OPPORTUNITIES_INDEX_KEY = 'beehiiv_ad_opportunities_cache_index';
+
+	/**
 	 * Cached publications list.
 	 *
 	 * @since 1.0.0
@@ -117,7 +131,51 @@ final class Cache {
 	}
 
 	/**
-	 * Delete all cached publications and templates.
+	 * Cached advertisement opportunities for a publication.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $publication_id Publication ID.
+	 *
+	 * @return array<int, array<string, mixed>>|null
+	 */
+	public static function get_advertisement_opportunities( string $publication_id ): ?array {
+
+		$publication_id = trim( $publication_id );
+
+		if ( '' === $publication_id ) {
+			return null;
+		}
+
+		$cached = get_transient( self::ad_opportunities_key( $publication_id ) );
+
+		return is_array( $cached ) ? $cached : null;
+	}
+
+	/**
+	 * Store advertisement opportunities for a publication in cache.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string                           $publication_id Publication ID.
+	 * @param array<int, array<string, mixed>> $items          Normalized opportunities.
+	 *
+	 * @return void
+	 */
+	public static function set_advertisement_opportunities( string $publication_id, array $items ): void {
+
+		$publication_id = trim( $publication_id );
+
+		if ( '' === $publication_id ) {
+			return;
+		}
+
+		set_transient( self::ad_opportunities_key( $publication_id ), $items, self::TTL );
+		self::track_ad_opportunities_publication( $publication_id );
+	}
+
+	/**
+	 * Delete all cached publications, templates and advertisement opportunities.
 	 *
 	 * @since 1.0.0
 	 *
@@ -138,6 +196,18 @@ final class Cache {
 		}
 
 		delete_transient( self::TEMPLATE_INDEX_KEY );
+
+		$ad_index = get_transient( self::AD_OPPORTUNITIES_INDEX_KEY );
+
+		if ( is_array( $ad_index ) ) {
+			foreach ( $ad_index as $publication_id ) {
+				if ( is_string( $publication_id ) && '' !== $publication_id ) {
+					delete_transient( self::ad_opportunities_key( $publication_id ) );
+				}
+			}
+		}
+
+		delete_transient( self::AD_OPPORTUNITIES_INDEX_KEY );
 	}
 
 	/**
@@ -176,5 +246,43 @@ final class Cache {
 		}
 
 		set_transient( self::TEMPLATE_INDEX_KEY, $index, self::TTL );
+	}
+
+	/**
+	 * Build a transient key for a publication's advertisement opportunities.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $publication_id Publication ID.
+	 *
+	 * @return string
+	 */
+	private static function ad_opportunities_key( string $publication_id ): string {
+
+		return self::AD_OPPORTUNITIES_KEY_PREFIX . $publication_id;
+	}
+
+	/**
+	 * Track a publication ID in the advertisement opportunities cache index.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $publication_id Publication ID.
+	 *
+	 * @return void
+	 */
+	private static function track_ad_opportunities_publication( string $publication_id ): void {
+
+		$index = get_transient( self::AD_OPPORTUNITIES_INDEX_KEY );
+
+		if ( ! is_array( $index ) ) {
+			$index = [];
+		}
+
+		if ( ! in_array( $publication_id, $index, true ) ) {
+			$index[] = $publication_id;
+		}
+
+		set_transient( self::AD_OPPORTUNITIES_INDEX_KEY, $index, self::TTL );
 	}
 }
