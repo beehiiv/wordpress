@@ -41,9 +41,6 @@ export function getNewsletterSendDateValidation( sendDate, postPublishDate ) {
 		};
 	}
 
-	const now = getDate();
-	const publish = postPublishDate ? getDate( postPublishDate ) : null;
-
 	if ( ! isInTheFuture( sendDate ) ) {
 		return {
 			valid: false,
@@ -53,6 +50,9 @@ export function getNewsletterSendDateValidation( sendDate, postPublishDate ) {
 			),
 		};
 	}
+
+	const now = getDate();
+	const publish = postPublishDate ? getDate( postPublishDate ) : null;
 
 	if (
 		publish &&
