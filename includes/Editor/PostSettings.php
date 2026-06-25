@@ -317,6 +317,7 @@ final class PostSettings {
 
 		return [
 			'isConnected'           => Manager::is_connected(),
+			'appUrl'                => Config::APP_URL,
 			'settingsUrl'           => admin_url( 'admin.php?page=' . Config::PLUGIN_SLUG ),
 			'hasPublication'        => '' !== trim( (string) ( $settings['publication_id'] ?? '' ) ),
 			'hasPostTemplate'       => '' !== trim( (string) ( $settings['post_template_id'] ?? '' ) ),

@@ -3,8 +3,11 @@
  */
 import { __, sprintf } from '@wordpress/i18n';
 import { dateI18n, isInTheFuture } from '@wordpress/date';
+import { ExternalLink } from '@wordpress/components';
 
 import PostSettingsNotice from './post-settings-notice';
+import { useBeehiivEditorConfig } from '../hooks/use-beehiiv-editor-config';
+import getBeehiivPostPreviewUrl from '../utils/get-beehiiv-post-preview-url';
 
 /**
  * Format a datetime for display in the WordPress site timezone.
@@ -96,15 +99,31 @@ export function getNewsletterLinkedNoticeMessage(
  * @param {import('../hooks/use-beehiiv-post-meta').BeehiivPostMeta|null} props.beehiivMeta
  */
 export default function NewsletterLinkedNotice( { beehiivMeta } ) {
+	const { appUrl } = useBeehiivEditorConfig();
+
 	if ( ! beehiivMeta?.newsletterAlreadySent ) {
 		return null;
 	}
 
+	const previewUrl = getBeehiivPostPreviewUrl(
+		appUrl,
+		beehiivMeta.beehiivPostId ?? ''
+	);
+
 	return (
 		<PostSettingsNotice status="success">
-			{ getNewsletterLinkedNoticeMessage(
-				beehiivMeta.beehiivScheduledAt,
-				beehiivMeta.sendToNewsletterDate
+			<p className="beehiiv-post-settings-notice__text">
+				{ getNewsletterLinkedNoticeMessage(
+					beehiivMeta.beehiivScheduledAt,
+					beehiivMeta.sendToNewsletterDate
+				) }
+			</p>
+			{ previewUrl && (
+				<p className="beehiiv-post-settings-notice__text">
+					<ExternalLink href={ previewUrl }>
+						{ __( 'Preview in beehiiv', 'beehiiv' ) }
+					</ExternalLink>
+				</p>
 			) }
 		</PostSettingsNotice>
 	);

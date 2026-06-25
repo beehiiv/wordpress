@@ -45,6 +45,13 @@ final class Config {
 	public const SIGNUP_URL = 'https://www.beehiiv.com/';
 
 	/**
+	 * Beehiiv web app URL (post editor, account dashboard).
+	 *
+	 * @since 1.0.0
+	 */
+	public const APP_URL = 'https://app.beehiiv.com';
+
+	/**
 	 * Plugin documentation on WordPress.org.
 	 *
 	 * @since 1.0.0
