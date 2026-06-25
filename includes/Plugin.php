@@ -30,6 +30,7 @@ final class Plugin {
 		Frontend\Assets::init();
 		Admin\Assets::init();
 		Newsletter\Sender::init();
+		Advertisement\Sync::init();
 		OAuth\Config::register_hooks();
 		OAuth\AdminActions::init();
 		OAuth\CallbackHandler::init();
@@ -43,6 +44,7 @@ final class Plugin {
 		add_action( 'admin_menu', [ OAuth\CallbackHandler::class, 'register_page' ] );
 		add_action( 'admin_init', [ self::class, 'bootstrap_admin_features' ] );
 		add_action( 'rest_api_init', [ REST\PostTemplatesController::class, 'register_routes' ] );
+		add_action( 'rest_api_init', [ REST\AdvertisementOpportunitiesController::class, 'register_routes' ] );
 	}
 
 	/**

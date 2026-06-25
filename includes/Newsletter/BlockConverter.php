@@ -7,6 +7,8 @@
 
 namespace Beehiiv\Newsletter;
 
+use Beehiiv\Admin\Options;
+use Beehiiv\API\Resources\AdvertisementOpportunities;
 use Beehiiv\Editor\Meta;
 use WP_Post;
 
@@ -30,6 +32,7 @@ defined( 'ABSPATH' ) || exit;
  * - `core/buttons` / inner `core/button` — `convert_buttons_block()`, `convert_button_block()`
  * - `core/separator` — beehiiv `content_break`
  * - `core/more` — snippet newsletters only; beehiiv Read More `button` via `convert_more_block()`
+ * - `beehiiv/advertisement` — beehiiv `advertisement` block via `convert_advertisement_block()`
  *
  * Layout blocks (`core/group`, `core/columns`, etc.) and all other unsupported
  * block types are skipped along with their inner blocks. Snippet mode stops at
@@ -155,9 +158,55 @@ final class BlockConverter {
 				return self::convert_embed_block( $wp_block );
 			case 'core/media-text':
 				return self::convert_media_text_block( $wp_block );
+			case 'beehiiv/advertisement':
+				return self::convert_advertisement_block( $wp_block );
 		}
 
 		return [];
+	}
+
+	/**
+	 * Convert the beehiiv advertisement block to a beehiiv advertisement block.
+	 *
+	 * The block is omitted (returns an empty array) when no ad is selected or the
+	 * selected ad is no longer an active offer, so the newsletter still sends.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array<string, mixed> $wp_block Parsed block.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function convert_advertisement_block( array $wp_block ): array {
+
+		$ad_id = isset( $wp_block['attrs']['adId'] ) ? trim( (string) $wp_block['attrs']['adId'] ) : '';
+
+		if ( '' === $ad_id ) {
+			return [];
+		}
+
+		$settings       = Options::get();
+		$publication_id = isset( $settings['publication_id'] ) ? trim( (string) $settings['publication_id'] ) : '';
+
+		if ( '' === $publication_id ) {
+			return [];
+		}
+
+		// Verify the selected ad is still an active offer; omit it otherwise.
+		if ( ! in_array( $ad_id, AdvertisementOpportunities::get_active_ad_ids( $publication_id, false ), true ) ) {
+			return [];
+		}
+
+		return [
+			'type'            => 'advertisement',
+			'opportunity_id'  => $ad_id,
+			'visual_settings' => [
+				'inner_spacing_top'    => 15,
+				'inner_spacing_bottom' => 15,
+				'inner_spacing_left'   => 0,
+				'inner_spacing_right'  => 0,
+			],
+		];
 	}
 
 	/**
