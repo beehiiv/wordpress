@@ -7,6 +7,7 @@
 import { useEffect, useRef } from '@wordpress/element';
 import { useRegistry, useSelect } from '@wordpress/data';
 import { useEntityProp, store as coreStore } from '@wordpress/core-data';
+import { getDate } from '@wordpress/date';
 import { store as editorStore } from '@wordpress/editor';
 
 import {
@@ -137,8 +138,8 @@ export function useBeehiivPostMeta() {
 			return;
 		}
 
-		const publish = postPublishDate ? new Date( postPublishDate ) : null;
-		const send = new Date( customDate );
+		const publish = postPublishDate ? getDate( postPublishDate ) : null;
+		const send = getDate( customDate );
 
 		if (
 			! publish ||

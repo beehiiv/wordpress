@@ -2,7 +2,7 @@
  * Success notice after a post is linked to a beehiiv newsletter.
  */
 import { __, sprintf } from '@wordpress/i18n';
-import { dateI18n } from '@wordpress/date';
+import { dateI18n, isInTheFuture } from '@wordpress/date';
 
 import PostSettingsNotice from './post-settings-notice';
 
@@ -39,16 +39,12 @@ function getFutureNewsletterSendDateString(
 	scheduledAtUtc,
 	sendToNewsletterDate
 ) {
-	const now = Date.now();
-
 	for ( const raw of [ scheduledAtUtc, sendToNewsletterDate ] ) {
 		if ( typeof raw !== 'string' || raw.length === 0 ) {
 			continue;
 		}
 
-		const send = new Date( raw );
-
-		if ( ! Number.isNaN( send.getTime() ) && send.getTime() > now ) {
+		if ( isInTheFuture( raw ) ) {
 			return raw;
 		}
 	}
