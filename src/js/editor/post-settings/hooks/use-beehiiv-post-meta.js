@@ -55,20 +55,26 @@ export function useBeehiivPostMeta() {
 		[]
 	);
 
-	const { postId, isSavingPost, didPostSaveRequestSucceed } = useSelect(
-		( select ) => {
+	const { postId, isSavingPost, isAutosavingPost, didPostSaveRequestSucceed } =
+		useSelect( ( select ) => {
 			const editor = select( editorStore );
 
 			return {
 				postId: editor.getCurrentPostId(),
 				isSavingPost: editor.isSavingPost(),
+				isAutosavingPost: editor.isAutosavingPost(),
 				didPostSaveRequestSucceed: editor.didPostSaveRequestSucceed(),
 			};
-		},
-		[]
-	);
+		}, [] );
 
 	const wasSavingPostRef = useRef( false );
+	const wasAutosavingPostRef = useRef( false );
+
+	useEffect( () => {
+		if ( isSavingPost ) {
+			wasAutosavingPostRef.current = isAutosavingPost;
+		}
+	}, [ isAutosavingPost, isSavingPost ] );
 
 	useEffect( () => {
 		const wasSavingPost = wasSavingPostRef.current;
@@ -77,6 +83,7 @@ export function useBeehiivPostMeta() {
 		if (
 			! wasSavingPost ||
 			isSavingPost ||
+			wasAutosavingPostRef.current ||
 			! didPostSaveRequestSucceed ||
 			! postType ||
 			! postId
@@ -100,18 +107,30 @@ export function useBeehiivPostMeta() {
 			return;
 		}
 
-		setMeta( {
+		const serverBeehiivPostId = serverMeta[ META_BEEHIIV_POST_ID ] ?? '';
+		const editedBeehiivPostId = editedMeta[ META_BEEHIIV_POST_ID ] ?? '';
+		const linkStateChanged = serverBeehiivPostId !== editedBeehiivPostId;
+
+		const syncedMeta = {
 			...editedMeta,
-			[ META_BEEHIIV_POST_ID ]: serverMeta[ META_BEEHIIV_POST_ID ] ?? '',
+			[ META_BEEHIIV_POST_ID ]: serverBeehiivPostId,
 			[ META_BEEHIIV_SCHEDULED_AT ]:
 				serverMeta[ META_BEEHIIV_SCHEDULED_AT ] ?? '',
-			[ META_SEND_TO_NEWSLETTER ]:
-				!! serverMeta[ META_SEND_TO_NEWSLETTER ],
 			[ META_NEWSLETTER_ERROR ]:
 				serverMeta[ META_NEWSLETTER_ERROR ] ?? '',
 			[ META_NEWSLETTER_ERROR_TYPE ]:
 				serverMeta[ META_NEWSLETTER_ERROR_TYPE ] ?? '',
-		} );
+		};
+
+		// Writable meta is only refreshed when the server changes link state (for
+		// example after send or a failed send retry). Autosaves and routine saves
+		// often still have `false` in the DB while the editor toggle is on.
+		if ( linkStateChanged ) {
+			syncedMeta[ META_SEND_TO_NEWSLETTER ] =
+				!! serverMeta[ META_SEND_TO_NEWSLETTER ];
+		}
+
+		setMeta( syncedMeta );
 	}, [
 		didPostSaveRequestSucceed,
 		isSavingPost,
