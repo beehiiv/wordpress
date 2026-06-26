@@ -7,6 +7,7 @@
 import { useEffect, useRef } from '@wordpress/element';
 import { useRegistry, useSelect } from '@wordpress/data';
 import { useEntityProp, store as coreStore } from '@wordpress/core-data';
+import { getDate } from '@wordpress/date';
 import { store as editorStore } from '@wordpress/editor';
 
 import {
@@ -27,6 +28,7 @@ import {
  * @property {boolean}                      sendToNewsletterSnippet    Whether to send a snippet instead of the full post.
  * @property {string}                       beehiivPostTemplateId      beehiiv post template ID, or empty for plugin default.
  * @property {boolean}                      newsletterAlreadySent      Whether this post is linked to a beehiiv newsletter.
+ * @property {string|null}                  beehiivPostId              Linked beehiiv post ID from post meta.
  * @property {string|null}                  beehiivScheduledAt         UTC ISO 8601 beehiiv send time, or null when sent immediately.
  * @property {string|null}                  newsletterError            User-facing save or send error from the server.
  * @property {string|null}                  newsletterErrorType        `save` or `send` when {@link newsletterError} is set.
@@ -137,8 +139,8 @@ export function useBeehiivPostMeta() {
 			return;
 		}
 
-		const publish = postPublishDate ? new Date( postPublishDate ) : null;
-		const send = new Date( customDate );
+		const publish = postPublishDate ? getDate( postPublishDate ) : null;
+		const send = getDate( customDate );
 
 		if (
 			! publish ||
@@ -172,8 +174,11 @@ export function useBeehiivPostMeta() {
 	const sendToNewsletterDate =
 		typeof rawDate === 'string' && rawDate.length > 0 ? rawDate : null;
 	const rawBeehiivPostId = meta?.[ META_BEEHIIV_POST_ID ];
-	const newsletterAlreadySent =
-		typeof rawBeehiivPostId === 'string' && rawBeehiivPostId.length > 0;
+	const beehiivPostId =
+		typeof rawBeehiivPostId === 'string' && rawBeehiivPostId.length > 0
+			? rawBeehiivPostId
+			: null;
+	const newsletterAlreadySent = null !== beehiivPostId;
 	const rawBeehiivScheduledAt = meta?.[ META_BEEHIIV_SCHEDULED_AT ];
 	const beehiivScheduledAt =
 		typeof rawBeehiivScheduledAt === 'string' &&
@@ -202,6 +207,7 @@ export function useBeehiivPostMeta() {
 		sendToNewsletterSnippet,
 		beehiivPostTemplateId,
 		newsletterAlreadySent,
+		beehiivPostId,
 		beehiivScheduledAt,
 		newsletterError,
 		newsletterErrorType,

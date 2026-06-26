@@ -133,6 +133,10 @@ final class Sender {
 	/**
 	 * Cancel or resend beehiiv newsletters when post visibility changes.
 	 *
+	 * Block editor saves defer send/update to {@see on_rest_insert()} so newsletter meta
+	 * from the REST payload is available and sync runs once per request. Cancels still run
+	 * here so unpublishing via the block editor removes linked beehiiv posts promptly.
+	 *
 	 * @param string  $new_status New post status.
 	 * @param string  $old_status Old post status.
 	 * @param WP_Post $post       Post object.
@@ -146,6 +150,10 @@ final class Sender {
 
 		if ( self::should_cancel_newsletter_for_status_change( $new_status, $post ) ) {
 			self::cancel_scheduled_newsletter( $post->ID );
+			return;
+		}
+
+		if ( self::should_defer_send_to_rest() ) {
 			return;
 		}
 
@@ -819,6 +827,16 @@ final class Sender {
 		}
 
 		return $mapped;
+	}
+
+	/**
+	 * Whether send/update should wait for {@see on_rest_insert()} instead of transition hooks.
+	 *
+	 * @return bool
+	 * @since 1.0.0
+	 */
+	private static function should_defer_send_to_rest(): bool {
+		return defined( 'REST_REQUEST' ) && REST_REQUEST;
 	}
 
 	/**

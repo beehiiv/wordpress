@@ -4,6 +4,7 @@
 
 const DEFAULT_CONFIG = {
 	isConnected: false,
+	appUrl: '',
 	settingsUrl: '',
 	hasPublication: false,
 	hasPostTemplate: false,

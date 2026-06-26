@@ -3,7 +3,13 @@
  */
 import { __, sprintf } from '@wordpress/i18n';
 import { Button, DateTimePicker, Dropdown, Icon } from '@wordpress/components';
-import { dateI18n, format, getSettings } from '@wordpress/date';
+import {
+	dateI18n,
+	format,
+	getDate,
+	getSettings,
+	isInTheFuture,
+} from '@wordpress/date';
 import { closeSmall } from '@wordpress/icons';
 import { useMemo, useState } from '@wordpress/element';
 import { useSelect } from '@wordpress/data';
@@ -23,7 +29,7 @@ export function getNewsletterSendDateValidation( sendDate, postPublishDate ) {
 		return { valid: true };
 	}
 
-	const send = new Date( sendDate );
+	const send = getDate( sendDate );
 
 	if ( Number.isNaN( send.getTime() ) ) {
 		return {
@@ -35,10 +41,7 @@ export function getNewsletterSendDateValidation( sendDate, postPublishDate ) {
 		};
 	}
 
-	const now = new Date();
-	const publish = postPublishDate ? new Date( postPublishDate ) : null;
-
-	if ( send <= now ) {
+	if ( ! isInTheFuture( sendDate ) ) {
 		return {
 			valid: false,
 			message: __(
@@ -47,6 +50,9 @@ export function getNewsletterSendDateValidation( sendDate, postPublishDate ) {
 			),
 		};
 	}
+
+	const now = getDate();
+	const publish = postPublishDate ? getDate( postPublishDate ) : null;
 
 	if (
 		publish &&
@@ -78,13 +84,13 @@ export function isNewsletterSendOnPublish( sendDate, postPublishDate ) {
 		return true;
 	}
 
-	const send = new Date( sendDate );
+	const send = getDate( sendDate );
 
 	if ( Number.isNaN( send.getTime() ) ) {
 		return false;
 	}
 
-	const publish = postPublishDate ? new Date( postPublishDate ) : null;
+	const publish = postPublishDate ? getDate( postPublishDate ) : null;
 
 	if ( ! publish || Number.isNaN( publish.getTime() ) ) {
 		return false;
@@ -118,8 +124,8 @@ export function getNewsletterSendDateLabel( sendDate, postPublishDate ) {
  * @return {Date} Earliest allowed calendar day for the date picker.
  */
 function getMinimumSendDay( postPublishDate ) {
-	const now = new Date();
-	const publish = postPublishDate ? new Date( postPublishDate ) : null;
+	const now = getDate();
+	const publish = postPublishDate ? getDate( postPublishDate ) : null;
 
 	if ( publish && ! Number.isNaN( publish.getTime() ) && publish > now ) {
 		return publish;
