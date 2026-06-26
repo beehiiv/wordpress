@@ -55,17 +55,21 @@ export function useBeehiivPostMeta() {
 		[]
 	);
 
-	const { postId, isSavingPost, isAutosavingPost, didPostSaveRequestSucceed } =
-		useSelect( ( select ) => {
-			const editor = select( editorStore );
+	const {
+		postId,
+		isSavingPost,
+		isAutosavingPost,
+		didPostSaveRequestSucceed,
+	} = useSelect( ( select ) => {
+		const editor = select( editorStore );
 
-			return {
-				postId: editor.getCurrentPostId(),
-				isSavingPost: editor.isSavingPost(),
-				isAutosavingPost: editor.isAutosavingPost(),
-				didPostSaveRequestSucceed: editor.didPostSaveRequestSucceed(),
-			};
-		}, [] );
+		return {
+			postId: editor.getCurrentPostId(),
+			isSavingPost: editor.isSavingPost(),
+			isAutosavingPost: editor.isAutosavingPost(),
+			didPostSaveRequestSucceed: editor.didPostSaveRequestSucceed(),
+		};
+	}, [] );
 
 	const wasSavingPostRef = useRef( false );
 	const wasAutosavingPostRef = useRef( false );
