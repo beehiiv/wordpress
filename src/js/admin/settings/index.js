@@ -20,6 +20,41 @@ let refreshNotice = null;
 let refreshNoticeTimer = null;
 
 /**
+ * Show or hide the "no templates available" notice for the current publication.
+ *
+ * @param {boolean} hasTemplates Whether the publication has any templates.
+ *
+ * @return {void}
+ */
+function updateNoTemplatesNotice( hasTemplates ) {
+	if ( ! refreshTemplatesButton ) {
+		return;
+	}
+
+	let notice = document.querySelector( '.beehiiv-no-templates-notice' );
+	const shouldShow = !! publicationSelect?.value && ! hasTemplates;
+
+	if ( ! shouldShow ) {
+		if ( notice ) {
+			notice.hidden = true;
+		}
+		return;
+	}
+
+	if ( ! notice ) {
+		notice = document.createElement( 'p' );
+		notice.className = 'description beehiiv-no-templates-notice';
+		notice.textContent = __(
+			'This publication has no post templates. Create a template in beehiiv, then refresh.',
+			'beehiiv'
+		);
+		refreshTemplatesButton.insertAdjacentElement( 'afterend', notice );
+	}
+
+	notice.hidden = false;
+}
+
+/**
  * Show an auto-dismissing confirmation after a manual refresh.
  *
  * @return {void}
@@ -75,16 +110,22 @@ function populateTemplateOptions( items ) {
 	emptyOption.textContent = __( 'No default template', 'beehiiv' );
 	templateSelect.appendChild( emptyOption );
 
+	let hasTemplates = false;
+
 	items.forEach( ( item ) => {
 		if ( ! item?.id ) {
 			return;
 		}
+
+		hasTemplates = true;
 
 		const option = document.createElement( 'option' );
 		option.value = item.id;
 		option.textContent = item.name || item.id;
 		templateSelect.appendChild( option );
 	} );
+
+	updateNoTemplatesNotice( hasTemplates );
 }
 
 /**

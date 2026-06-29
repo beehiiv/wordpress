@@ -164,12 +164,17 @@ final class Registrar {
 		$name           = Config::OPTION_NAME . '[post_template_id]';
 		$publication_id = (string) $settings['publication_id'];
 		$items          = '' !== $publication_id ? PostTemplates::get_post_templates( $publication_id ) : [];
+		$has_templates  = (bool) array_filter(
+			$items,
+			static function ( $row ) {
+				return isset( $row['id'] ) && '' !== (string) $row['id'];
+			}
+		);
 		?>
 		<select
 			id="beehiiv_post_template_id"
 			class="beehiiv-settings-select"
 			name="<?php echo esc_attr( $name ); ?>"
-			required
 		>
 			<option value="" <?php selected( $selected, '' ); ?>>
 				<?php esc_html_e( 'No default template', 'beehiiv' ); ?>
@@ -209,6 +214,16 @@ final class Registrar {
 		>
 			<?php esc_html_e( 'Refresh templates', 'beehiiv' ); ?>
 		</button>
+		<?php if ( '' !== $publication_id && ! $has_templates ) : ?>
+			<p class="description beehiiv-no-templates-notice">
+				<?php
+				esc_html_e(
+					'This publication has no post templates. Create a template in beehiiv, then refresh.',
+					'beehiiv'
+				);
+				?>
+			</p>
+		<?php endif; ?>
 		<p class="description">
 			<?php
 			esc_html_e(
