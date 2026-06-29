@@ -1,8 +1,14 @@
 /**
  * Post template picker for a queued newsletter.
  */
-import { useEffect, useMemo, useState } from '@wordpress/element';
-import { SelectControl, Spinner } from '@wordpress/components';
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from '@wordpress/element';
+import { Button, SelectControl, Spinner } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
 import apiFetch from '@wordpress/api-fetch';
 
@@ -17,41 +23,63 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 	const { publicationId, defaultPostTemplateId } = useBeehiivEditorConfig();
 	const [ templates, setTemplates ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( false );
+	const [ justRefreshed, setJustRefreshed ] = useState( false );
+	const noticeTimer = useRef( null );
 
 	useEffect( () => {
-		if ( ! publicationId ) {
-			setTemplates( [] );
-			return;
+		return () => {
+			if ( noticeTimer.current ) {
+				clearTimeout( noticeTimer.current );
+			}
+		};
+	}, [] );
+
+	const loadTemplates = useCallback(
+		( { refresh = false } = {} ) => {
+			if ( ! publicationId ) {
+				setTemplates( [] );
+				return Promise.resolve();
+			}
+
+			setIsLoading( true );
+
+			return apiFetch( {
+				path: `/beehiiv/v1/post-templates?publication_id=${ encodeURIComponent(
+					publicationId
+				) }${ refresh ? '&refresh=1' : '' }`,
+			} )
+				.then( ( items ) => {
+					setTemplates( Array.isArray( items ) ? items : [] );
+				} )
+				.catch( () => {
+					setTemplates( [] );
+				} )
+				.finally( () => {
+					setIsLoading( false );
+				} );
+		},
+		[ publicationId ]
+	);
+
+	useEffect( () => {
+		loadTemplates();
+	}, [ loadTemplates ] );
+
+	const handleRefresh = useCallback( () => {
+		setJustRefreshed( false );
+
+		if ( noticeTimer.current ) {
+			clearTimeout( noticeTimer.current );
 		}
 
-		let cancelled = false;
-		setIsLoading( true );
-
-		apiFetch( {
-			path: `/beehiiv/v1/post-templates?publication_id=${ encodeURIComponent(
-				publicationId
-			) }`,
-		} )
-			.then( ( items ) => {
-				if ( ! cancelled ) {
-					setTemplates( Array.isArray( items ) ? items : [] );
-				}
-			} )
-			.catch( () => {
-				if ( ! cancelled ) {
-					setTemplates( [] );
-				}
-			} )
-			.finally( () => {
-				if ( ! cancelled ) {
-					setIsLoading( false );
-				}
-			} );
-
-		return () => {
-			cancelled = true;
-		};
-	}, [ publicationId ] );
+		loadTemplates( { refresh: true } ).then( () => {
+			setJustRefreshed( true );
+			noticeTimer.current = setTimeout(
+				() => setJustRefreshed( false ),
+				4000
+			);
+		} );
+	}, [ loadTemplates ] );
 
 	const options = useMemo( () => {
 		const opts = [
@@ -128,13 +156,40 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 	}
 
 	return (
-		<SelectControl
-			className="beehiiv-newsletter-template"
-			label={ __( 'Post template', 'beehiiv' ) }
-			value={ value }
-			options={ options }
-			onChange={ onChange }
-			help={ helpText }
-		/>
+		<div className="beehiiv-newsletter-template">
+			<SelectControl
+				label={ __( 'Post template', 'beehiiv' ) }
+				value={ value }
+				options={ options }
+				onChange={ onChange }
+				help={ helpText }
+				disabled={ isLoading }
+				__nextHasNoMarginBottom
+			/>
+			<Button
+				variant="secondary"
+				onClick={ handleRefresh }
+				disabled={ isLoading }
+				isBusy={ isLoading }
+			>
+				{ isLoading
+					? __( 'Refreshing…', 'beehiiv' )
+					: __( 'Refresh templates', 'beehiiv' ) }
+			</Button>
+			{ justRefreshed && (
+				<p
+					className="beehiiv-newsletter-template__refresh-notice"
+					role="status"
+				>
+					{ __( 'Templates updated from beehiiv.', 'beehiiv' ) }
+				</p>
+			) }
+			<p className="beehiiv-newsletter-template__refresh-help">
+				{ __(
+					'Templates are cached. Refresh to pull the latest from beehiiv after adding, renaming, or deleting one.',
+					'beehiiv'
+				) }
+			</p>
+		</div>
 	);
 }

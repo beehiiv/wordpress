@@ -19,9 +19,14 @@ final class Cache {
 	/**
 	 * Cache TTL in seconds.
 	 *
+	 * Lists rarely change, and the editor and settings screens expose a manual
+	 * "Refresh" control that clears the relevant transient on demand, so the TTL
+	 * acts as a background performance and resilience floor rather than a
+	 * freshness window.
+	 *
 	 * @since 1.0.0
 	 */
-	private const TTL = 15 * MINUTE_IN_SECONDS;
+	private const TTL = 6 * HOUR_IN_SECONDS;
 
 	/**
 	 * Transient key for publications list.
@@ -131,6 +136,26 @@ final class Cache {
 	}
 
 	/**
+	 * Delete cached templates for a single publication.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $publication_id Publication ID.
+	 *
+	 * @return void
+	 */
+	public static function delete_post_templates( string $publication_id ): void {
+
+		$publication_id = trim( $publication_id );
+
+		if ( '' === $publication_id ) {
+			return;
+		}
+
+		delete_transient( self::template_key( $publication_id ) );
+	}
+
+	/**
 	 * Cached advertisement opportunities for a publication.
 	 *
 	 * @since 1.0.0
@@ -172,6 +197,26 @@ final class Cache {
 
 		set_transient( self::ad_opportunities_key( $publication_id ), $items, self::TTL );
 		self::track_ad_opportunities_publication( $publication_id );
+	}
+
+	/**
+	 * Delete cached advertisement opportunities for a single publication.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $publication_id Publication ID.
+	 *
+	 * @return void
+	 */
+	public static function delete_advertisement_opportunities( string $publication_id ): void {
+
+		$publication_id = trim( $publication_id );
+
+		if ( '' === $publication_id ) {
+			return;
+		}
+
+		delete_transient( self::ad_opportunities_key( $publication_id ) );
 	}
 
 	/**

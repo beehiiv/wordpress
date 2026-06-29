@@ -9,6 +9,7 @@ namespace Beehiiv\REST;
 
 use Beehiiv\Admin\Options;
 use Beehiiv\Advertisement\Reservations;
+use Beehiiv\API\Cache;
 use Beehiiv\API\Resources\AdvertisementOpportunities;
 use Beehiiv\Connection\Manager;
 use WP_REST_Request;
@@ -54,6 +55,11 @@ final class AdvertisementOpportunitiesController {
 						'required'          => true,
 						'type'              => 'integer',
 						'sanitize_callback' => 'absint',
+					],
+					'refresh' => [
+						'required' => false,
+						'type'     => 'boolean',
+						'default'  => false,
 					],
 				],
 			]
@@ -104,6 +110,11 @@ final class AdvertisementOpportunitiesController {
 				],
 				400
 			);
+		}
+
+		// A manual refresh clears the cached list so the next fetch repopulates it from beehiiv.
+		if ( $request->get_param( 'refresh' ) ) {
+			Cache::delete_advertisement_opportunities( $publication_id );
 		}
 
 		$post_id = absint( $request->get_param( 'post_id' ) );

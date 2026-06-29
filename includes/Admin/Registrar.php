@@ -201,8 +201,21 @@ final class Registrar {
 					</option>
 				<?php endif; ?>
 		</select>
+		<button
+			type="button"
+			id="beehiiv_refresh_post_templates"
+			class="button button-secondary beehiiv-refresh-button"
+			<?php disabled( '' === $publication_id ); ?>
+		>
+			<?php esc_html_e( 'Refresh templates', 'beehiiv' ); ?>
+		</button>
 		<p class="description">
-			<?php esc_html_e( 'Default post template for newsletters sent from this site.', 'beehiiv' ); ?>
+			<?php
+			esc_html_e(
+				'Default newsletter template for this site. Refresh after changing templates in beehiiv.',
+				'beehiiv'
+			);
+			?>
 		</p>
 		<?php
 	}
