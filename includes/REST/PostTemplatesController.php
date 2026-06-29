@@ -7,6 +7,7 @@
 
 namespace Beehiiv\REST;
 
+use Beehiiv\API\Cache;
 use Beehiiv\API\Resources\PostTemplates;
 use Beehiiv\Connection\Manager;
 use WP_REST_Request;
@@ -50,6 +51,11 @@ final class PostTemplatesController {
 						'required'          => true,
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_text_field',
+					],
+					'refresh'        => [
+						'required' => false,
+						'type'     => 'boolean',
+						'default'  => false,
 					],
 				],
 			]
@@ -99,6 +105,11 @@ final class PostTemplatesController {
 				],
 				400
 			);
+		}
+
+		// A manual refresh clears the cached list so the next fetch repopulates it from beehiiv.
+		if ( $request->get_param( 'refresh' ) ) {
+			Cache::delete_post_templates( $publication_id );
 		}
 
 		return new WP_REST_Response(

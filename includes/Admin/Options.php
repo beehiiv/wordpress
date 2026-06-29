@@ -7,6 +7,7 @@
 
 namespace Beehiiv\Admin;
 
+use Beehiiv\API\Cache;
 use Beehiiv\Config;
 
 defined( 'ABSPATH' ) || exit;
@@ -79,6 +80,12 @@ final class Options {
 		$post_template_id = isset( $input['post_template_id'] )
 			? sanitize_text_field( (string) $input['post_template_id'] )
 			: '';
+
+		// Saving settings clears the cached template list for the selected
+		// publication so the dropdown reflects any beehiiv-side changes.
+		if ( '' !== $publication_id ) {
+			Cache::delete_post_templates( $publication_id );
+		}
 
 		return [
 			'publication_id'   => $publication_id,

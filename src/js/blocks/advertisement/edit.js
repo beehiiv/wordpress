@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useState } from '@wordpress/element';
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
 import {
+	Button,
 	PanelBody,
 	Placeholder,
 	SelectControl,
@@ -21,40 +28,62 @@ export default function Edit( { attributes, setAttributes } ) {
 
 	const [ ads, setAds ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( false );
+	const [ justRefreshed, setJustRefreshed ] = useState( false );
+	const noticeTimer = useRef( null );
 
 	useEffect( () => {
-		if ( ! postId ) {
-			return undefined;
+		return () => {
+			if ( noticeTimer.current ) {
+				clearTimeout( noticeTimer.current );
+			}
+		};
+	}, [] );
+
+	const loadAds = useCallback(
+		( { refresh = false } = {} ) => {
+			if ( ! postId ) {
+				return Promise.resolve();
+			}
+
+			setIsLoading( true );
+
+			return apiFetch( {
+				path: `/beehiiv/v1/advertisement-opportunities?post_id=${ encodeURIComponent(
+					postId
+				) }${ refresh ? '&refresh=1' : '' }`,
+			} )
+				.then( ( items ) => {
+					setAds( Array.isArray( items ) ? items : [] );
+				} )
+				.catch( () => {
+					setAds( [] );
+				} )
+				.finally( () => {
+					setIsLoading( false );
+				} );
+		},
+		[ postId ]
+	);
+
+	useEffect( () => {
+		loadAds();
+	}, [ loadAds ] );
+
+	const handleRefresh = useCallback( () => {
+		setJustRefreshed( false );
+
+		if ( noticeTimer.current ) {
+			clearTimeout( noticeTimer.current );
 		}
 
-		let cancelled = false;
-		setIsLoading( true );
-
-		apiFetch( {
-			path: `/beehiiv/v1/advertisement-opportunities?post_id=${ encodeURIComponent(
-				postId
-			) }`,
-		} )
-			.then( ( items ) => {
-				if ( ! cancelled ) {
-					setAds( Array.isArray( items ) ? items : [] );
-				}
-			} )
-			.catch( () => {
-				if ( ! cancelled ) {
-					setAds( [] );
-				}
-			} )
-			.finally( () => {
-				if ( ! cancelled ) {
-					setIsLoading( false );
-				}
-			} );
-
-		return () => {
-			cancelled = true;
-		};
-	}, [ postId ] );
+		loadAds( { refresh: true } ).then( () => {
+			setJustRefreshed( true );
+			noticeTimer.current = setTimeout(
+				() => setJustRefreshed( false ),
+				4000
+			);
+		} );
+	}, [ loadAds ] );
 
 	const options = useMemo( () => {
 		const opts = [
@@ -103,17 +132,50 @@ export default function Edit( { attributes, setAttributes } ) {
 					{ isLoading && options.length <= 1 ? (
 						<Spinner />
 					) : (
-						<SelectControl
-							label={ __( 'Advertisement', 'beehiiv' ) }
-							value={ adId }
-							options={ options }
-							onChange={ onSelectAd }
-							help={ __(
-								'Only ads not already used in another post are listed.',
-								'beehiiv'
+						<div className="beehiiv-advertisement-control">
+							<SelectControl
+								label={ __( 'Advertisement', 'beehiiv' ) }
+								value={ adId }
+								options={ options }
+								onChange={ onSelectAd }
+								help={ __(
+									'Only ads not already used in another post are listed.',
+									'beehiiv'
+								) }
+								disabled={ isLoading }
+								__nextHasNoMarginBottom
+							/>
+							<Button
+								variant="secondary"
+								onClick={ handleRefresh }
+								disabled={ isLoading }
+								isBusy={ isLoading }
+							>
+								{ isLoading
+									? __( 'Refreshing…', 'beehiiv' )
+									: __(
+											'Refresh advertisements',
+											'beehiiv'
+									  ) }
+							</Button>
+							{ justRefreshed && (
+								<p
+									className="beehiiv-advertisement__refresh-notice"
+									role="status"
+								>
+									{ __(
+										'Advertisements updated from beehiiv.',
+										'beehiiv'
+									) }
+								</p>
 							) }
-							__nextHasNoMarginBottom
-						/>
+							<p className="beehiiv-advertisement__refresh-help">
+								{ __(
+									'Opportunities are cached. Refresh to pull the latest from beehiiv.',
+									'beehiiv'
+								) }
+							</p>
+						</div>
 					) }
 				</PanelBody>
 			</InspectorControls>

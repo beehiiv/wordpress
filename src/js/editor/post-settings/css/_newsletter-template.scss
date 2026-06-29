@@ -1,23 +1,16 @@
-@use "../../css" as beehiiv;
-
-.wp-block-beehiiv-advertisement {
-
-	@include beehiiv.block-placeholder-outline;
-}
-
 /* stylelint-disable selector-class-pattern -- BEM + @wordpress/components */
-.beehiiv-advertisement-control {
+.beehiiv-newsletter-template {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 
-	.beehiiv-advertisement__refresh-notice {
+	&__refresh-notice {
 		color: var(--wp-admin-theme-color, #2271b1);
 		font-size: 12px;
 		margin: 0;
 	}
 
-	.beehiiv-advertisement__refresh-help {
+	&__refresh-help {
 		color: #757575;
 		font-size: 12px;
 		margin: 0;
