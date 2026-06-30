@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * - Featured image (post thumbnail) — `convert_post_thumbnail()`
  * - `core/heading` — `convert_heading_block()`
- * - `core/paragraph` — `convert_paragraph_block()` (not implemented yet)
+ * - `core/paragraph` — `convert_paragraph_block()`
  * - `core/image` — `convert_image_block()`
  * - `core/list` — `convert_list_block()` (not implemented yet)
  * - `core/table` — `convert_table_block()` (not implemented yet)
@@ -306,14 +306,51 @@ final class BlockConverter {
 	/**
 	 * Convert a core/paragraph block.
 	 *
+	 * Maps innerHTML to beehiiv plaintext/formattedText plus optional textAlignment
+	 * and block-level text colour from the `<p>` tag. Inline formatting is parsed
+	 * by FormattedTextParser (shared with list/table blocks).
+	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
 	public static function convert_paragraph_block( array $wp_block ): array {
-		unset( $wp_block );
+		$attrs      = $wp_block['attrs'] ?? [];
+		$inner_html = $wp_block['innerHTML'] ?? '';
 
-		return [];
+		if ( '' === trim( $inner_html ) ) {
+			return [];
+		}
+
+		$inline_html      = FormattedTextParser::extract_element_inner_html( $inner_html, 'p' );
+		$block_text_color = FormattedTextParser::resolve_paragraph_block_text_color( $inner_html, $attrs );
+		$parsed           = FormattedTextParser::parse( $inline_html, $block_text_color );
+
+		if ( '' === trim( $parsed['plaintext'] ) ) {
+			return [];
+		}
+
+		$beehiiv_block = [
+			'type' => 'paragraph',
+		];
+
+		if ( FormattedTextParser::has_rich_formatting( $parsed['formattedText'] ) ) {
+			$beehiiv_block['formattedText'] = $parsed['formattedText'];
+		} else {
+			$beehiiv_block['plaintext'] = $parsed['plaintext'];
+		}
+
+		$alignment = self::get_text_align_from_attrs( $attrs );
+
+		if ( null === $alignment ) {
+			$alignment = self::get_text_align_from_html( $inner_html );
+		}
+
+		if ( null !== $alignment ) {
+			$beehiiv_block['textAlignment'] = $alignment;
+		}
+
+		return $beehiiv_block;
 	}
 
 	/**
@@ -766,12 +803,31 @@ final class BlockConverter {
 			return $attrs['textAlign'];
 		}
 
+		if ( ! empty( $attrs['align'] ) && is_string( $attrs['align'] ) ) {
+			return $attrs['align'];
+		}
+
 		if (
 			isset( $attrs['style']['typography']['textAlign'] )
 			&& is_string( $attrs['style']['typography']['textAlign'] )
 			&& '' !== $attrs['style']['typography']['textAlign']
 		) {
 			return $attrs['style']['typography']['textAlign'];
+		}
+
+		return null;
+	}
+
+	/**
+	 * Resolve text alignment from saved block HTML classes.
+	 *
+	 * @param string $html Saved block HTML.
+	 * @return string|null left, center, or right; null when not set.
+	 * @since 1.0.0
+	 */
+	private static function get_text_align_from_html( string $html ): ?string {
+		if ( preg_match( '/has-text-align-(left|center|right)/', $html, $matches ) ) {
+			return $matches[1];
 		}
 
 		return null;
