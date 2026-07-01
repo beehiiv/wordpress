@@ -191,7 +191,64 @@ final class FormattedTextParser {
 			return $from_attrs;
 		}
 
-		return self::resolve_block_text_color_from_html( $inner_html );
+		return self::resolve_block_text_color_from_html( $inner_html, 'p' );
+	}
+
+	/**
+	 * Resolve block-level list-item text colour from attrs and the `<li>` tag.
+	 *
+	 * @param string               $inner_html Saved list-item HTML including the `<li>` wrapper.
+	 * @param array<string, mixed> $attrs      Parsed block attributes.
+	 * @return string|null
+	 * @since 1.0.0
+	 */
+	public static function resolve_list_item_block_text_color( string $inner_html, array $attrs ): ?string {
+		$from_attrs = self::resolve_block_text_color_from_attrs( $attrs );
+
+		if ( null !== $from_attrs ) {
+			return $from_attrs;
+		}
+
+		return self::resolve_block_text_color_from_html( $inner_html, 'li' );
+	}
+
+	/**
+	 * Resolve block-level list text colour from attrs and the `<ul>` / `<ol>` tag.
+	 *
+	 * Applied as the default colour for all list items unless an item or inline
+	 * element sets its own colour.
+	 *
+	 * @param string               $inner_html Saved list HTML including the wrapper tag.
+	 * @param array<string, mixed> $attrs      Parsed list block attributes.
+	 * @return string|null
+	 * @since 1.0.0
+	 */
+	public static function resolve_list_block_text_color( string $inner_html, array $attrs ): ?string {
+		$from_attrs = self::resolve_block_text_color_from_attrs( $attrs );
+
+		if ( null !== $from_attrs ) {
+			return $from_attrs;
+		}
+
+		return self::resolve_list_wrapper_color_from_html( $inner_html, $attrs, 'text' );
+	}
+
+	/**
+	 * Resolve block-level list background colour from attrs and the `<ul>` / `<ol>` tag.
+	 *
+	 * @param string               $inner_html Saved list HTML including the wrapper tag.
+	 * @param array<string, mixed> $attrs      Parsed list block attributes.
+	 * @return string|null
+	 * @since 1.0.0
+	 */
+	public static function resolve_list_block_background_color( string $inner_html, array $attrs ): ?string {
+		$from_attrs = self::resolve_block_background_color_from_attrs( $attrs );
+
+		if ( null !== $from_attrs ) {
+			return $from_attrs;
+		}
+
+		return self::resolve_list_wrapper_color_from_html( $inner_html, $attrs, 'background' );
 	}
 
 	/**
@@ -708,31 +765,179 @@ final class FormattedTextParser {
 	}
 
 	/**
-	 * Resolve block-level text colour from the saved `<p>` tag markup.
+	 * Resolve block-level background colour from block attributes.
 	 *
-	 * @param string $inner_html Saved paragraph HTML including the `<p>` wrapper.
+	 * @param array<string, mixed> $attrs Parsed block attributes.
 	 * @return string|null
 	 */
-	private static function resolve_block_text_color_from_html( string $inner_html ): ?string {
-		if ( ! preg_match( '/<p\b([^>]*)>/i', $inner_html, $matches ) ) {
+	private static function resolve_block_background_color_from_attrs( array $attrs ): ?string {
+		if (
+			isset( $attrs['style']['color']['background'] )
+			&& is_string( $attrs['style']['color']['background'] )
+			&& '' !== trim( $attrs['style']['color']['background'] )
+		) {
+			$color = trim( $attrs['style']['color']['background'] );
+
+			if ( ! self::is_transparent_color( $color ) ) {
+				return $color;
+			}
+		}
+
+		if ( ! empty( $attrs['backgroundColor'] ) && is_string( $attrs['backgroundColor'] ) ) {
+			$slug = trim( $attrs['backgroundColor'] );
+
+			if ( '' !== $slug ) {
+				return self::get_color_preset_map()[ $slug ] ?? null;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Resolve list wrapper colour from saved `<ul>` / `<ol>` markup.
+	 *
+	 * @param string               $inner_html Saved list HTML.
+	 * @param array<string, mixed> $attrs      Parsed list block attributes.
+	 * @param string               $color_type Either `text` or `background`.
+	 * @return string|null
+	 */
+	private static function resolve_list_wrapper_color_from_html( string $inner_html, array $attrs, string $color_type ): ?string {
+		$primary_tag   = ! empty( $attrs['ordered'] ) ? 'ol' : 'ul';
+		$alternate_tag = 'ol' === $primary_tag ? 'ul' : 'ol';
+
+		$from_primary = self::resolve_wrapper_color_from_html_tag( $inner_html, $primary_tag, $color_type );
+
+		if ( null !== $from_primary ) {
+			return $from_primary;
+		}
+
+		return self::resolve_wrapper_color_from_html_tag( $inner_html, $alternate_tag, $color_type );
+	}
+
+	/**
+	 * Read class/style from the first matching tag via the HTML Tag Processor.
+	 *
+	 * @param string $inner_html Saved HTML.
+	 * @param string $tag        Tag name.
+	 * @return array{class: string, style: string}|null
+	 */
+	private static function get_first_tag_attributes( string $inner_html, string $tag ): ?array {
+		$processor = new \WP_HTML_Tag_Processor( $inner_html );
+
+		if ( ! $processor->next_tag( strtoupper( $tag ) ) ) {
 			return null;
 		}
 
-		$attributes = $matches[1];
+		return [
+			'class' => (string) ( $processor->get_attribute( 'class' ) ?? '' ),
+			'style' => (string) ( $processor->get_attribute( 'style' ) ?? '' ),
+		];
+	}
 
-		if ( preg_match( '/\bstyle=(["\'])(.*?)\1/i', $attributes, $style_match ) ) {
-			$color = self::extract_css_color( html_entity_decode( $style_match[2], ENT_QUOTES ), 'color' );
+	/**
+	 * Resolve wrapper text or background colour from tag attributes.
+	 *
+	 * @param string $inner_html Saved HTML including the wrapper tag.
+	 * @param string $tag        Wrapper tag name.
+	 * @param string $color_type Either `text` or `background`.
+	 * @return string|null
+	 */
+	private static function resolve_wrapper_color_from_html_tag( string $inner_html, string $tag, string $color_type ): ?string {
+		$attributes = self::get_first_tag_attributes( $inner_html, $tag );
+
+		if ( null === $attributes ) {
+			return null;
+		}
+
+		if ( 'background' === $color_type ) {
+			return self::resolve_block_background_color_from_tag_attributes(
+				$attributes['class'],
+				$attributes['style']
+			);
+		}
+
+		return self::resolve_block_text_color_from_tag_attributes(
+			$attributes['class'],
+			$attributes['style']
+		);
+	}
+
+	/**
+	 * Resolve block-level text colour from wrapper class and style attributes.
+	 *
+	 * @param string $class_names Wrapper class attribute.
+	 * @param string $style       Wrapper style attribute.
+	 * @return string|null
+	 */
+	private static function resolve_block_text_color_from_tag_attributes( string $class_names, string $style ): ?string {
+		if ( '' !== $style ) {
+			$color = self::extract_css_color( html_entity_decode( $style, ENT_QUOTES ), 'color' );
 
 			if ( null !== $color && ! self::is_transparent_color( $color ) ) {
 				return $color;
 			}
 		}
 
-		if ( preg_match( '/\bclass=(["\'])(.*?)\1/i', $attributes, $class_match ) ) {
-			return self::resolve_block_preset_text_color( $class_match[2] );
+		if ( '' !== $class_names ) {
+			return self::resolve_block_preset_text_color( $class_names );
 		}
 
 		return null;
+	}
+
+	/**
+	 * Resolve block-level background colour from wrapper class and style attributes.
+	 *
+	 * @param string $class_names Wrapper class attribute.
+	 * @param string $style       Wrapper style attribute.
+	 * @return string|null
+	 */
+	private static function resolve_block_background_color_from_tag_attributes( string $class_names, string $style ): ?string {
+		if ( '' !== $style ) {
+			$color = self::extract_css_color( html_entity_decode( $style, ENT_QUOTES ), 'background-color' );
+
+			if ( null !== $color && ! self::is_transparent_color( $color ) ) {
+				return $color;
+			}
+		}
+
+		if ( '' !== $class_names ) {
+			return self::resolve_block_preset_background_color( $class_names );
+		}
+
+		return null;
+	}
+
+	/**
+	 * Resolve a block-level preset background colour from wrapper classes.
+	 *
+	 * @param string $class_names Wrapper class attribute.
+	 * @return string|null
+	 */
+	private static function resolve_block_preset_background_color( string $class_names ): ?string {
+		if ( ! preg_match( '/\bhas-background\b/', $class_names ) ) {
+			return null;
+		}
+
+		$slug = self::extract_preset_slug( $class_names, 'background-color' );
+
+		if ( null === $slug ) {
+			return null;
+		}
+
+		return self::get_color_preset_map()[ $slug ] ?? null;
+	}
+
+	/**
+	 * Resolve block-level text colour from saved wrapper tag markup.
+	 *
+	 * @param string $inner_html Saved element HTML including the wrapper tag.
+	 * @param string $tag        Wrapper tag name (e.g. `p`, `li`).
+	 * @return string|null
+	 */
+	private static function resolve_block_text_color_from_html( string $inner_html, string $tag ): ?string {
+		return self::resolve_wrapper_color_from_html_tag( $inner_html, $tag, 'text' );
 	}
 
 	/**
