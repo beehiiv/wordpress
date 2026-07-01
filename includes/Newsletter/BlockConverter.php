@@ -480,8 +480,8 @@ final class BlockConverter {
 	 * Maps attrs.head into rows[0] with headerRow when the Header section is enabled
 	 * in the block editor. attrs.body supplies remaining rows. When attrs are empty
 	 * (common for query-sourced table attributes in PHP parse_blocks), rows are read
-	 * from innerHTML instead. Footer rows are omitted; beehiiv has no table footer
-	 * support. headerColumn is not mapped (no WordPress equivalent).
+	 * from innerHTML instead. The table is omitted when every cell is empty.
+	 * Footer rows are omitted; beehiiv has no table footer support.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<string, mixed>
@@ -526,7 +526,14 @@ final class BlockConverter {
 			$header_row = true;
 		}
 
-		if ( empty( $rows ) ) {
+		if ( ! self::table_rows_have_content( $rows ) && '' !== $inner_html ) {
+			$header_from_html = $header_explicitly_off ? false : null;
+			$parsed           = self::parse_table_rows_from_inner_html( $inner_html, $header_from_html );
+			$rows             = $parsed['rows'];
+			$header_row       = $parsed['header_row'];
+		}
+
+		if ( empty( $rows ) || ! self::table_rows_have_content( $rows ) ) {
 			return [];
 		}
 
@@ -900,6 +907,58 @@ final class BlockConverter {
 		$value = (int) $span;
 
 		return $value > 1 ? $value : null;
+	}
+
+	/**
+	 * Whether a converted beehiiv table cell contains text.
+	 *
+	 * @param array<string, mixed> $cell Converted table cell data.
+	 * @return bool
+	 * @since 1.0.0
+	 */
+	private static function table_cell_has_content( array $cell ): bool {
+		if ( isset( $cell['text'] ) && '' !== trim( (string) $cell['text'] ) ) {
+			return true;
+		}
+
+		if ( ! isset( $cell['formattedText'] ) || ! is_array( $cell['formattedText'] ) ) {
+			return false;
+		}
+
+		foreach ( $cell['formattedText'] as $segment ) {
+			if ( ! is_array( $segment ) ) {
+				continue;
+			}
+
+			if ( '' !== trim( (string) ( $segment['text'] ?? '' ) ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Whether a converted beehiiv table has at least one non-empty cell.
+	 *
+	 * @param array<int, array<int, array<string, mixed>>> $rows Converted table rows.
+	 * @return bool
+	 * @since 1.0.0
+	 */
+	private static function table_rows_have_content( array $rows ): bool {
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			foreach ( $row as $cell ) {
+				if ( is_array( $cell ) && self::table_cell_has_content( $cell ) ) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	/**
