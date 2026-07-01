@@ -468,9 +468,10 @@ final class BlockConverter {
 	/**
 	 * Convert a core/list block to one or more beehiiv list blocks.
 	 *
-	 * Structure is read from parsed innerBlocks. List wrapper and item attributes
-	 * are read with the WordPress HTML Tag Processor; item inline HTML is
-	 * extracted with the same Tag Processor + regex pattern used by button blocks.
+	 * Structure is read from parsed innerBlocks (`core/list-item`). List wrapper
+	 * and item attributes are read with the WordPress HTML Tag Processor; item
+	 * inline HTML is extracted with the same Tag Processor + regex pattern used
+	 * by button blocks.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<int, array<string, mixed>>
@@ -484,10 +485,6 @@ final class BlockConverter {
 		$start_number          = self::resolve_list_start_number( $attrs, $inner_html );
 		$list_color            = FormattedTextParser::resolve_list_block_text_color( $inner_html, $attrs );
 		$list_background_color = FormattedTextParser::resolve_list_block_background_color( $inner_html, $attrs );
-
-		if ( empty( $inner_blocks ) ) {
-			$inner_blocks = self::parse_legacy_list_items_from_html( $inner_html );
-		}
 
 		if ( empty( $inner_blocks ) ) {
 			return [];
@@ -685,41 +682,6 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Build synthetic list-item blocks from legacy list HTML without innerBlocks.
-	 *
-	 * @param string $inner_html Saved list HTML.
-	 * @return array<int, array<string, mixed>>
-	 * @since 1.0.0
-	 */
-	private static function parse_legacy_list_items_from_html( string $inner_html ): array {
-		if ( '' === trim( $inner_html ) ) {
-			return [];
-		}
-
-		$list_items = [];
-		$remaining  = $inner_html;
-
-		while ( self::html_contains_tag( $remaining, 'li' ) ) {
-			$item_html = self::extract_tag_outer_html( $remaining, 'li' );
-
-			if ( '' === $item_html ) {
-				break;
-			}
-
-			$list_items[] = [
-				'blockName'   => 'core/list-item',
-				'attrs'       => [],
-				'innerHTML'   => $item_html,
-				'innerBlocks' => [],
-			];
-
-			$remaining = (string) preg_replace( '/' . preg_quote( $item_html, '/' ) . '/', '', $remaining, 1 );
-		}
-
-		return $list_items;
-	}
-
-	/**
 	 * Whether saved HTML contains an opening tag.
 	 *
 	 * @param string $html Saved HTML.
@@ -759,31 +721,6 @@ final class BlockConverter {
 		}
 
 		return $html;
-	}
-
-	/**
-	 * Extract the first outer HTML for a tag from a document fragment.
-	 *
-	 * @param string $html Saved HTML.
-	 * @param string $tag  Tag name.
-	 * @return string
-	 * @since 1.0.0
-	 */
-	private static function extract_tag_outer_html( string $html, string $tag ): string {
-		if ( ! self::html_contains_tag( $html, $tag ) ) {
-			return '';
-		}
-
-		$pattern = sprintf(
-			'/<%1$s[^>]*>.*?<\/%1$s>/is',
-			preg_quote( $tag, '/' )
-		);
-
-		if ( preg_match( $pattern, $html, $matches ) ) {
-			return $matches[0];
-		}
-
-		return '';
 	}
 
 	/**
