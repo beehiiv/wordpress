@@ -699,14 +699,17 @@ final class BlockConverter {
 	 * PHP parse_blocks() does not run query-sourced attribute extraction, so
 	 * attrs.head and attrs.body are often empty even for block-editor tables.
 	 *
-	 * @param string   $inner_html          Saved table block HTML.
-	 * @param bool|null $header_row_enabled Whether the Header section is enabled in
-	 *                                      block attrs. False ignores thead. Null or
-	 *                                      true includes thead when present.
+	 * @param string    $inner_html          Saved table block HTML.
+	 * @param bool|null $header_row_enabled  Whether the Header section is enabled in
+	 *                                       block attrs. False ignores thead. Null or
+	 *                                       true includes thead when present.
 	 * @return array{rows: array<int, array<int, array<string, mixed>>>, header_row: bool}
 	 * @since 1.0.0
 	 */
-	private static function parse_table_rows_from_inner_html( string $inner_html, ?bool $header_row_enabled = null ): array {
+	private static function parse_table_rows_from_inner_html(
+		string $inner_html,
+		?bool $header_row_enabled = null
+	): array {
 		$result = [
 			'rows'       => [],
 			'header_row' => false,
