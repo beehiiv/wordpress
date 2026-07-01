@@ -477,12 +477,12 @@ final class BlockConverter {
 	 * @since 1.0.0
 	 */
 	public static function convert_list_block( array $wp_block ): array {
-		$attrs        = $wp_block['attrs'] ?? [];
-		$inner_html   = (string) ( $wp_block['innerHTML'] ?? '' );
-		$inner_blocks = $wp_block['innerBlocks'] ?? [];
-		$list_type    = ! empty( $attrs['ordered'] ) ? 'ordered' : 'unordered';
-		$start_number = self::resolve_list_start_number( $attrs, $inner_html );
-		$list_color   = FormattedTextParser::resolve_list_block_text_color( $inner_html, $attrs );
+		$attrs                 = $wp_block['attrs'] ?? [];
+		$inner_html            = (string) ( $wp_block['innerHTML'] ?? '' );
+		$inner_blocks          = $wp_block['innerBlocks'] ?? [];
+		$list_type             = ! empty( $attrs['ordered'] ) ? 'ordered' : 'unordered';
+		$start_number          = self::resolve_list_start_number( $attrs, $inner_html );
+		$list_color            = FormattedTextParser::resolve_list_block_text_color( $inner_html, $attrs );
 		$list_background_color = FormattedTextParser::resolve_list_block_background_color( $inner_html, $attrs );
 
 		if ( empty( $inner_blocks ) ) {
@@ -496,12 +496,23 @@ final class BlockConverter {
 		$beehiiv_blocks = [];
 		$current_items  = [];
 
-		$flush_current_list = static function () use ( &$beehiiv_blocks, &$current_items, $list_type, &$start_number, $list_background_color ): void {
+		$flush_current_list = static function () use (
+			&$beehiiv_blocks,
+			&$current_items,
+			$list_type,
+			&$start_number,
+			$list_background_color
+		): void {
 			if ( empty( $current_items ) ) {
 				return;
 			}
 
-			$beehiiv_blocks[] = self::build_beehiiv_list_block( $current_items, $list_type, $start_number, $list_background_color );
+			$beehiiv_blocks[] = self::build_beehiiv_list_block(
+				$current_items,
+				$list_type,
+				$start_number,
+				$list_background_color
+			);
 			$current_items    = [];
 			$start_number     = null;
 		};
@@ -546,7 +557,12 @@ final class BlockConverter {
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
-	private static function build_beehiiv_list_block( array $items, string $list_type, ?int $start_number, ?string $background_color = null ): array {
+	private static function build_beehiiv_list_block(
+		array $items,
+		string $list_type,
+		?int $start_number,
+		?string $background_color = null
+	): array {
 		$beehiiv_block = [
 			'type'     => 'list',
 			'items'    => $items,
@@ -574,7 +590,10 @@ final class BlockConverter {
 	 * @return string|array<string, mixed>|null
 	 * @since 1.0.0
 	 */
-	private static function convert_list_item_to_beehiiv_item( array $list_item_block, ?string $parent_list_text_color = null ) {
+	private static function convert_list_item_to_beehiiv_item(
+		array $list_item_block,
+		?string $parent_list_text_color = null
+	) {
 		$attrs      = $list_item_block['attrs'] ?? [];
 		$inner_html = (string) ( $list_item_block['innerHTML'] ?? '' );
 

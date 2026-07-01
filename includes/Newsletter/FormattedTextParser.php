@@ -802,7 +802,11 @@ final class FormattedTextParser {
 	 * @param string               $color_type Either `text` or `background`.
 	 * @return string|null
 	 */
-	private static function resolve_list_wrapper_color_from_html( string $inner_html, array $attrs, string $color_type ): ?string {
+	private static function resolve_list_wrapper_color_from_html(
+		string $inner_html,
+		array $attrs,
+		string $color_type
+	): ?string {
 		$primary_tag   = ! empty( $attrs['ordered'] ) ? 'ol' : 'ul';
 		$alternate_tag = 'ol' === $primary_tag ? 'ul' : 'ol';
 
@@ -843,7 +847,11 @@ final class FormattedTextParser {
 	 * @param string $color_type Either `text` or `background`.
 	 * @return string|null
 	 */
-	private static function resolve_wrapper_color_from_html_tag( string $inner_html, string $tag, string $color_type ): ?string {
+	private static function resolve_wrapper_color_from_html_tag(
+		string $inner_html,
+		string $tag,
+		string $color_type
+	): ?string {
 		$attributes = self::get_first_tag_attributes( $inner_html, $tag );
 
 		if ( null === $attributes ) {
@@ -870,7 +878,10 @@ final class FormattedTextParser {
 	 * @param string $style       Wrapper style attribute.
 	 * @return string|null
 	 */
-	private static function resolve_block_text_color_from_tag_attributes( string $class_names, string $style ): ?string {
+	private static function resolve_block_text_color_from_tag_attributes(
+		string $class_names,
+		string $style
+	): ?string {
 		if ( '' !== $style ) {
 			$color = self::extract_css_color( html_entity_decode( $style, ENT_QUOTES ), 'color' );
 
@@ -893,7 +904,10 @@ final class FormattedTextParser {
 	 * @param string $style       Wrapper style attribute.
 	 * @return string|null
 	 */
-	private static function resolve_block_background_color_from_tag_attributes( string $class_names, string $style ): ?string {
+	private static function resolve_block_background_color_from_tag_attributes(
+		string $class_names,
+		string $style
+	): ?string {
 		if ( '' !== $style ) {
 			$color = self::extract_css_color( html_entity_decode( $style, ENT_QUOTES ), 'background-color' );
 
