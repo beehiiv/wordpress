@@ -11,6 +11,7 @@ use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\AdvertisementOpportunities;
 use Beehiiv\Editor\Meta;
 use Beehiiv\Newsletter\Converters\TableBlockConverter;
+use Beehiiv\Newsletter\Converters\ListBlockConverter;
 use WP_Post;
 
 defined( 'ABSPATH' ) || exit;
@@ -24,7 +25,7 @@ defined( 'ABSPATH' ) || exit;
  * - `core/heading` — `convert_heading_block()`
  * - `core/paragraph` — `convert_paragraph_block()`
  * - `core/image` — `convert_image_block()`
- * - `core/list` — `convert_list_block()` (not implemented yet)
+ * - `core/list` — `convert_list_block()` (nested items are flattened into one list with `  - ` indentation)
  * - `core/table` — `convert_table_block()`
  * - `core/quote` — `convert_quote_block()`
  * - `core/pullquote` — `convert_pullquote_block()`
@@ -118,6 +119,12 @@ final class BlockConverter {
 				continue;
 			}
 
+			if ( 'core/list' === $block_name ) {
+				$list_blocks    = self::convert_list_block( $wp_block );
+				$beehiiv_blocks = array_merge( $beehiiv_blocks, $list_blocks );
+				continue;
+			}
+
 			$beehiiv_block = self::convert_block( $wp_block );
 
 			if ( ! empty( $beehiiv_block ) ) {
@@ -147,8 +154,6 @@ final class BlockConverter {
 				return self::convert_paragraph_block( $wp_block );
 			case 'core/image':
 				return self::convert_image_block( $wp_block );
-			case 'core/list':
-				return self::convert_list_block( $wp_block );
 			case 'core/table':
 				return self::convert_table_block( $wp_block );
 			case 'core/quote':
@@ -463,16 +468,44 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Convert a core/list block.
+	 * Convert a core/list block to a beehiiv list block.
+	 *
+	 * Structure is read from parsed innerBlocks (`core/list-item`). Nested lists
+	 * are flattened into the same list; each nesting level prefixes items with
+	 * `  - `. List wrapper and item attributes are read with the WordPress HTML
+	 * Tag Processor; item inline HTML is extracted with the same Tag Processor +
+	 * regex pattern used by button blocks.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
-	 * @return array<string, mixed>
+	 * @return array<int, array<string, mixed>>
 	 * @since 1.0.0
 	 */
 	public static function convert_list_block( array $wp_block ): array {
-		unset( $wp_block );
+		$attrs                 = $wp_block['attrs'] ?? [];
+		$inner_html            = (string) ( $wp_block['innerHTML'] ?? '' );
+		$inner_blocks          = $wp_block['innerBlocks'] ?? [];
+		$list_type             = ! empty( $attrs['ordered'] ) ? 'ordered' : 'unordered';
+		$start_number          = ListBlockConverter::resolve_list_start_number( $attrs, $inner_html );
+		$list_background_color = FormattedTextParser::resolve_list_block_background_color( $inner_html, $attrs );
 
-		return [];
+		if ( empty( $inner_blocks ) ) {
+			return [];
+		}
+
+		$items = ListBlockConverter::collect_flat_list_items( $wp_block );
+
+		if ( empty( $items ) ) {
+			return [];
+		}
+
+		return [
+			ListBlockConverter::build_beehiiv_list_block(
+				$items,
+				$list_type,
+				$start_number,
+				$list_background_color
+			),
+		];
 	}
 
 	/**
