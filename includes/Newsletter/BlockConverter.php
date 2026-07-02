@@ -10,6 +10,7 @@ namespace Beehiiv\Newsletter;
 use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\AdvertisementOpportunities;
 use Beehiiv\Editor\Meta;
+use Beehiiv\Newsletter\Converters\ListBlockConverter;
 use WP_Post;
 
 defined( 'ABSPATH' ) || exit;
@@ -23,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
  * - `core/heading` — `convert_heading_block()`
  * - `core/paragraph` — `convert_paragraph_block()`
  * - `core/image` — `convert_image_block()`
- * - `core/list` — `convert_list_block()` (nested lists emit multiple beehiiv list blocks)
+ * - `core/list` — `convert_list_block()` (nested items are flattened into one list with `  - ` indentation)
  * - `core/table` — `convert_table_block()` (not implemented yet)
  * - `core/quote` — `convert_quote_block()`
  * - `core/pullquote` — `convert_pullquote_block()`
@@ -466,12 +467,13 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Convert a core/list block to one or more beehiiv list blocks.
+	 * Convert a core/list block to a beehiiv list block.
 	 *
-	 * Structure is read from parsed innerBlocks (`core/list-item`). List wrapper
-	 * and item attributes are read with the WordPress HTML Tag Processor; item
-	 * inline HTML is extracted with the same Tag Processor + regex pattern used
-	 * by button blocks.
+	 * Structure is read from parsed innerBlocks (`core/list-item`). Nested lists
+	 * are flattened into the same list; each nesting level prefixes items with
+	 * `  - `. List wrapper and item attributes are read with the WordPress HTML
+	 * Tag Processor; item inline HTML is extracted with the same Tag Processor +
+	 * regex pattern used by button blocks.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<int, array<string, mixed>>
@@ -482,263 +484,27 @@ final class BlockConverter {
 		$inner_html            = (string) ( $wp_block['innerHTML'] ?? '' );
 		$inner_blocks          = $wp_block['innerBlocks'] ?? [];
 		$list_type             = ! empty( $attrs['ordered'] ) ? 'ordered' : 'unordered';
-		$start_number          = self::resolve_list_start_number( $attrs, $inner_html );
-		$list_color            = FormattedTextParser::resolve_list_block_text_color( $inner_html, $attrs );
+		$start_number          = ListBlockConverter::resolve_list_start_number( $attrs, $inner_html );
 		$list_background_color = FormattedTextParser::resolve_list_block_background_color( $inner_html, $attrs );
 
 		if ( empty( $inner_blocks ) ) {
 			return [];
 		}
 
-		$beehiiv_blocks = [];
-		$current_items  = [];
+		$items = ListBlockConverter::collect_flat_list_items( $wp_block );
 
-		$flush_current_list = static function () use (
-			&$beehiiv_blocks,
-			&$current_items,
-			$list_type,
-			&$start_number,
-			$list_background_color
-		): void {
-			if ( empty( $current_items ) ) {
-				return;
-			}
+		if ( empty( $items ) ) {
+			return [];
+		}
 
-			$beehiiv_blocks[] = self::build_beehiiv_list_block(
-				$current_items,
+		return [
+			ListBlockConverter::build_beehiiv_list_block(
+				$items,
 				$list_type,
 				$start_number,
 				$list_background_color
-			);
-			$current_items    = [];
-			$start_number     = null;
-		};
-
-		foreach ( $inner_blocks as $list_item_block ) {
-			if ( 'core/list-item' !== ( $list_item_block['blockName'] ?? '' ) ) {
-				continue;
-			}
-
-			$beehiiv_item = self::convert_list_item_to_beehiiv_item( $list_item_block, $list_color );
-
-			if ( null !== $beehiiv_item ) {
-				$current_items[] = $beehiiv_item;
-			}
-
-			$nested_lists = self::get_nested_list_blocks( $list_item_block );
-
-			if ( empty( $nested_lists ) ) {
-				continue;
-			}
-
-			$flush_current_list();
-
-			foreach ( $nested_lists as $nested_list_block ) {
-				$nested_blocks  = self::convert_list_block( $nested_list_block );
-				$beehiiv_blocks = array_merge( $beehiiv_blocks, $nested_blocks );
-			}
-		}
-
-		$flush_current_list();
-
-		return $beehiiv_blocks;
-	}
-
-	/**
-	 * Build a beehiiv list block from converted items.
-	 *
-	 * @param array<int, string|array<string, mixed>> $items             List items.
-	 * @param string                                  $list_type         `ordered` or `unordered`.
-	 * @param int|null                                $start_number      Ordered-list start value.
-	 * @param string|null                             $background_color  Block background colour.
-	 * @return array<string, mixed>
-	 * @since 1.0.0
-	 */
-	private static function build_beehiiv_list_block(
-		array $items,
-		string $list_type,
-		?int $start_number,
-		?string $background_color = null
-	): array {
-		$beehiiv_block = [
-			'type'     => 'list',
-			'items'    => $items,
-			'listType' => $list_type,
+			),
 		];
-
-		if ( 'ordered' === $list_type && null !== $start_number && $start_number > 1 ) {
-			$beehiiv_block['startNumber'] = $start_number;
-		}
-
-		if ( null !== $background_color && '' !== $background_color ) {
-			$beehiiv_block['visual_settings'] = [
-				'background_color' => $background_color,
-			];
-		}
-
-		return $beehiiv_block;
-	}
-
-	/**
-	 * Convert a core/list-item block to a beehiiv list item.
-	 *
-	 * @param array<string, mixed> $list_item_block        Parsed list-item block.
-	 * @param string|null          $parent_list_text_color Text colour from the parent core/list block.
-	 * @return string|array<string, mixed>|null
-	 * @since 1.0.0
-	 */
-	private static function convert_list_item_to_beehiiv_item(
-		array $list_item_block,
-		?string $parent_list_text_color = null
-	) {
-		$attrs      = $list_item_block['attrs'] ?? [];
-		$inner_html = (string) ( $list_item_block['innerHTML'] ?? '' );
-
-		if ( '' === trim( $inner_html ) ) {
-			return null;
-		}
-
-		if ( ! self::html_contains_tag( $inner_html, 'li' ) ) {
-			return null;
-		}
-
-		$inline_html = self::extract_tag_inner_html( $inner_html, 'li' );
-		$inline_html = self::strip_nested_list_markup( $inline_html );
-		$inline_html = trim( $inline_html );
-
-		if ( '' === $inline_html ) {
-			return null;
-		}
-
-		$item_text_color = FormattedTextParser::resolve_list_item_block_text_color( $inner_html, $attrs );
-		$default_color   = null !== $item_text_color ? $item_text_color : $parent_list_text_color;
-		$parsed          = FormattedTextParser::parse( $inline_html, $default_color );
-
-		if ( '' === trim( $parsed['plaintext'] ) ) {
-			return null;
-		}
-
-		if ( FormattedTextParser::has_rich_formatting( $parsed['formattedText'] ) ) {
-			return [
-				'formattedText' => $parsed['formattedText'],
-			];
-		}
-
-		return $parsed['plaintext'];
-	}
-
-	/**
-	 * Resolve the ordered-list start number from block attrs or saved markup.
-	 *
-	 * @param array<string, mixed> $attrs      Parsed list block attributes.
-	 * @param string               $inner_html Saved list HTML.
-	 * @return int|null
-	 * @since 1.0.0
-	 */
-	private static function resolve_list_start_number( array $attrs, string $inner_html ): ?int {
-		if ( empty( $attrs['ordered'] ) ) {
-			return null;
-		}
-
-		if ( isset( $attrs['start'] ) && is_numeric( $attrs['start'] ) ) {
-			$start = (int) $attrs['start'];
-
-			return $start > 0 ? $start : null;
-		}
-
-		$processor = new \WP_HTML_Tag_Processor( $inner_html );
-
-		if ( $processor->next_tag( 'OL' ) ) {
-			$start_attr = $processor->get_attribute( 'start' );
-
-			if ( null !== $start_attr && is_numeric( $start_attr ) ) {
-				$start = (int) $start_attr;
-
-				return $start > 0 ? $start : null;
-			}
-		}
-
-		return null;
-	}
-
-	/**
-	 * Extract nested core/list blocks from a list-item block.
-	 *
-	 * @param array<string, mixed> $list_item_block Parsed list-item block.
-	 * @return array<int, array<string, mixed>>
-	 * @since 1.0.0
-	 */
-	private static function get_nested_list_blocks( array $list_item_block ): array {
-		$inner_blocks = $list_item_block['innerBlocks'] ?? [];
-		$nested_lists = [];
-
-		foreach ( $inner_blocks as $inner_block ) {
-			if ( 'core/list' === ( $inner_block['blockName'] ?? '' ) ) {
-				$nested_lists[] = $inner_block;
-			}
-		}
-
-		return $nested_lists;
-	}
-
-	/**
-	 * Whether saved HTML contains an opening tag.
-	 *
-	 * @param string $html Saved HTML.
-	 * @param string $tag  Tag name.
-	 * @return bool
-	 * @since 1.0.0
-	 */
-	private static function html_contains_tag( string $html, string $tag ): bool {
-		$processor = new \WP_HTML_Tag_Processor( $html );
-
-		return $processor->next_tag( strtoupper( $tag ) );
-	}
-
-	/**
-	 * Extract inner HTML from the first matching tag.
-	 *
-	 * Uses the WordPress HTML Tag Processor to locate the tag, then regex for
-	 * inner content — the same pattern as button label extraction.
-	 *
-	 * @param string $html Saved element HTML.
-	 * @param string $tag  Wrapper tag name.
-	 * @return string
-	 * @since 1.0.0
-	 */
-	private static function extract_tag_inner_html( string $html, string $tag ): string {
-		if ( ! self::html_contains_tag( $html, $tag ) ) {
-			return $html;
-		}
-
-		$pattern = sprintf(
-			'/<%1$s[^>]*>(.*?)<\/%1$s>/is',
-			preg_quote( $tag, '/' )
-		);
-
-		if ( preg_match( $pattern, $html, $matches ) ) {
-			return $matches[1];
-		}
-
-		return $html;
-	}
-
-	/**
-	 * Remove nested list markup from list-item inline HTML.
-	 *
-	 * @param string $html Inline HTML extracted from a list item.
-	 * @return string
-	 * @since 1.0.0
-	 */
-	private static function strip_nested_list_markup( string $html ): string {
-		$previous = null;
-
-		while ( $previous !== $html ) {
-			$previous = $html;
-			$html     = (string) preg_replace( '/<(ul|ol)\b[^>]*>[\s\S]*?<\/\1>/i', '', $html );
-		}
-
-		return $html;
 	}
 
 	/**
