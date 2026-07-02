@@ -10,6 +10,7 @@ namespace Beehiiv\Newsletter;
 use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\AdvertisementOpportunities;
 use Beehiiv\Editor\Meta;
+use Beehiiv\Newsletter\Converters\TableBlockConverter;
 use Beehiiv\Newsletter\Converters\ListBlockConverter;
 use WP_Post;
 
@@ -25,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
  * - `core/paragraph` — `convert_paragraph_block()`
  * - `core/image` — `convert_image_block()`
  * - `core/list` — `convert_list_block()` (nested items are flattened into one list with `  - ` indentation)
- * - `core/table` — `convert_table_block()` (not implemented yet)
+ * - `core/table` — `convert_table_block()`
  * - `core/quote` — `convert_quote_block()`
  * - `core/pullquote` — `convert_pullquote_block()`
  * - `core/embed` — `convert_embed_block()`
@@ -508,16 +509,73 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Convert a core/table block.
+	 * Convert a core/table block to a beehiiv table block.
+	 *
+	 * Maps attrs.head into rows[0] with headerRow when the Header section is enabled
+	 * in the block editor. attrs.body supplies remaining rows. When attrs are empty
+	 * (common for query-sourced table attributes in PHP parse_blocks), rows are read
+	 * from innerHTML instead. The table is omitted when every cell is empty.
+	 * Footer rows are omitted; beehiiv has no table footer support.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
 	public static function convert_table_block( array $wp_block ): array {
-		unset( $wp_block );
+		$attrs      = $wp_block['attrs'] ?? [];
+		$inner_html = (string) ( $wp_block['innerHTML'] ?? '' );
+		$rows       = [];
+		$header_row = false;
 
-		return [];
+		$header_explicitly_off = array_key_exists( 'head', $attrs )
+			&& ! TableBlockConverter::table_has_header_section( $attrs );
+
+		$head_rows = TableBlockConverter::table_has_header_section( $attrs )
+			? TableBlockConverter::convert_table_section_rows( $attrs['head'] ?? [] )
+			: [];
+		$body_rows = TableBlockConverter::convert_table_section_rows( $attrs['body'] ?? [] );
+
+		if ( ! $header_explicitly_off && empty( $head_rows ) && '' !== $inner_html ) {
+			$head_rows = TableBlockConverter::parse_thead_rows_from_inner_html( $inner_html );
+		}
+
+		if ( empty( $body_rows ) && '' !== $inner_html ) {
+			$body_rows = TableBlockConverter::parse_tbody_rows_from_inner_html( $inner_html );
+		}
+
+		if ( ! empty( $head_rows ) ) {
+			$rows = $head_rows;
+		}
+
+		if ( ! empty( $body_rows ) ) {
+			$rows = array_merge( $rows, $body_rows );
+		}
+
+		if ( empty( $rows ) && '' !== $inner_html ) {
+			$header_from_html = $header_explicitly_off ? false : null;
+			$parsed           = TableBlockConverter::parse_table_rows_from_inner_html( $inner_html, $header_from_html );
+			$rows             = $parsed['rows'];
+			$header_row       = $parsed['header_row'];
+		} elseif ( ! empty( $head_rows ) ) {
+			$header_row = true;
+		}
+
+		if ( ! TableBlockConverter::table_rows_have_content( $rows ) && '' !== $inner_html ) {
+			$header_from_html = $header_explicitly_off ? false : null;
+			$parsed           = TableBlockConverter::parse_table_rows_from_inner_html( $inner_html, $header_from_html );
+			$rows             = $parsed['rows'];
+			$header_row       = $parsed['header_row'];
+		}
+
+		if ( empty( $rows ) || ! TableBlockConverter::table_rows_have_content( $rows ) ) {
+			return [];
+		}
+
+		return [
+			'type'      => 'table',
+			'rows'      => $rows,
+			'headerRow' => $header_row,
+		];
 	}
 
 	/**
