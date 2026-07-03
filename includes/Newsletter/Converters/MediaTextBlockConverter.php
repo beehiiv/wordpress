@@ -87,12 +87,15 @@ final class MediaTextBlockConverter {
 	/**
 	 * Resolve vertical alignment for both media-text columns.
 	 *
+	 * Reads `verticalAlignment` from block attrs or `is-vertically-aligned-*` classes
+	 * in saved HTML. Defaults to `middle` when the editor leaves alignment unset.
+	 *
 	 * @param array<string, mixed> $attrs      Parsed media-text attrs.
 	 * @param string               $inner_html Saved media-text HTML.
-	 * @return string|null top, middle, bottom, or null when unset.
+	 * @return string top, middle, or bottom.
 	 * @since 1.0.0
 	 */
-	public static function resolve_vertical_alignment( array $attrs, string $inner_html ): ?string {
+	public static function resolve_vertical_alignment( array $attrs, string $inner_html ): string {
 		$raw_alignment = null;
 
 		if ( ! empty( $attrs['verticalAlignment'] ) && is_string( $attrs['verticalAlignment'] ) ) {
@@ -101,7 +104,9 @@ final class MediaTextBlockConverter {
 			$raw_alignment = $matches[1];
 		}
 
-		return ColumnsBlockConverter::normalize_column_vertical_alignment( $raw_alignment );
+		$normalized = ColumnsBlockConverter::normalize_column_vertical_alignment( $raw_alignment );
+
+		return null !== $normalized ? $normalized : 'middle';
 	}
 
 	/**
