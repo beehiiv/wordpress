@@ -46,7 +46,8 @@ final class ColumnsBlockConverter {
 	 *
 	 * @param array<int, array<string, mixed>> $blocks                    Child beehiiv blocks.
 	 * @param array<string, mixed>             $column_block              Parsed core/column block.
-	 * @param string|null                      $parent_vertical_alignment Vertical alignment from the parent core/columns block.
+	 * @param string|null                      $parent_vertical_alignment Vertical alignment from
+	 *                                                                  the parent core/columns block.
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */

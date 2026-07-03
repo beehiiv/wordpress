@@ -61,12 +61,12 @@ final class MediaTextBlockConverter {
 		}
 
 		if ( preg_match( '/grid-template-columns\s*:\s*([^;"\']+)/i', $inner_html, $matches ) ) {
-			$parts           = preg_split( '/\s+/', trim( $matches[1] ) );
-			$media_on_right  = self::is_media_on_right( $attrs, $inner_html );
-			$media_part      = $media_on_right ? ( $parts[1] ?? '' ) : ( $parts[0] ?? '' );
-			$parsed_width    = ColumnsBlockConverter::parse_width_percentage( $media_part );
-			$content_part    = $media_on_right ? ( $parts[0] ?? '' ) : ( $parts[1] ?? '' );
-			$content_width   = ColumnsBlockConverter::parse_width_percentage( $content_part );
+			$parts          = preg_split( '/\s+/', trim( $matches[1] ) );
+			$media_on_right = self::is_media_on_right( $attrs, $inner_html );
+			$media_part     = $media_on_right ? ( $parts[1] ?? '' ) : ( $parts[0] ?? '' );
+			$parsed_width   = ColumnsBlockConverter::parse_width_percentage( $media_part );
+			$content_part   = $media_on_right ? ( $parts[0] ?? '' ) : ( $parts[1] ?? '' );
+			$content_width  = ColumnsBlockConverter::parse_width_percentage( $content_part );
 
 			if ( null !== $parsed_width ) {
 				return $parsed_width;
@@ -118,7 +118,9 @@ final class MediaTextBlockConverter {
 	 * @since 1.0.0
 	 */
 	public static function is_media_on_right( array $attrs, string $inner_html ): bool {
-		$media_position = isset( $attrs['mediaPosition'] ) ? strtolower( trim( (string) $attrs['mediaPosition'] ) ) : '';
+		$media_position = isset( $attrs['mediaPosition'] )
+			? strtolower( trim( (string) $attrs['mediaPosition'] ) )
+			: '';
 
 		if ( 'right' === $media_position ) {
 			return true;
@@ -197,7 +199,7 @@ final class MediaTextBlockConverter {
 		$href       = isset( $attrs['href'] ) ? trim( (string) $attrs['href'] ) : '';
 
 		if ( '' !== $href ) {
-			$target     = isset( $attrs['linkTarget'] ) ? trim( (string) $attrs['linkTarget'] ) : '';
+			$target      = isset( $attrs['linkTarget'] ) ? trim( (string) $attrs['linkTarget'] ) : '';
 			$target_attr = '' !== $target ? ' target="' . esc_attr( $target ) . '"' : '';
 			$image_html  = '<a href="' . esc_url( $href ) . '"' . $target_attr . '>' . $image_html . '</a>';
 		}
