@@ -82,6 +82,42 @@ final class ColumnsBlockConverter {
 	}
 
 	/**
+	 * Build a beehiiv column definition from converted blocks and layout options.
+	 *
+	 * Used when column metadata does not come from a parsed core/column block,
+	 * such as core/media-text side columns.
+	 *
+	 * @param array<int, array<string, mixed>> $blocks          Child beehiiv blocks.
+	 * @param int|null                         $width           Column width percentage.
+	 * @param string|null                      $vertical_align  top, middle, or bottom.
+	 * @return array<string, mixed>
+	 * @since 1.0.0
+	 */
+	public static function build_beehiiv_column_from_definition(
+		array $blocks,
+		?int $width = null,
+		?string $vertical_align = null
+	): array {
+		if ( empty( $blocks ) ) {
+			return [];
+		}
+
+		$beehiiv_column = [
+			'blocks' => array_values( $blocks ),
+		];
+
+		if ( null !== $width ) {
+			$beehiiv_column['width'] = $width;
+		}
+
+		if ( null !== $vertical_align && '' !== $vertical_align ) {
+			$beehiiv_column['verticalAlign'] = $vertical_align;
+		}
+
+		return $beehiiv_column;
+	}
+
+	/**
 	 * Resolve whether columns should stack on mobile.
 	 *
 	 * @param array<string, mixed> $attrs      Parsed core/columns attrs.
@@ -189,7 +225,7 @@ final class ColumnsBlockConverter {
 	 * @return int|null
 	 * @since 1.0.0
 	 */
-	private static function parse_width_percentage( $value ): ?int {
+	public static function parse_width_percentage( $value ): ?int {
 		if ( is_numeric( $value ) ) {
 			$percentage = (int) round( (float) $value );
 

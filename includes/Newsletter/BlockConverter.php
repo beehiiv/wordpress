@@ -11,6 +11,7 @@ use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\AdvertisementOpportunities;
 use Beehiiv\Editor\Meta;
 use Beehiiv\Newsletter\Converters\ColumnsBlockConverter;
+use Beehiiv\Newsletter\Converters\MediaTextBlockConverter;
 use Beehiiv\Newsletter\Converters\TableBlockConverter;
 use Beehiiv\Newsletter\Converters\ListBlockConverter;
 use WP_Post;
@@ -31,7 +32,7 @@ defined( 'ABSPATH' ) || exit;
  * - `core/quote` — `convert_quote_block()`
  * - `core/pullquote` — `convert_pullquote_block()`
  * - `core/embed` — `convert_embed_block()`
- * - `core/media-text` — `convert_media_text_block()` (not implemented yet)
+ * - `core/media-text` — `convert_media_text_block()` (beehiiv `columns` block)
  * - `core/buttons` / inner `core/button` — `convert_buttons_block()`, `convert_button_block()`
  * - `core/separator` — beehiiv `content_break`
  * - `core/more` — snippet newsletters only; beehiiv Read More `button` via `convert_more_block()`
@@ -947,16 +948,101 @@ final class BlockConverter {
 	}
 
 	/**
-	 * Convert a core/media-text block.
+	 * Convert a core/media-text block to a beehiiv columns block.
+	 *
+	 * Maps the media side to an image (or embed_link for video) column and the
+	 * content side to converted inner blocks. Respects media position, column
+	 * widths, vertical alignment, and mobile stacking.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
 	public static function convert_media_text_block( array $wp_block ): array {
-		unset( $wp_block );
+		$attrs        = $wp_block['attrs'] ?? [];
+		$inner_html   = (string) ( $wp_block['innerHTML'] ?? '' );
+		$inner_blocks = $wp_block['innerBlocks'] ?? [];
 
-		return [];
+		$stack_on_mobile = ColumnsBlockConverter::resolve_stack_on_mobile( $attrs, $inner_html );
+		$vertical_align  = MediaTextBlockConverter::resolve_vertical_alignment( $attrs, $inner_html );
+		$media_width     = MediaTextBlockConverter::resolve_media_width( $attrs, $inner_html );
+		$content_width   = max( 1, min( 100, 100 - $media_width ) );
+
+		$media_blocks   = self::convert_media_text_media_blocks( $attrs, $inner_html );
+		$content_blocks = self::convert_layout_block_inner_blocks( $inner_blocks );
+
+		$media_column   = [];
+		$content_column = [];
+
+		if ( ! empty( $media_blocks ) ) {
+			$media_column = ColumnsBlockConverter::build_beehiiv_column_from_definition(
+				$media_blocks,
+				$media_width,
+				$vertical_align
+			);
+		}
+
+		if ( ! empty( $content_blocks ) ) {
+			$content_column = ColumnsBlockConverter::build_beehiiv_column_from_definition(
+				$content_blocks,
+				$content_width,
+				$vertical_align
+			);
+		}
+
+		$columns = MediaTextBlockConverter::order_columns(
+			$media_column,
+			$content_column,
+			$attrs,
+			$inner_html
+		);
+
+		if ( empty( $columns ) ) {
+			return [];
+		}
+
+		return ColumnsBlockConverter::build_beehiiv_columns_block( $columns, $stack_on_mobile );
+	}
+
+	/**
+	 * Convert the media side of a core/media-text block to beehiiv blocks.
+	 *
+	 * @param array<string, mixed> $attrs      Parsed media-text attrs.
+	 * @param string               $inner_html Saved media-text HTML.
+	 * @return array<int, array<string, mixed>>
+	 * @since 1.0.0
+	 */
+	private static function convert_media_text_media_blocks( array $attrs, string $inner_html ): array {
+		if ( MediaTextBlockConverter::is_video_media_type( $attrs, $inner_html ) ) {
+			$video_url = MediaTextBlockConverter::resolve_video_url( $attrs, $inner_html );
+
+			if ( '' === $video_url ) {
+				return [];
+			}
+
+			return [
+				[
+					'type' => 'embed_link',
+					'url'  => $video_url,
+				],
+			];
+		}
+
+		$synthetic_image_block = MediaTextBlockConverter::build_synthetic_image_block( $attrs, $inner_html );
+
+		if ( empty( $synthetic_image_block ) ) {
+			return [];
+		}
+
+		$image_block = self::convert_image_block( $synthetic_image_block );
+
+		if ( empty( $image_block ) ) {
+			return [];
+		}
+
+		unset( $image_block['imageAlignment'] );
+
+		return [ $image_block ];
 	}
 
 	/**
