@@ -680,6 +680,12 @@ final class Sender {
 					'Select an advertisement for the Advertisement block, or remove the block, to send this newsletter.',
 					'beehiiv'
 				);
+			case 'beehiiv_advertisement_unavailable':
+				return __(
+					// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
+					'The selected advertisement is no longer available in beehiiv. Choose a different advertisement or remove the Advertisement block, then try again.',
+					'beehiiv'
+				);
 			case 'beehiiv_post_not_found':
 				return __( 'This post no longer exists. Save or reload the editor and try again.', 'beehiiv' );
 			case 'beehiiv_newsletter_in_past':

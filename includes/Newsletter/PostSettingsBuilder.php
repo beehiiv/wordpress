@@ -8,6 +8,8 @@
 namespace Beehiiv\Newsletter;
 
 use Beehiiv\Admin\Options;
+use Beehiiv\API\Client;
+use Beehiiv\API\Resources\AdvertisementOpportunities;
 use Beehiiv\API\Resources\PostTemplates;
 use Beehiiv\Editor\Meta;
 use DateTimeImmutable;
@@ -63,6 +65,13 @@ final class PostSettingsBuilder {
 			return new WP_Error(
 				'beehiiv_advertisement_no_ad',
 				sprintf( 'An Advertisement block has no advertisement selected for post ID: %d.', $post_id )
+			);
+		}
+
+		if ( null !== self::advertisement_block_with_unavailable_ad( $post_object ) ) {
+			return new WP_Error(
+				'beehiiv_advertisement_unavailable',
+				sprintf( 'An Advertisement block references an unavailable ad for post ID: %d.', $post_id )
 			);
 		}
 
@@ -255,6 +264,83 @@ final class PostSettingsBuilder {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Find an Advertisement block whose selected ad is no longer offered by beehiiv.
+	 *
+	 * A previously selected ad can be unclaimed or expire in beehiiv while it stays saved
+	 * on the post. Sending would then reference an ad that no longer exists, so it is
+	 * refused. The check is skipped (returns null) when the availability list cannot be
+	 * confirmed — no publication configured, or the API did not return a successful
+	 * response — so a transient failure never blocks an otherwise valid send.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param WP_Post $post Post object.
+	 *
+	 * @return string|null The unavailable ad ID, or null when none / not verifiable.
+	 */
+	private static function advertisement_block_with_unavailable_ad( WP_Post $post ): ?string {
+		$ad_ids = self::collect_advertisement_ad_ids( parse_blocks( $post->post_content ) );
+
+		if ( empty( $ad_ids ) ) {
+			return null;
+		}
+
+		$publication_id = self::get_publication_id();
+
+		if ( '' === $publication_id ) {
+			return null;
+		}
+
+		// Bypass the cache so the fetch is definitive and its status code is trustworthy.
+		$active_ad_ids = AdvertisementOpportunities::get_active_ad_ids( $publication_id, false );
+
+		// Only enforce when beehiiv actually answered; otherwise fail open.
+		if ( 200 !== Client::get_last_status_code() ) {
+			return null;
+		}
+
+		foreach ( $ad_ids as $ad_id ) {
+			if ( ! in_array( $ad_id, $active_ad_ids, true ) ) {
+				return $ad_id;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Collect non-empty `adId` values from every Advertisement block in the tree.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array<int, array<string, mixed>> $blocks Parsed blocks.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function collect_advertisement_ad_ids( array $blocks ): array {
+		$ad_ids = [];
+
+		foreach ( $blocks as $block ) {
+			if ( 'beehiiv/advertisement' === ( $block['blockName'] ?? '' ) ) {
+				$ad_id = isset( $block['attrs']['adId'] ) ? trim( (string) $block['attrs']['adId'] ) : '';
+
+				if ( '' !== $ad_id ) {
+					$ad_ids[] = $ad_id;
+				}
+			}
+
+			if ( ! empty( $block['innerBlocks'] ) ) {
+				$ad_ids = array_merge(
+					$ad_ids,
+					self::collect_advertisement_ad_ids( $block['innerBlocks'] )
+				);
+			}
+		}
+
+		return $ad_ids;
 	}
 
 	/**
