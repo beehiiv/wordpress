@@ -674,6 +674,12 @@ final class Sender {
 					"This post doesn't include any blocks beehiiv can send. Add supported content and try again.",
 					'beehiiv'
 				);
+			case 'beehiiv_advertisement_no_ad':
+				return __(
+					// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
+					'Select an advertisement for the Advertisement block, or remove the block, to send this newsletter.',
+					'beehiiv'
+				);
 			case 'beehiiv_post_not_found':
 				return __( 'This post no longer exists. Save or reload the editor and try again.', 'beehiiv' );
 			case 'beehiiv_newsletter_in_past':

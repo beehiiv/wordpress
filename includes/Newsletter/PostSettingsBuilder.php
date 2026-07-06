@@ -59,6 +59,13 @@ final class PostSettingsBuilder {
 			);
 		}
 
+		if ( self::has_advertisement_block_without_ad( $post_object ) ) {
+			return new WP_Error(
+				'beehiiv_advertisement_no_ad',
+				sprintf( 'An Advertisement block has no advertisement selected for post ID: %d.', $post_id )
+			);
+		}
+
 		$beehiiv_blocks = BlockConverter::convert_supported_blocks( $post_object );
 
 		if ( empty( $beehiiv_blocks ) ) {
@@ -201,6 +208,53 @@ final class PostSettingsBuilder {
 		}
 
 		return $update['payload'];
+	}
+
+	/**
+	 * Whether the post contains an Advertisement block with no advertisement selected.
+	 *
+	 * An empty Advertisement block is silently dropped from the payload, so the
+	 * newsletter would otherwise send without it. Detecting it lets the send be
+	 * refused with a clear message instead.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param WP_Post $post Post object.
+	 *
+	 * @return bool
+	 */
+	private static function has_advertisement_block_without_ad( WP_Post $post ): bool {
+		return self::blocks_contain_incomplete_advertisement( parse_blocks( $post->post_content ) );
+	}
+
+	/**
+	 * Recursively check parsed blocks for an Advertisement block missing its `adId`.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array<int, array<string, mixed>> $blocks Parsed blocks.
+	 *
+	 * @return bool
+	 */
+	private static function blocks_contain_incomplete_advertisement( array $blocks ): bool {
+		foreach ( $blocks as $block ) {
+			if ( 'beehiiv/advertisement' === ( $block['blockName'] ?? '' ) ) {
+				$ad_id = isset( $block['attrs']['adId'] ) ? trim( (string) $block['attrs']['adId'] ) : '';
+
+				if ( '' === $ad_id ) {
+					return true;
+				}
+			}
+
+			if (
+				! empty( $block['innerBlocks'] )
+				&& self::blocks_contain_incomplete_advertisement( $block['innerBlocks'] )
+			) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
