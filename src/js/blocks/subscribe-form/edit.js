@@ -20,7 +20,7 @@ export default function Edit( { attributes, setAttributes } ) {
 
 	const instructions = formId
 		? __(
-				'The subscribe form is only rendered on the front-end and cannot be previewed here. View the page to see your form.',
+				'The subscribe form is only rendered on the front-end and cannot be previewed here. View the page to see your form. If the form does not appear, make sure the entered form ID is valid.',
 				'beehiiv'
 		  )
 		: __(
