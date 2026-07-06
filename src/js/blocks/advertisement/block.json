@@ -9,10 +9,10 @@
 	"description": "Places a beehiiv advertisement in the newsletter. Outputs nothing on the website.",
 	"keywords": [ "beehiiv", "advertisement", "ad" ],
 	"textdomain": "beehiiv",
-	"multiple": false,
 	"supports": {
 		"html": false,
-		"anchor": true
+		"anchor": true,
+		"multiple": false
 	},
 	"attributes": {
 		"adId": {
