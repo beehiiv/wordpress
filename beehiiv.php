@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: beehiiv
- * Description: Official beehiiv WordPress plugin. Publish WordPress posts as newsletters and grow your audience with beehiiv.
+ * Description: Official beehiiv WordPress plugin. Publish posts as newsletters and grow your audience with beehiiv.
  * Version: 1.0.0
  * Author: beehiiv
  * Text Domain: beehiiv
