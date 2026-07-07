@@ -5,10 +5,11 @@ import {
 	useRef,
 	useState,
 } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
 import {
 	Button,
+	Notice,
 	PanelBody,
 	Placeholder,
 	SelectControl,
@@ -29,6 +30,9 @@ export default function Edit( { attributes, setAttributes } ) {
 	const [ ads, setAds ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( false );
 	const [ justRefreshed, setJustRefreshed ] = useState( false );
+	// True only after a request that actually reached beehiiv, so a failed load
+	// (empty list from a network/API error) never masquerades as "no ads found".
+	const [ lastLoadOk, setLastLoadOk ] = useState( false );
 	const noticeTimer = useRef( null );
 
 	useEffect( () => {
@@ -54,9 +58,11 @@ export default function Edit( { attributes, setAttributes } ) {
 			} )
 				.then( ( items ) => {
 					setAds( Array.isArray( items ) ? items : [] );
+					setLastLoadOk( true );
 				} )
 				.catch( () => {
 					setAds( [] );
+					setLastLoadOk( false );
 				} )
 				.finally( () => {
 					setIsLoading( false );
@@ -85,6 +91,11 @@ export default function Edit( { attributes, setAttributes } ) {
 		} );
 	}, [ loadAds ] );
 
+	// The saved ad is gone from beehiiv when a successful load omits it. Guarding on
+	// lastLoadOk avoids flagging it as stale after a failed/empty error response.
+	const isSelectedAdUnavailable =
+		!! adId && lastLoadOk && ! ads.some( ( item ) => item?.id === adId );
+
 	const options = useMemo( () => {
 		const opts = [
 			{ value: '', label: __( 'Select an advertisement…', 'beehiiv' ) },
@@ -98,11 +109,22 @@ export default function Edit( { attributes, setAttributes } ) {
 
 		// Keep the saved selection visible even if it isn't in the current list.
 		if ( adId && ! opts.some( ( option ) => option.value === adId ) ) {
-			opts.push( { value: adId, label: adLabel || adId } );
+			const savedLabel = adLabel || adId;
+
+			opts.push( {
+				value: adId,
+				label: isSelectedAdUnavailable
+					? sprintf(
+							/* translators: %s: saved advertisement label. */
+							__( '%s — no longer available', 'beehiiv' ),
+							savedLabel
+					  )
+					: savedLabel,
+			} );
 		}
 
 		return opts;
-	}, [ ads, adId, adLabel ] );
+	}, [ ads, adId, adLabel, isSelectedAdUnavailable ] );
 
 	const onSelectAd = ( value ) => {
 		const selected = ads.find( ( item ) => item.id === value );
@@ -145,6 +167,24 @@ export default function Edit( { attributes, setAttributes } ) {
 								disabled={ isLoading }
 								__nextHasNoMarginBottom
 							/>
+							{ isSelectedAdUnavailable && ! isLoading && (
+								<Notice
+									status="warning"
+									isDismissible={ false }
+									className="beehiiv-advertisement__unavailable-notice"
+								>
+									{ __(
+										'The selected advertisement is no longer available in beehiiv and won’t be sent. Choose another or clear it.',
+										'beehiiv'
+									) }
+									<Button
+										variant="link"
+										onClick={ () => onSelectAd( '' ) }
+									>
+										{ __( 'Clear selection', 'beehiiv' ) }
+									</Button>
+								</Notice>
+							) }
 							<Button
 								variant="secondary"
 								onClick={ handleRefresh }
