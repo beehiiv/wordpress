@@ -31,7 +31,7 @@
 		"start": "wp-scripts start --webpack-src-dir=src/js",
 		"build": "wp-scripts build --webpack-src-dir=src/js",
 		"make-pot": "wp-env run cli wp i18n make-pot wp-content/plugins/beehiiv wp-content/plugins/beehiiv/languages/beehiiv.pot --domain=beehiiv --exclude=node_modules,vendor,tests,dist,build,build-dev,build-module,build-style",
-		"build:zip": "npm run build && composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction --no-progress && node -e \"const fs=require('fs');const p='includes/OAuth/Config.php';const t=process.env.BEEHIIV_REGISTRATION_TOKEN||'';if(!t){console.error('BEEHIIV_REGISTRATION_TOKEN is required for build:zip');process.exit(1)}const e=t.replace(/\\\\/g,'\\\\\\\\').replace(/'/g,'\\\\\\'');let c=fs.readFileSync(p,'utf8');const r=c.replace(/private const REGISTRATION_TOKEN = 'BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER';/,`private const REGISTRATION_TOKEN = '${e}';`);if(r===c){console.error('REGISTRATION_TOKEN placeholder not found in Config.php');process.exit(1)}fs.writeFileSync(p,r)\" && find . -name '.DS_Store' -not -path './node_modules/*' -not -path './.git/*' -delete && rm -rf dist && mkdir -p dist && composer archive --format=zip --dir=dist --file=beehiiv",
+		"build:zip": "npm run build && composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction --no-progress && find . -name '.DS_Store' -not -path './node_modules/*' -not -path './.git/*' -delete && rm -rf dist && mkdir -p dist && composer archive --format=zip --dir=dist --file=beehiiv",
 		"format": "wp-scripts format",
 		"lint": "npm run lint:js && npm run lint:css && npm run lint:php",
 		"lint:js": "wp-scripts lint-js",
