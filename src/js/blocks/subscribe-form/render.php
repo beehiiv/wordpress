@@ -11,22 +11,22 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$form_id = isset( $attributes['formId'] ) ? sanitize_text_field( $attributes['formId'] ) : '';
+$beehiiv_form_id = isset( $attributes['formId'] ) ? sanitize_text_field( $attributes['formId'] ) : '';
 
-if ( empty( $form_id ) ) {
+if ( empty( $beehiiv_form_id ) ) {
 	return;
 }
 
-$wrapper_attributes = get_block_wrapper_attributes();
+$beehiiv_wrapper_attributes = get_block_wrapper_attributes();
 ?>
 
-<div <?php echo $wrapper_attributes; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+<div <?php echo $beehiiv_wrapper_attributes; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 	<?php
 	wp_print_script_tag(
 		[
 			'src'               => 'https://subscribe-forms.beehiiv.com/v3/loader.js',
 			'async'             => true,
-			'data-beehiiv-form' => $form_id,
+			'data-beehiiv-form' => $beehiiv_form_id,
 		]
 	);
 	?>
