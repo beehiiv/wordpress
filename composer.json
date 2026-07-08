@@ -40,6 +40,8 @@
 			"/src/**",
 			"tests",
 			"/tests/**",
+			"bin",
+			"/bin/**",
 			"node_modules",
 			".git",
 			".github",
