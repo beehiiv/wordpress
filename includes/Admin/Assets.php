@@ -122,5 +122,7 @@ final class Assets {
 			$asset['version'],
 			true
 		);
+
+		wp_set_script_translations( $handle, 'beehiiv' );
 	}
 }

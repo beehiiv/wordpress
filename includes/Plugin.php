@@ -35,6 +35,7 @@ final class Plugin {
 		OAuth\AdminActions::init();
 		OAuth\CallbackHandler::init();
 
+		add_action( 'init', [ self::class, 'load_textdomain' ] );
 		add_action( 'init', [ Blocks\Registry::class, 'register_category' ] );
 		add_action( 'init', [ Blocks\Registry::class, 'register_blocks' ] );
 		add_action( 'init', [ Editor\PostSettings::class, 'register_meta' ] );
@@ -45,6 +46,21 @@ final class Plugin {
 		add_action( 'admin_init', [ self::class, 'bootstrap_admin_features' ] );
 		add_action( 'rest_api_init', [ REST\PostTemplatesController::class, 'register_routes' ] );
 		add_action( 'rest_api_init', [ REST\AdvertisementOpportunitiesController::class, 'register_routes' ] );
+	}
+
+	/**
+	 * Load plugin translations for PHP strings.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return void
+	 */
+	public static function load_textdomain(): void {
+		load_plugin_textdomain(
+			'beehiiv',
+			false,
+			dirname( plugin_basename( BEEHIIV_PLUGIN_FILE ) ) . '/languages'
+		);
 	}
 
 	/**

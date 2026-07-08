@@ -8,6 +8,7 @@ build-module
 build-style
 languages/*
 !languages/README.md
+!languages/*.pot
 coverage
 tests/php-coverage
 .phpunit.result.cache
