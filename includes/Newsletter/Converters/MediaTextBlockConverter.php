@@ -181,7 +181,7 @@ final class MediaTextBlockConverter {
 	public static function build_synthetic_image_block( array $attrs, string $inner_html ): array {
 		$figure_html = self::extract_media_figure_html( $inner_html );
 
-		if ( '' !== $figure_html ) {
+		if ( '' !== $figure_html && '' !== self::extract_image_url_from_html( $figure_html ) ) {
 			return [
 				'blockName' => 'core/image',
 				'attrs'     => [],
@@ -190,6 +190,10 @@ final class MediaTextBlockConverter {
 		}
 
 		$image_url = self::resolve_image_url( $attrs );
+
+		if ( '' === $image_url ) {
+			$image_url = self::extract_image_url_from_html( $inner_html );
+		}
 
 		if ( '' === $image_url ) {
 			return [];
@@ -254,6 +258,72 @@ final class MediaTextBlockConverter {
 		}
 
 		return '';
+	}
+
+	/**
+	 * Extract inner HTML from the media-text content column.
+	 *
+	 * Used when parse_blocks() does not populate innerBlocks (e.g. after media
+	 * attachment loss and re-save).
+	 *
+	 * @param string $inner_html Saved media-text HTML.
+	 * @return string
+	 * @since 1.0.0
+	 */
+	public static function extract_content_inner_html( string $inner_html ): string {
+		if ( ! preg_match(
+			'/<div[^>]*\bwp-block-media-text__content\b[^>]*>/i',
+			$inner_html,
+			$open_match,
+			PREG_OFFSET_CAPTURE
+		) ) {
+			return '';
+		}
+
+		$start  = $open_match[0][1] + strlen( $open_match[0][0] );
+		$depth  = 1;
+		$length = strlen( $inner_html );
+		$pos    = $start;
+
+		while ( $pos < $length && $depth > 0 ) {
+			if ( ! preg_match( '/<(\/?)div\b/i', $inner_html, $tag_match, PREG_OFFSET_CAPTURE, $pos ) ) {
+				break;
+			}
+
+			$is_close = '/' === $tag_match[1][0];
+			$tag_pos  = $tag_match[0][1];
+
+			if ( $is_close ) {
+				--$depth;
+
+				if ( 0 === $depth ) {
+					return trim( substr( $inner_html, $start, $tag_pos - $start ) );
+				}
+			} else {
+				++$depth;
+			}
+
+			$pos = $tag_pos + strlen( $tag_match[0][0] );
+		}
+
+		return '';
+	}
+
+	/**
+	 * Extract an image src URL from an HTML fragment.
+	 *
+	 * @param string $html Saved HTML fragment.
+	 * @return string
+	 * @since 1.0.0
+	 */
+	private static function extract_image_url_from_html( string $html ): string {
+		if ( ! preg_match( '/<img[^>]*\ssrc=["\']([^"\']+)["\']/i', $html, $matches ) ) {
+			return '';
+		}
+
+		$url = trim( $matches[1] );
+
+		return '' !== $url ? $url : '';
 	}
 
 	/**

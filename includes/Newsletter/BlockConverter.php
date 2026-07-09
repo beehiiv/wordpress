@@ -978,6 +978,14 @@ final class BlockConverter {
 		$media_blocks   = self::convert_media_text_media_blocks( $attrs, $inner_html );
 		$content_blocks = self::convert_layout_block_inner_blocks( $inner_blocks );
 
+		if ( empty( $content_blocks ) && '' !== $inner_html ) {
+			$content_html = MediaTextBlockConverter::extract_content_inner_html( $inner_html );
+
+			if ( '' !== $content_html ) {
+				$content_blocks = self::convert_layout_block_inner_blocks( parse_blocks( $content_html ) );
+			}
+		}
+
 		$media_column   = [];
 		$content_column = [];
 
