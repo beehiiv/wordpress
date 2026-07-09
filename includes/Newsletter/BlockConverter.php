@@ -957,9 +957,9 @@ final class BlockConverter {
 	/**
 	 * Convert a core/media-text block to a beehiiv columns block.
 	 *
-	 * Maps the media side to an image (or embed_link for video) column and the
-	 * content side to converted inner blocks. Respects media position, column
-	 * widths, vertical alignment, and mobile stacking.
+	 * Maps the media side to an image column and the content side to converted
+	 * inner blocks. Blocks with video media are omitted entirely. Respects media
+	 * position, column widths, vertical alignment, and mobile stacking.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<string, mixed>
@@ -969,6 +969,10 @@ final class BlockConverter {
 		$attrs        = $wp_block['attrs'] ?? [];
 		$inner_html   = (string) ( $wp_block['innerHTML'] ?? '' );
 		$inner_blocks = $wp_block['innerBlocks'] ?? [];
+
+		if ( MediaTextBlockConverter::is_video_media_type( $attrs, $inner_html ) ) {
+			return [];
+		}
 
 		$stack_on_mobile = ColumnsBlockConverter::resolve_stack_on_mobile( $attrs, $inner_html );
 		$vertical_align  = MediaTextBlockConverter::resolve_vertical_alignment( $attrs, $inner_html );
@@ -1028,21 +1032,6 @@ final class BlockConverter {
 	 * @since 1.0.0
 	 */
 	private static function convert_media_text_media_blocks( array $attrs, string $inner_html ): array {
-		if ( MediaTextBlockConverter::is_video_media_type( $attrs, $inner_html ) ) {
-			$video_url = MediaTextBlockConverter::resolve_video_url( $attrs, $inner_html );
-
-			if ( '' === $video_url ) {
-				return [];
-			}
-
-			return [
-				[
-					'type' => 'embed_link',
-					'url'  => $video_url,
-				],
-			];
-		}
-
 		$synthetic_image_block = MediaTextBlockConverter::build_synthetic_image_block( $attrs, $inner_html );
 
 		if ( empty( $synthetic_image_block ) ) {
