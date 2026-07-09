@@ -330,10 +330,10 @@ final class BlockConverter {
 			return [];
 		}
 
-		$inline_html              = FormattedTextParser::extract_element_inner_html( $inner_html, 'p' );
-		$block_text_color         = FormattedTextParser::resolve_paragraph_block_text_color( $inner_html, $attrs );
-		$block_background_color   = FormattedTextParser::resolve_paragraph_block_background_color( $inner_html, $attrs );
-		$parsed                   = FormattedTextParser::parse( $inline_html, $block_text_color );
+		$inline_html            = FormattedTextParser::extract_element_inner_html( $inner_html, 'p' );
+		$block_text_color       = FormattedTextParser::resolve_paragraph_block_text_color( $inner_html, $attrs );
+		$block_background_color = FormattedTextParser::resolve_paragraph_block_background_color( $inner_html, $attrs );
+		$parsed                 = FormattedTextParser::parse( $inline_html, $block_text_color );
 
 		if ( '' === trim( $parsed['plaintext'] ) ) {
 			return [];
