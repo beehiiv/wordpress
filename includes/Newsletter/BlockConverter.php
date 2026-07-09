@@ -314,9 +314,9 @@ final class BlockConverter {
 	/**
 	 * Convert a core/paragraph block.
 	 *
-	 * Maps innerHTML to beehiiv plaintext/formattedText plus optional textAlignment
-	 * and block-level text colour from the `<p>` tag. Inline formatting is parsed
-	 * by FormattedTextParser (shared with list/table blocks).
+	 * Maps innerHTML to beehiiv plaintext/formattedText plus optional textAlignment,
+	 * block-level text colour, and block-level background colour from the `<p>` tag.
+	 * Inline formatting is parsed by FormattedTextParser (shared with list/table blocks).
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<string, mixed>
@@ -330,9 +330,10 @@ final class BlockConverter {
 			return [];
 		}
 
-		$inline_html      = FormattedTextParser::extract_element_inner_html( $inner_html, 'p' );
-		$block_text_color = FormattedTextParser::resolve_paragraph_block_text_color( $inner_html, $attrs );
-		$parsed           = FormattedTextParser::parse( $inline_html, $block_text_color );
+		$inline_html              = FormattedTextParser::extract_element_inner_html( $inner_html, 'p' );
+		$block_text_color         = FormattedTextParser::resolve_paragraph_block_text_color( $inner_html, $attrs );
+		$block_background_color   = FormattedTextParser::resolve_paragraph_block_background_color( $inner_html, $attrs );
+		$parsed                   = FormattedTextParser::parse( $inline_html, $block_text_color );
 
 		if ( '' === trim( $parsed['plaintext'] ) ) {
 			return [];
@@ -356,6 +357,12 @@ final class BlockConverter {
 
 		if ( null !== $alignment ) {
 			$beehiiv_block['textAlignment'] = $alignment;
+		}
+
+		if ( null !== $block_background_color && '' !== $block_background_color ) {
+			$beehiiv_block['visual_settings'] = [
+				'background_color' => $block_background_color,
+			];
 		}
 
 		return $beehiiv_block;

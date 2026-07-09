@@ -195,6 +195,24 @@ final class FormattedTextParser {
 	}
 
 	/**
+	 * Resolve block-level paragraph background colour from attrs and the `<p>` tag.
+	 *
+	 * @param string               $inner_html Saved paragraph HTML including the `<p>` wrapper.
+	 * @param array<string, mixed> $attrs      Parsed block attributes.
+	 * @return string|null
+	 * @since 1.0.0
+	 */
+	public static function resolve_paragraph_block_background_color( string $inner_html, array $attrs ): ?string {
+		$from_attrs = self::resolve_block_background_color_from_attrs( $attrs );
+
+		if ( null !== $from_attrs ) {
+			return $from_attrs;
+		}
+
+		return self::resolve_wrapper_color_from_html_tag( $inner_html, 'p', 'background' );
+	}
+
+	/**
 	 * Resolve block-level list-item text colour from attrs and the `<li>` tag.
 	 *
 	 * @param string               $inner_html Saved list-item HTML including the `<li>` wrapper.
