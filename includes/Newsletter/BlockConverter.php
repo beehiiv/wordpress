@@ -480,7 +480,7 @@ final class BlockConverter {
 	 * Convert a core/list block to a beehiiv list block.
 	 *
 	 * Structure is read from parsed innerBlocks (`core/list-item`). Nested lists
-	 * are flattened into the same list; each nesting level prefixes items with
+	 * get flattened into the same list. Each nesting level prefixes items with
 	 * `  - `. List wrapper and item attributes are read with the WordPress HTML
 	 * Tag Processor; item inline HTML is extracted with the same Tag Processor +
 	 * regex pattern used by button blocks.
