@@ -4,7 +4,7 @@
 import { useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 
-import { shouldWarnUnsupportedBlock } from '../../../shared/supported-blocks';
+import { isOmittedFromNewsletter } from '../../../shared/supported-blocks';
 
 /**
  * @typedef {import('@wordpress/blocks').WPBlock} WPBlock
@@ -25,7 +25,7 @@ import { shouldWarnUnsupportedBlock } from '../../../shared/supported-blocks';
  */
 function resolveOmittedBlockTarget( ancestors, blockClientId ) {
 	for ( const ancestor of ancestors ) {
-		if ( shouldWarnUnsupportedBlock( ancestor.name ) ) {
+		if ( isOmittedFromNewsletter( ancestor ) ) {
 			return ancestor.clientId;
 		}
 	}
@@ -49,7 +49,7 @@ export function collectOmittedBlockClientIds( blocks ) {
 	 */
 	function visit( blockList, ancestors = [] ) {
 		for ( const block of blockList ) {
-			if ( shouldWarnUnsupportedBlock( block.name ) ) {
+			if ( isOmittedFromNewsletter( block ) ) {
 				targets.add(
 					resolveOmittedBlockTarget( ancestors, block.clientId )
 				);

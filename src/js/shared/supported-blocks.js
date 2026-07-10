@@ -73,3 +73,39 @@ export function shouldWarnUnsupportedBlock( blockName ) {
 
 	return ! supported.includes( blockName );
 }
+
+const MEDIA_TEXT_BLOCK = 'core/media-text';
+
+/**
+ * Whether a Media & Text block uses video on the media side.
+ *
+ * The entire block is omitted from the beehiiv payload when video is present.
+ *
+ * @param {{ name?: string, attributes?: { mediaType?: string } }} block Parsed block.
+ * @return {boolean} True when the block uses unsupported video media.
+ */
+export function isMediaTextWithUnsupportedVideo( block ) {
+	if ( block?.name !== MEDIA_TEXT_BLOCK ) {
+		return false;
+	}
+
+	return 'video' === block.attributes?.mediaType;
+}
+
+/**
+ * Whether a block is omitted from the beehiiv newsletter payload.
+ *
+ * @param {{ name?: string, attributes?: { mediaType?: string } }} block Parsed block.
+ * @return {boolean} True when the block will not be sent.
+ */
+export function isOmittedFromNewsletter( block ) {
+	if ( ! block?.name ) {
+		return false;
+	}
+
+	if ( isMediaTextWithUnsupportedVideo( block ) ) {
+		return true;
+	}
+
+	return shouldWarnUnsupportedBlock( block.name );
+}

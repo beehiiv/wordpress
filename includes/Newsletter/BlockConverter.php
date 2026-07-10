@@ -314,9 +314,9 @@ final class BlockConverter {
 	/**
 	 * Convert a core/paragraph block.
 	 *
-	 * Maps innerHTML to beehiiv plaintext/formattedText plus optional textAlignment
-	 * and block-level text colour from the `<p>` tag. Inline formatting is parsed
-	 * by FormattedTextParser (shared with list/table blocks).
+	 * Maps innerHTML to beehiiv plaintext/formattedText plus optional textAlignment,
+	 * block-level text colour, and block-level background colour from the `<p>` tag.
+	 * Inline formatting is parsed by FormattedTextParser (shared with list/table blocks).
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<string, mixed>
@@ -330,9 +330,10 @@ final class BlockConverter {
 			return [];
 		}
 
-		$inline_html      = FormattedTextParser::extract_element_inner_html( $inner_html, 'p' );
-		$block_text_color = FormattedTextParser::resolve_paragraph_block_text_color( $inner_html, $attrs );
-		$parsed           = FormattedTextParser::parse( $inline_html, $block_text_color );
+		$inline_html            = FormattedTextParser::extract_element_inner_html( $inner_html, 'p' );
+		$block_text_color       = FormattedTextParser::resolve_paragraph_block_text_color( $inner_html, $attrs );
+		$block_background_color = FormattedTextParser::resolve_paragraph_block_background_color( $inner_html, $attrs );
+		$parsed                 = FormattedTextParser::parse( $inline_html, $block_text_color );
 
 		if ( '' === trim( $parsed['plaintext'] ) ) {
 			return [];
@@ -356,6 +357,12 @@ final class BlockConverter {
 
 		if ( null !== $alignment ) {
 			$beehiiv_block['textAlignment'] = $alignment;
+		}
+
+		if ( null !== $block_background_color && '' !== $block_background_color ) {
+			$beehiiv_block['visual_settings'] = [
+				'background_color' => $block_background_color,
+			];
 		}
 
 		return $beehiiv_block;
@@ -473,7 +480,7 @@ final class BlockConverter {
 	 * Convert a core/list block to a beehiiv list block.
 	 *
 	 * Structure is read from parsed innerBlocks (`core/list-item`). Nested lists
-	 * are flattened into the same list; each nesting level prefixes items with
+	 * get flattened into the same list. Each nesting level prefixes items with
 	 * `  - `. List wrapper and item attributes are read with the WordPress HTML
 	 * Tag Processor; item inline HTML is extracted with the same Tag Processor +
 	 * regex pattern used by button blocks.
@@ -950,9 +957,9 @@ final class BlockConverter {
 	/**
 	 * Convert a core/media-text block to a beehiiv columns block.
 	 *
-	 * Maps the media side to an image (or embed_link for video) column and the
-	 * content side to converted inner blocks. Respects media position, column
-	 * widths, vertical alignment, and mobile stacking.
+	 * Maps the media side to an image column and the content side to converted
+	 * inner blocks. Blocks with video media are omitted entirely. Respects media
+	 * position, column widths, vertical alignment, and mobile stacking.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<string, mixed>
@@ -963,6 +970,10 @@ final class BlockConverter {
 		$inner_html   = (string) ( $wp_block['innerHTML'] ?? '' );
 		$inner_blocks = $wp_block['innerBlocks'] ?? [];
 
+		if ( MediaTextBlockConverter::is_video_media_type( $attrs, $inner_html ) ) {
+			return [];
+		}
+
 		$stack_on_mobile = ColumnsBlockConverter::resolve_stack_on_mobile( $attrs, $inner_html );
 		$vertical_align  = MediaTextBlockConverter::resolve_vertical_alignment( $attrs, $inner_html );
 		$media_width     = MediaTextBlockConverter::resolve_media_width( $attrs, $inner_html );
@@ -970,6 +981,14 @@ final class BlockConverter {
 
 		$media_blocks   = self::convert_media_text_media_blocks( $attrs, $inner_html );
 		$content_blocks = self::convert_layout_block_inner_blocks( $inner_blocks );
+
+		if ( empty( $content_blocks ) && '' !== $inner_html ) {
+			$content_html = MediaTextBlockConverter::extract_content_inner_html( $inner_html );
+
+			if ( '' !== $content_html ) {
+				$content_blocks = self::convert_layout_block_inner_blocks( parse_blocks( $content_html ) );
+			}
+		}
 
 		$media_column   = [];
 		$content_column = [];
@@ -1013,21 +1032,6 @@ final class BlockConverter {
 	 * @since 1.0.0
 	 */
 	private static function convert_media_text_media_blocks( array $attrs, string $inner_html ): array {
-		if ( MediaTextBlockConverter::is_video_media_type( $attrs, $inner_html ) ) {
-			$video_url = MediaTextBlockConverter::resolve_video_url( $attrs, $inner_html );
-
-			if ( '' === $video_url ) {
-				return [];
-			}
-
-			return [
-				[
-					'type' => 'embed_link',
-					'url'  => $video_url,
-				],
-			];
-		}
-
 		$synthetic_image_block = MediaTextBlockConverter::build_synthetic_image_block( $attrs, $inner_html );
 
 		if ( empty( $synthetic_image_block ) ) {
