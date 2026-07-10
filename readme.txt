@@ -1,7 +1,7 @@
 === beehiiv ===
 Contributors: beehiiv
 Tags: newsletter, email, publishing, beehiiv, subscribe
-Requires at least: 6.5
+Requires at least: 6.8
 Tested up to: 7.0
 Requires PHP: 7.4
 Stable tag: 1.0.0
