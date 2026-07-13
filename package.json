@@ -24,7 +24,6 @@
 		"includes/",
 		"vendor/autoload.php",
 		"vendor/composer/",
-		"composer.json",
 		"readme.txt"
 	],
 	"scripts": {
