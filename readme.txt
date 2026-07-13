@@ -119,6 +119,3 @@ It is visible in the editor but does not render on the front end of your site.
 
 = 1.0.0 =
 * Initial release.
-
-= 1.0.1 =
-* Initial release.
