@@ -69,13 +69,22 @@ final class AdvertisementOpportunitiesController {
 	/**
 	 * Permission check for advertisement requests.
 	 *
+	 * Requires edit access to the referenced post and publish_posts (newsletter/ad UI).
+	 *
 	 * @since 1.0.0
 	 *
+	 * @param WP_REST_Request $request REST request.
 	 * @return bool
 	 */
-	public static function permissions_check(): bool {
+	public static function permissions_check( WP_REST_Request $request ): bool {
 
-		return current_user_can( 'manage_options' ) || current_user_can( 'edit_posts' );
+		$post_id = absint( $request->get_param( 'post_id' ) );
+
+		if ( ! $post_id ) {
+			return false;
+		}
+
+		return current_user_can( 'edit_post', $post_id ) && current_user_can( 'publish_posts' );
 	}
 
 	/**
