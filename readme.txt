@@ -65,6 +65,24 @@ If you do not have one yet, you can [sign up at beehiiv.com](https://www.beehiiv
 Once connected and configured, any post with "Send to newsletter" enabled will be queued for delivery through beehiiv when you publish (or on the scheduled date you choose).
 
 
+== External services ==
+
+This plugin connects to beehiiv services hosted at [beehiiv.com](https://www.beehiiv.com).
+It is used to authenticate your account, sync publication settings, publish WordPress posts as newsletters, and embed beehiiv subscribe forms on your site.
+
+When you connect your account, the plugin exchanges OAuth credentials with beehiiv. When you send a post as a newsletter, post content and related newsletter settings are sent to the beehiiv API. The subscribe form loads beehiiv’s form script so visitors can join your publication.
+
+Terms of Use: [beehiiv.com/tou](https://www.beehiiv.com/tou)
+Privacy Policy: [beehiiv.com/privacy](https://www.beehiiv.com/privacy)
+
+
+== Getting Started ==
+
+Plugin settings and the block editor panel include clear, contextual hints and usage notes.
+
+The beehiiv WordPress GitHub repository includes the uncompressed source files: [github.com/beehiiv/wordpress](https://github.com/beehiiv/wordpress).
+
+
 == Frequently Asked Questions ==
 
 = Does this require a beehiiv account? =
@@ -99,4 +117,7 @@ It is visible in the editor but does not render on the front end of your site.
 == Changelog ==
 
 = 1.0.0 =
+* Initial release.
+
+= 1.0.1 =
 * Initial release.
