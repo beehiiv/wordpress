@@ -1,4 +1,5 @@
 === beehiiv ===
+=== beehiiv - Publish WordPress posts as newsletters and grow your audience ===
 Contributors: beehiiv
 Tags: newsletter, email, publishing, beehiiv, subscribe
 Requires at least: 6.8
@@ -8,7 +9,7 @@ Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Official beehiiv WordPress plugin. Publish WordPress posts as newsletters and grow your audience with beehiiv.
+Publish WordPress posts as newsletters, grow your email subscriber lists, add signup forms, and send email marketing to your audience with beehiiv.
 
 
 == Description ==
