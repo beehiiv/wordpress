@@ -65,13 +65,15 @@ final class PostTemplatesController {
 	/**
 	 * Permission check for template requests.
 	 *
+	 * Settings screen requires manage_options; editor template picker requires publish_posts.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @return bool
 	 */
 	public static function permissions_check(): bool {
 
-		return current_user_can( 'manage_options' ) || current_user_can( 'edit_posts' );
+		return current_user_can( 'manage_options' ) || current_user_can( 'publish_posts' );
 	}
 
 	/**

@@ -1,4 +1,5 @@
 === beehiiv ===
+=== beehiiv - Publish WordPress posts as newsletters and grow your audience ===
 Contributors: beehiiv
 Tags: newsletter, email, publishing, beehiiv, subscribe
 Requires at least: 6.8
@@ -8,7 +9,7 @@ Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Official beehiiv WordPress plugin. Publish WordPress posts as newsletters and grow your audience with beehiiv.
+Publish WordPress posts as newsletters, grow your email subscriber lists, add signup forms, and send email marketing to your audience with beehiiv.
 
 
 == Description ==
@@ -63,6 +64,24 @@ If you do not have one yet, you can [sign up at beehiiv.com](https://www.beehiiv
 5. Create or edit a post in the block editor, open the **beehiiv** panel in the editor sidebar, and turn on **Send to newsletter** before you publish.
 
 Once connected and configured, any post with "Send to newsletter" enabled will be queued for delivery through beehiiv when you publish (or on the scheduled date you choose).
+
+
+== External services ==
+
+This plugin connects to beehiiv services hosted at [beehiiv.com](https://www.beehiiv.com).
+It is used to authenticate your account, sync publication settings, publish WordPress posts as newsletters, and embed beehiiv subscribe forms on your site.
+
+When you connect your account, the plugin exchanges OAuth credentials with beehiiv. When you send a post as a newsletter, post content and related newsletter settings are sent to the beehiiv API. The subscribe form loads beehiiv’s form script so visitors can join your publication.
+
+Terms of Use: [beehiiv.com/tou](https://www.beehiiv.com/tou)
+Privacy Policy: [beehiiv.com/privacy](https://www.beehiiv.com/privacy)
+
+
+== Getting Started ==
+
+Plugin settings and the block editor panel include clear, contextual hints and usage notes.
+
+The beehiiv WordPress GitHub repository includes the uncompressed source files: [github.com/beehiiv/wordpress](https://github.com/beehiiv/wordpress).
 
 
 == Frequently Asked Questions ==
