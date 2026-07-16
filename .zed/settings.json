@@ -51,6 +51,20 @@
 					"arguments": ["--stdin-filepath", "{buffer_path}"]
 				}
 			}
+		},
+		"CSS": {
+			"language_servers": ["stylelint-lsp", "..."],
+			"format_on_save": "on",
+			"code_actions_on_format": {
+				"source.fixAll.stylelint": true
+			}
+		},
+		"SCSS": {
+			"language_servers": ["stylelint-lsp", "..."],
+			"format_on_save": "on",
+			"code_actions_on_format": {
+				"source.fixAll.stylelint": true
+			}
 		}
 	},
 	"lsp": {
@@ -82,6 +96,13 @@
 		"eslint": {
 			"settings": {
 				"workingDirectory": { "mode": "auto" }
+			}
+		},
+		"stylelint-lsp": {
+			"settings": {
+				"stylelint": {
+					"validate": ["css", "scss"]
+				}
 			}
 		}
 	}
