@@ -1,4 +1,4 @@
 [tools]
 node = "20.20.2"
 php = "8.4"
-composer = "2"
+"github:composer/composer" = "2"
