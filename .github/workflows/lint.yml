@@ -25,12 +25,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup tools
-        uses: jdx/mise-action@v4
-        env:
-          MISE_PHP_VERSION: ${{ matrix.php }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
         with:
-          cache_key: "{{default}}-php-${{ matrix.php }}"
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v2
+          coverage: none
 
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress
