@@ -1,5 +1,8 @@
 {
 	"language_servers": ["!biome"],
+	"prettier": {
+		"require_config": true
+	},
 	"languages": {
 		"PHP": {
 			"language_servers": ["intelephense", "!phpactor", "..."]
@@ -13,12 +16,7 @@
 			},
 			"formatter": [
 				{ "code_action": "source.fixAll.eslint" },
-				{
-					"external": {
-						"command": "node_modules/.bin/prettier",
-						"arguments": ["--stdin-filepath", "{buffer_path}"]
-					}
-				}
+				"prettier"
 			]
 		},
 		"TypeScript": {
@@ -30,12 +28,7 @@
 			},
 			"formatter": [
 				{ "code_action": "source.fixAll.eslint" },
-				{
-					"external": {
-						"command": "node_modules/.bin/prettier",
-						"arguments": ["--stdin-filepath", "{buffer_path}"]
-					}
-				}
+				"prettier"
 			]
 		},
 		"TSX": {
@@ -47,12 +40,7 @@
 			},
 			"formatter": [
 				{ "code_action": "source.fixAll.eslint" },
-				{
-					"external": {
-						"command": "node_modules/.bin/prettier",
-						"arguments": ["--stdin-filepath", "{buffer_path}"]
-					}
-				}
+				"prettier"
 			]
 		},
 		"JSON": {
@@ -62,12 +50,7 @@
 				"source.fixAll.biome": false,
 				"source.organizeImports.biome": false
 			},
-			"formatter": {
-				"external": {
-					"command": "node_modules/.bin/prettier",
-					"arguments": ["--stdin-filepath", "{buffer_path}"]
-				}
-			}
+			"formatter": "prettier"
 		},
 		"CSS": {
 			"language_servers": ["stylelint-lsp", "!biome"],
