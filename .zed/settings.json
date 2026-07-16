@@ -1,0 +1,34 @@
+{
+	"languages": {
+		"PHP": {
+			"language_servers": ["intelephense", "!phpactor", "..."]
+		}
+	},
+	"lsp": {
+		"intelephense": {
+			"settings": {
+				"environment": {
+					"phpVersion": "7.4.0"
+				},
+				"stubs": [
+					"wordpress",
+					"wordpress-globals",
+					"Core",
+					"standard",
+					"date",
+					"json",
+					"mbstring"
+				],
+				"files": {
+					"maxSize": 5000000,
+					"exclude": [
+						"**/.git/**",
+						"**/node_modules/**",
+						"**/vendor/**",
+						"**/build/**"
+					]
+				}
+			}
+		}
+	}
+}
