@@ -1,0 +1,114 @@
+{
+	"language_servers": ["!biome"],
+	"prettier": {
+		"require_config": true
+	},
+	"languages": {
+		"PHP": {
+			"language_servers": ["intelephense", "!phpactor", "..."]
+		},
+		"JavaScript": {
+			"language_servers": ["eslint", "!biome"],
+			"format_on_save": "on",
+			"code_actions_on_format": {
+				"source.fixAll.biome": false,
+				"source.organizeImports.biome": false
+			},
+			"formatter": [
+				{ "code_action": "source.fixAll.eslint" },
+				"prettier"
+			]
+		},
+		"TypeScript": {
+			"language_servers": ["eslint", "!biome"],
+			"format_on_save": "on",
+			"code_actions_on_format": {
+				"source.fixAll.biome": false,
+				"source.organizeImports.biome": false
+			},
+			"formatter": [
+				{ "code_action": "source.fixAll.eslint" },
+				"prettier"
+			]
+		},
+		"TSX": {
+			"language_servers": ["eslint", "!biome"],
+			"format_on_save": "on",
+			"code_actions_on_format": {
+				"source.fixAll.biome": false,
+				"source.organizeImports.biome": false
+			},
+			"formatter": [
+				{ "code_action": "source.fixAll.eslint" },
+				"prettier"
+			]
+		},
+		"JSON": {
+			"language_servers": ["!biome"],
+			"format_on_save": "on",
+			"code_actions_on_format": {
+				"source.fixAll.biome": false,
+				"source.organizeImports.biome": false
+			},
+			"formatter": "prettier"
+		},
+		"CSS": {
+			"language_servers": ["stylelint-lsp", "!biome"],
+			"format_on_save": "on",
+			"code_actions_on_format": {
+				"source.fixAll.stylelint": true
+			}
+		},
+		"SCSS": {
+			"language_servers": ["stylelint-lsp", "!biome"],
+			"format_on_save": "on",
+			"code_actions_on_format": {
+				"source.fixAll.stylelint": true
+			}
+		}
+	},
+	"lsp": {
+		"biome": {
+			"settings": {
+				"require_config_file": true
+			}
+		},
+		"intelephense": {
+			"settings": {
+				"environment": {
+					"phpVersion": "7.4.0"
+				},
+				"stubs": [
+					"wordpress",
+					"wordpress-globals",
+					"Core",
+					"standard",
+					"date",
+					"json",
+					"mbstring"
+				],
+				"files": {
+					"maxSize": 5000000,
+					"exclude": [
+						"**/.git/**",
+						"**/node_modules/**",
+						"**/vendor/**",
+						"**/build/**"
+					]
+				}
+			}
+		},
+		"eslint": {
+			"settings": {
+				"workingDirectory": { "mode": "auto" }
+			}
+		},
+		"stylelint-lsp": {
+			"settings": {
+				"stylelint": {
+					"validate": ["css", "scss"]
+				}
+			}
+		}
+	}
+}

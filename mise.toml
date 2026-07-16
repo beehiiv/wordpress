@@ -1,0 +1,10 @@
+[plugins]
+php = "https://github.com/verzly/mise-php#latest"
+
+[tools]
+node = "20.20.2"
+php = "8.4"
+
+[env]
+# Prebuilt static binaries (Composer is bundled per PHP version by verzly/mise-php).
+_.php = { prebuilt_static = true }
