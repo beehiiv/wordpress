@@ -1,4 +1,3 @@
-=== beehiiv ===
 === beehiiv - Publish WordPress posts as newsletters and grow your audience ===
 Contributors: beehiiv
 Tags: newsletter, email, publishing, beehiiv, subscribe
