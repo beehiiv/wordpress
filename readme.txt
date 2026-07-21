@@ -25,6 +25,24 @@ Write once in WordPress, publish to your site, and queue the same post for deliv
 * Add a newsletter signup form to your website
 * Include sponsored content in your newsletters
 
+= Supported blocks =
+
+When you send a post as a newsletter, the plugin includes the post's featured image and converts these WordPress blocks into beehiiv content:
+
+* Heading
+* Paragraph
+* Image
+* List
+* Table
+* Quote
+* Pull quote
+* Embed
+* Media & Text
+* Buttons
+* Separator
+
+The editor warns you about any unsupported blocks before you publish. More blocks are coming soon.
+
 = What is beehiiv? =
 
 [beehiiv](https://www.beehiiv.com/) is an all-in-one newsletter platform built for creators, writers, and publishers.
