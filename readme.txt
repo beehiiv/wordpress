@@ -13,7 +13,7 @@ Publish WordPress posts as newsletters, grow your email subscriber lists, add si
 
 == Description ==
 
-&#128312; **The beehiiv integration is available to publications on the Max and Enterprise plans. [Learn more about plans](https://www.beehiiv.com/pricing).**
+**The beehiiv integration is available to publications on the Max and Enterprise plans. [Learn more about plans](https://www.beehiiv.com/pricing).**
 
 The official [beehiiv](https://www.beehiiv.com/) plugin connects your WordPress site to your beehiiv account so you can create posts in the block editor and send posts to your newsletter subscribers.
 
@@ -70,7 +70,7 @@ If you do not have one yet, you can [sign up at beehiiv.com](https://www.beehiiv
 
 = Requirements =
 
-* WordPress 6.5 or later
+* WordPress 6.8 or later
 * PHP 7.4 or later
 * An active [beehiiv](https://www.beehiiv.com/) account on the Max or Enterprise plan ([learn more about plans](https://www.beehiiv.com/pricing))
 
