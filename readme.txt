@@ -13,6 +13,8 @@ Publish WordPress posts as newsletters, grow your email subscriber lists, add si
 
 == Description ==
 
+&#128312; **The beehiiv integration is available to publications on the Max and Enterprise plans. [Learn more about plans](https://www.beehiiv.com/pricing).**
+
 The official [beehiiv](https://www.beehiiv.com/) plugin connects your WordPress site to your beehiiv account so you can create posts in the block editor and send posts to your newsletter subscribers.
 
 Write once in WordPress, publish to your site, and queue the same post for delivery through beehiiv, without copying content between platforms or creating new content for your newsletters.
@@ -70,7 +72,7 @@ If you do not have one yet, you can [sign up at beehiiv.com](https://www.beehiiv
 
 * WordPress 6.5 or later
 * PHP 7.4 or later
-* An active [beehiiv](https://www.beehiiv.com/) account
+* An active [beehiiv](https://www.beehiiv.com/) account on the Max or Enterprise plan ([learn more about plans](https://www.beehiiv.com/pricing))
 
 = Setup =
 
@@ -105,7 +107,9 @@ The beehiiv WordPress GitHub repository includes the uncompressed source files: 
 
 = Does this require a beehiiv account? =
 
-Yes. You need an active beehiiv account to connect the plugin and send newsletters. You can create a free account at [beehiiv.com](https://www.beehiiv.com/).
+Yes. You need an active beehiiv account on the Max or Enterprise plan to connect the plugin and send newsletters. [Learn more about plans](https://www.beehiiv.com/pricing).
+
+You can create a free account at [beehiiv.com](https://www.beehiiv.com/).
 
 = How do I connect my beehiiv account? =
 
