@@ -59,6 +59,13 @@ final class Config {
 	public const PLUGIN_DOC_URL = 'https://wordpress.org/plugins/beehiiv/';
 
 	/**
+	 * Beehiiv pricing and plans page.
+	 *
+	 * @since 1.0.0
+	 */
+	public const PRICING_URL = 'https://www.beehiiv.com/pricing';
+
+	/**
 	 * Absolute path to admin view templates.
 	 *
 	 * @since 1.0.0
