@@ -8,7 +8,33 @@ if [ ! -f docker-compose.extra-hosts.yml ]; then
 	exit 0
 fi
 
+WP_ENV=wp-env
+if [ -x ./node_modules/.bin/wp-env ]; then
+	WP_ENV=./node_modules/.bin/wp-env
+fi
+
+INSTALL_PATH=$(
+	"$WP_ENV" status --json | node -e '
+		let data = "";
+		process.stdin.on("data", (chunk) => { data += chunk; });
+		process.stdin.on("end", () => {
+			const status = JSON.parse(data);
+			if (!status.installPath) {
+				console.error("wp-env status did not include installPath.");
+				process.exit(1);
+			}
+			process.stdout.write(status.installPath);
+		});
+	'
+)
+
+COMPOSE_FILE="${INSTALL_PATH}/docker-compose.yml"
+if [ ! -f "$COMPOSE_FILE" ]; then
+	echo "wp-env docker-compose.yml not found at ${COMPOSE_FILE}. Is the environment started?"
+	exit 1
+fi
+
 docker compose \
-	-f "$(wp-env install-path)/docker-compose.yml" \
+	-f "$COMPOSE_FILE" \
 	-f docker-compose.extra-hosts.yml \
 	up -d --force-recreate wordpress cli

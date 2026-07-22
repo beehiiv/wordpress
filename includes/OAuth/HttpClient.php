@@ -39,16 +39,17 @@ final class HttpClient {
 		$url = trailingslashit( Config::get_oauth_base_url() ) . ltrim( $path, '/' );
 
 		$args = [
-			'method'  => 'POST',
-			'timeout' => self::REQUEST_TIMEOUT,
-			'headers' => array_merge(
+			'method'    => 'POST',
+			'timeout'   => self::REQUEST_TIMEOUT,
+			'sslverify' => Config::should_verify_ssl(),
+			'headers'   => array_merge(
 				[
 					'Content-Type' => 'application/json',
 					'Accept'       => 'application/json',
 				],
 				$headers
 			),
-			'body'    => wp_json_encode( $body ),
+			'body'      => wp_json_encode( $body ),
 		];
 
 		return self::parse_response( wp_remote_request( $url, $args ) );
@@ -69,13 +70,14 @@ final class HttpClient {
 		$url = trailingslashit( Config::get_oauth_base_url() ) . ltrim( $path, '/' );
 
 		$args = [
-			'method'  => 'POST',
-			'timeout' => self::REQUEST_TIMEOUT,
-			'headers' => [
+			'method'    => 'POST',
+			'timeout'   => self::REQUEST_TIMEOUT,
+			'sslverify' => Config::should_verify_ssl(),
+			'headers'   => [
 				'Content-Type' => 'application/x-www-form-urlencoded',
 				'Accept'       => 'application/json',
 			],
-			'body'    => $body,
+			'body'      => $body,
 		];
 
 		return self::parse_response( wp_remote_request( $url, $args ) );

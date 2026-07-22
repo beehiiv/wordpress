@@ -59,6 +59,13 @@ final class Config {
 	private const API_BASE_URL_CONST = 'BEEHIIV_API_BASE_URL';
 
 	/**
+	 * WP-config.php constant to toggle TLS certificate verification.
+	 *
+	 * @since 1.0.0
+	 */
+	private const SSLVERIFY_CONST = 'BEEHIIV_SSLVERIFY';
+
+	/**
 	 * Production OAuth app base URL.
 	 *
 	 * @since 1.0.0
@@ -108,6 +115,40 @@ final class Config {
 	public static function get_api_base_url(): string {
 
 		return self::get_url_constant( self::API_BASE_URL_CONST, self::DEFAULT_API_BASE_URL );
+	}
+
+	/**
+	 * Whether outbound HTTPS requests should verify TLS certificates.
+	 *
+	 * Local reverse proxies often use a private CA that PHP inside Docker
+	 * does not trust. Set `BEEHIIV_SSLVERIFY` to false in wp-config for that case.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return bool
+	 */
+	public static function should_verify_ssl(): bool {
+
+		if ( ! defined( self::SSLVERIFY_CONST ) ) {
+			return true;
+		}
+
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- Consumed from wp-config.php.
+		$value = constant( self::SSLVERIFY_CONST );
+
+		if ( is_bool( $value ) ) {
+			return $value;
+		}
+
+		if ( is_int( $value ) || is_float( $value ) ) {
+			return (bool) $value;
+		}
+
+		if ( is_string( $value ) ) {
+			return filter_var( $value, FILTER_VALIDATE_BOOLEAN );
+		}
+
+		return true;
 	}
 
 	/**
