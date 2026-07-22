@@ -42,33 +42,43 @@ While developing JS/CSS, run `npm run start` in a second terminal.
 
 OAuth and API bases default to production. For a local/staging beehiiv app, set these secrets in Doppler and start wp-env so they become `wp-config.php` constants:
 
-| Doppler secret / constant     | Example (Docker Desktop → host app)              |
-| ----------------------------- | ------------------------------------------------ |
-| `BEEHIIV_REGISTRATION_TOKEN`  | registration token for `/oauth/register`         |
-| `BEEHIIV_OAUTH_BASE_URL`      | `http://host.docker.internal:3000`               |
-| `BEEHIIV_API_BASE_URL`        | `http://host.docker.internal:3001/v2`            |
+| Doppler secret / constant    | Purpose                                      |
+| ---------------------------- | -------------------------------------------- |
+| `BEEHIIV_REGISTRATION_TOKEN` | Bearer token for `/oauth/register`           |
+| `BEEHIIV_OAUTH_BASE_URL`     | App origin (authorize / token / revoke)      |
+| `BEEHIIV_API_BASE_URL`       | Public API origin including `/v2` path prefix |
 
 ```bash
+cp docker-compose.extra-hosts.example.yml docker-compose.extra-hosts.yml
+
+# Edit docker-compose.extra-hosts.yml so hostnames match your local app/API.
+
 npm run env:start:doppler
 ```
 
-That mounts an ephemeral `.wp-env.override.json` from `.wp-env.override.tmpl` for the duration of `wp-env start`. Re-run after changing Doppler secrets so the container picks them up.
+That:
+
+1. Mounts an ephemeral `.wp-env.override.json` from `.wp-env.override.tmpl` for `wp-env start`
+2. If `docker-compose.extra-hosts.yml` exists, maps those hostnames to the Docker host (`host-gateway`) so WordPress inside the container can reach your machine
+
+Re-run after changing Doppler secrets. If containers were recreated without the overlay, run `npm run env:hosts`.
 
 Without Doppler, define the same constants in `wp-config.php`, or put them in a gitignored `.wp-env.override.json` (`config` map) and use `npm run env:start`.
 
-Use `host.docker.internal` (not `localhost`) for URLs WordPress calls from inside the wp-env container.
+If your local app uses HTTPS with a private CA, PHP inside the container must trust that CA or certificate verification will fail.
 
 ## Development Commands
 
-| Command                   | Purpose                                                      |
-| ------------------------- | ------------------------------------------------------------ |
-| `npm run start`           | Webpack watcher — rebuilds `build/` on save                  |
-| `npm run build`           | Production asset build                                       |
-| `npm run env:start`       | Start wp-env                                                 |
-| `npm run env:start:doppler` | Start wp-env with Doppler-mounted OAuth/API overrides      |
-| `npm run env:stop`        | Stop wp-env                                                  |
-| `npm run env:destroy`     | Tear down wp-env                                             |
-| `npm run lint`            | Lint JS, CSS, and PHP (or individually)                      |
+| Command                     | Purpose                                                       |
+| --------------------------- | ------------------------------------------------------------- |
+| `npm run start`             | Webpack watcher — rebuilds `build/` on save                   |
+| `npm run build`             | Production asset build                                        |
+| `npm run env:start`         | Start wp-env (+ optional extra_hosts overlay)                 |
+| `npm run env:start:doppler` | Start with Doppler-mounted OAuth/API overrides                |
+| `npm run env:hosts`         | Re-apply `docker-compose.extra-hosts.yml` if present          |
+| `npm run env:stop`          | Stop wp-env                                                   |
+| `npm run env:destroy`       | Tear down wp-env                                              |
+| `npm run lint`              | Lint JS, CSS, and PHP (or individually)                       |
 
 ## Project layout
 
@@ -138,8 +148,8 @@ For local development without a release build, set overrides in `wp-config.php` 
 
 ```php
 define( 'BEEHIIV_REGISTRATION_TOKEN', 'your_registration_token_here' );
-define( 'BEEHIIV_OAUTH_BASE_URL', 'http://host.docker.internal:3000' ); // optional
-define( 'BEEHIIV_API_BASE_URL', 'http://host.docker.internal:3001/v2' ); // optional
+define( 'BEEHIIV_OAUTH_BASE_URL', 'https://app.example.test:8443' ); // optional
+define( 'BEEHIIV_API_BASE_URL', 'https://api.example.test:8443/v2' ); // optional
 ```
 
 Post template for API payloads uses the plugin default `post_template_id`; omit `post_template_id` from the request when unset (`Newsletter\PostSettingsBuilder`).
