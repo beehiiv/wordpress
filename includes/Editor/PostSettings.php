@@ -11,6 +11,7 @@ use Beehiiv\Admin\Options;
 use Beehiiv\Config;
 use Beehiiv\Connection\Manager;
 use Beehiiv\Newsletter\SupportedBlocks;
+use Beehiiv\OAuth\Config as OAuthConfig;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -317,7 +318,7 @@ final class PostSettings {
 
 		return [
 			'isConnected'           => Manager::is_connected(),
-			'appUrl'                => Config::APP_URL,
+			'appUrl'                => OAuthConfig::get_oauth_base_url(),
 			'settingsUrl'           => admin_url( 'admin.php?page=' . Config::PLUGIN_SLUG ),
 			'hasPublication'        => '' !== trim( (string) ( $settings['publication_id'] ?? '' ) ),
 			'hasPostTemplate'       => '' !== trim( (string) ( $settings['post_template_id'] ?? '' ) ),

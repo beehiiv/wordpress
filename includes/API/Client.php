@@ -138,9 +138,10 @@ final class Client {
 		}
 
 		$args = [
-			'method'  => $method,
-			'timeout' => self::REQUEST_TIMEOUT,
-			'headers' => [
+			'method'    => $method,
+			'timeout'   => self::REQUEST_TIMEOUT,
+			'sslverify' => OAuthConfig::should_verify_ssl(),
+			'headers'   => [
 				'Authorization' => 'Bearer ' . $access_token,
 				'Accept'        => 'application/json',
 			],

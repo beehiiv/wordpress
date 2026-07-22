@@ -5,7 +5,7 @@
 	},
 	"languages": {
 		"PHP": {
-			"language_servers": ["intelephense", "!phpactor", "..."]
+			"language_servers": ["intelephense", "!phpactor", "!phpantom", "!phptools"]
 		},
 		"JavaScript": {
 			"language_servers": ["eslint", "!biome"],

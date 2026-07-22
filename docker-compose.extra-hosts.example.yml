@@ -1,0 +1,12 @@
+# Copy to docker-compose.extra-hosts.yml (gitignored) and replace the hostnames
+# with whatever your local beehiiv app/API use. wp-env has no extra_hosts config;
+# `npm run env:hosts` merges this after start so containers can reach the Docker host.
+services:
+  wordpress:
+    extra_hosts:
+      - "app.example.test:host-gateway"
+      - "api.example.test:host-gateway"
+  cli:
+    extra_hosts:
+      - "app.example.test:host-gateway"
+      - "api.example.test:host-gateway"
