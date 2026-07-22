@@ -59,6 +59,7 @@ final class ClientRegistrar {
 			return new WP_Error(
 				'beehiiv_register_transport',
 				sprintf(
+					/* translators: %s: transport error message */
 					__( 'Could not reach beehiiv to register this site. %s', 'beehiiv' ),
 					$response['error']
 				)
