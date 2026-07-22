@@ -45,6 +45,34 @@ final class Config {
 	private const REGISTRATION_TOKEN_CONST = 'BEEHIIV_REGISTRATION_TOKEN';
 
 	/**
+	 * WP-config.php constant for OAuth app base URL override (local / staging).
+	 *
+	 * @since 1.0.0
+	 */
+	private const OAUTH_BASE_URL_CONST = 'BEEHIIV_OAUTH_BASE_URL';
+
+	/**
+	 * WP-config.php constant for public API base URL override (local / staging).
+	 *
+	 * @since 1.0.0
+	 */
+	private const API_BASE_URL_CONST = 'BEEHIIV_API_BASE_URL';
+
+	/**
+	 * Production OAuth app base URL.
+	 *
+	 * @since 1.0.0
+	 */
+	private const DEFAULT_OAUTH_BASE_URL = 'https://app.beehiiv.com';
+
+	/**
+	 * Production public API base URL.
+	 *
+	 * @since 1.0.0
+	 */
+	private const DEFAULT_API_BASE_URL = 'https://api.beehiiv.com/v2';
+
+	/**
 	 * Seconds before access token expiry to refresh proactively.
 	 *
 	 * @since 1.0.0
@@ -67,7 +95,7 @@ final class Config {
 	 */
 	public static function get_oauth_base_url(): string {
 
-		return 'https://app.beehiiv.com';
+		return self::get_url_constant( self::OAUTH_BASE_URL_CONST, self::DEFAULT_OAUTH_BASE_URL );
 	}
 
 	/**
@@ -79,7 +107,7 @@ final class Config {
 	 */
 	public static function get_api_base_url(): string {
 
-		return 'https://api.beehiiv.com/v2';
+		return self::get_url_constant( self::API_BASE_URL_CONST, self::DEFAULT_API_BASE_URL );
 	}
 
 	/**
@@ -157,14 +185,45 @@ final class Config {
 	/**
 	 * Known beehiiv OAuth app hostnames.
 	 *
+	 * Includes production plus any host from `BEEHIIV_OAUTH_BASE_URL` so local
+	 * / staging authorize redirects pass `wp_safe_redirect()`.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @return string[]
 	 */
 	public static function get_oauth_redirect_hosts(): array {
 
-		return [
-			'app.beehiiv.com',
-		];
+		$hosts = [ 'app.beehiiv.com' ];
+		$host  = wp_parse_url( self::get_oauth_base_url(), PHP_URL_HOST );
+
+		if ( is_string( $host ) && '' !== $host && ! in_array( $host, $hosts, true ) ) {
+			$hosts[] = $host;
+		}
+
+		return $hosts;
+	}
+
+	/**
+	 * Resolve a URL from an optional wp-config constant.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $constant_name Constant name (e.g. BEEHIIV_OAUTH_BASE_URL).
+	 * @param string $fallback      Fallback when unset or empty.
+	 *
+	 * @return string
+	 */
+	private static function get_url_constant( string $constant_name, string $fallback ): string {
+
+		if ( defined( $constant_name ) ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- Consumed from wp-config.php.
+			$url = trim( (string) constant( $constant_name ) );
+			if ( '' !== $url ) {
+				return untrailingslashit( $url );
+			}
+		}
+
+		return $fallback;
 	}
 }

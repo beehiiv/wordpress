@@ -40,6 +40,7 @@
 		"lint:php": "vendor/bin/phpcs",
 		"lint:php:fix": "vendor/bin/phpcbf",
 		"env:start": "wp-env start",
+		"env:start:doppler": "doppler run --mount .wp-env.override.json --mount-template .wp-env.override.tmpl -- wp-env start",
 		"env:stop": "wp-env stop",
 		"env:destroy": "wp-env destroy"
 	},

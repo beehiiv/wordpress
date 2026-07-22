@@ -38,16 +38,37 @@ Site: [http://localhost:8888](http://localhost:8888) · Admin: [http://localhost
 
 While developing JS/CSS, run `npm run start` in a second terminal.
 
+### Doppler + local beehiiv (wp-env)
+
+OAuth and API bases default to production. For a local/staging beehiiv app, set these secrets in Doppler and start wp-env so they become `wp-config.php` constants:
+
+| Doppler secret / constant     | Example (Docker Desktop → host app)              |
+| ----------------------------- | ------------------------------------------------ |
+| `BEEHIIV_REGISTRATION_TOKEN`  | registration token for `/oauth/register`         |
+| `BEEHIIV_OAUTH_BASE_URL`      | `http://host.docker.internal:3000`               |
+| `BEEHIIV_API_BASE_URL`        | `http://host.docker.internal:3001/v2`            |
+
+```bash
+npm run env:start:doppler
+```
+
+That mounts an ephemeral `.wp-env.override.json` from `.wp-env.override.tmpl` for the duration of `wp-env start`. Re-run after changing Doppler secrets so the container picks them up.
+
+Without Doppler, define the same constants in `wp-config.php`, or put them in a gitignored `.wp-env.override.json` (`config` map) and use `npm run env:start`.
+
+Use `host.docker.internal` (not `localhost`) for URLs WordPress calls from inside the wp-env container.
+
 ## Development Commands
 
-| Command               | Purpose                                     |
-| --------------------- | ------------------------------------------- |
-| `npm run start`       | Webpack watcher — rebuilds `build/` on save |
-| `npm run build`       | Production asset build                      |
-| `npm run env:start`   | Start wp-env                                |
-| `npm run env:stop`    | Stop wp-env                                 |
-| `npm run env:destroy` | Tear down wp-env                            |
-| `npm run lint`        | Lint JS, CSS, and PHP (or individually)     |
+| Command                   | Purpose                                                      |
+| ------------------------- | ------------------------------------------------------------ |
+| `npm run start`           | Webpack watcher — rebuilds `build/` on save                  |
+| `npm run build`           | Production asset build                                       |
+| `npm run env:start`       | Start wp-env                                                 |
+| `npm run env:start:doppler` | Start wp-env with Doppler-mounted OAuth/API overrides      |
+| `npm run env:stop`        | Stop wp-env                                                  |
+| `npm run env:destroy`     | Tear down wp-env                                             |
+| `npm run lint`            | Lint JS, CSS, and PHP (or individually)                      |
 
 ## Project layout
 
@@ -113,10 +134,12 @@ Add new fields by keeping these in sync:
 
 Connect your beehiiv account from **beehiiv → Settings** in wp-admin. OAuth credentials are stored encrypted in the `beehiiv_oauth` option.
 
-For local development without a release build, set the registration token in `wp-config.php`:
+For local development without a release build, set overrides in `wp-config.php` (or via Doppler / `.wp-env.override.json` as above):
 
 ```php
 define( 'BEEHIIV_REGISTRATION_TOKEN', 'your_registration_token_here' );
+define( 'BEEHIIV_OAUTH_BASE_URL', 'http://host.docker.internal:3000' ); // optional
+define( 'BEEHIIV_API_BASE_URL', 'http://host.docker.internal:3001/v2' ); // optional
 ```
 
 Post template for API payloads uses the plugin default `post_template_id`; omit `post_template_id` from the request when unset (`Newsletter\PostSettingsBuilder`).
