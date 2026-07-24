@@ -315,9 +315,9 @@ final class PostSettings {
 	 * @since 1.0.0
 	 */
 	private static function get_editor_config(): array {
-		$settings         = Options::get();
-		$is_connected     = Manager::is_connected();
-		$can_write_posts  = $is_connected && Workspace::can_write_posts();
+		$settings        = Options::get();
+		$is_connected    = Manager::is_connected();
+		$can_write_posts = $is_connected && Workspace::can_write_posts();
 
 		return [
 			'isConnected'           => $is_connected,

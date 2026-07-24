@@ -32,7 +32,7 @@ if ( $beehiiv_is_connected ) {
 			></span>
 			<p>
 				<?php
-				$beehiiv_plans_link = sprintf(
+				$beehiiv_plans_link  = sprintf(
 					'<a href="%1$s" target="_blank" rel="noopener noreferrer">%2$s</a>',
 					esc_url( Config::PRICING_URL ),
 					esc_html__( 'Learn more about plans.', 'beehiiv' )
