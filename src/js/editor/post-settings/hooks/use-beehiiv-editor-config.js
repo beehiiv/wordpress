@@ -4,8 +4,10 @@
 
 const DEFAULT_CONFIG = {
 	isConnected: false,
+	canWritePosts: false,
 	appUrl: '',
 	settingsUrl: '',
+	pricingUrl: '',
 	hasPublication: false,
 	hasPostTemplate: false,
 	publicationId: '',

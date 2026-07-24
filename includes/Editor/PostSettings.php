@@ -8,6 +8,7 @@
 namespace Beehiiv\Editor;
 
 use Beehiiv\Admin\Options;
+use Beehiiv\API\Resources\Workspace;
 use Beehiiv\Config;
 use Beehiiv\Connection\Manager;
 use Beehiiv\Newsletter\SupportedBlocks;
@@ -314,12 +315,16 @@ final class PostSettings {
 	 * @since 1.0.0
 	 */
 	private static function get_editor_config(): array {
-		$settings = Options::get();
+		$settings         = Options::get();
+		$is_connected     = Manager::is_connected();
+		$can_write_posts  = $is_connected && Workspace::can_write_posts();
 
 		return [
-			'isConnected'           => Manager::is_connected(),
+			'isConnected'           => $is_connected,
+			'canWritePosts'         => $can_write_posts,
 			'appUrl'                => OAuthConfig::get_oauth_base_url(),
 			'settingsUrl'           => admin_url( 'admin.php?page=' . Config::PLUGIN_SLUG ),
+			'pricingUrl'            => Config::PRICING_URL,
 			'hasPublication'        => '' !== trim( (string) ( $settings['publication_id'] ?? '' ) ),
 			'hasPostTemplate'       => '' !== trim( (string) ( $settings['post_template_id'] ?? '' ) ),
 			'publicationId'         => trim( (string) ( $settings['publication_id'] ?? '' ) ),
