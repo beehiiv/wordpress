@@ -76,7 +76,9 @@ function BeehiivPostSettingsPanel() {
 					<SendNewsletterToggle
 						checked={ sendToNewsletter }
 						onChange={ setSendToNewsletter }
-						disabled={ newsletterAlreadySent || ! isNewsletterReady }
+						disabled={
+							newsletterAlreadySent || ! isNewsletterReady
+						}
 					/>
 				) }
 
