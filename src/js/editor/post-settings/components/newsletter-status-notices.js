@@ -2,6 +2,8 @@
  * Connection, configuration, and newsletter send error notices.
  */
 import { __ } from '@wordpress/i18n';
+import { createInterpolateElement } from '@wordpress/element';
+import { ExternalLink } from '@wordpress/components';
 
 import PostSettingsNotice from './post-settings-notice';
 import { useBeehiivEditorConfig } from '../hooks/use-beehiiv-editor-config';
@@ -12,8 +14,14 @@ import renderSettingsLinkMessage from '../utils/render-settings-link-message';
  * @param {import('../hooks/use-beehiiv-post-meta').BeehiivPostMeta|null} props.beehiivMeta
  */
 export default function NewsletterStatusNotices( { beehiivMeta } ) {
-	const { isConnected, settingsUrl, hasPublication, hasPostTemplate } =
-		useBeehiivEditorConfig();
+	const {
+		isConnected,
+		canWritePosts,
+		settingsUrl,
+		pricingUrl,
+		hasPublication,
+		hasPostTemplate,
+	} = useBeehiivEditorConfig();
 
 	if ( ! isConnected ) {
 		return (
@@ -24,6 +32,23 @@ export default function NewsletterStatusNotices( { beehiivMeta } ) {
 						'beehiiv'
 					),
 					settingsUrl
+				) }
+			</PostSettingsNotice>
+		);
+	}
+
+	if ( ! canWritePosts ) {
+		return (
+			<PostSettingsNotice status="error">
+				{ createInterpolateElement(
+					__(
+						"Your connected beehiiv account doesn't have access to send newsletters. This integration requires the <strong>Max</strong> or <strong>Enterprise</strong> plan. <a>Learn more about plans.</a>",
+						'beehiiv'
+					),
+					{
+						strong: <strong />,
+						a: <ExternalLink href={ pricingUrl } />,
+					}
 				) }
 			</PostSettingsNotice>
 		);

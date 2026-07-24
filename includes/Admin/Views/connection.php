@@ -10,7 +10,15 @@ defined( 'ABSPATH' ) || exit;
 use Beehiiv\Config;
 use Beehiiv\Connection\Manager;
 
-$beehiiv_is_connected         = Manager::is_connected();
+// Expected from settings-page.php: $beehiiv_is_connected, $beehiiv_can_write_posts.
+if ( ! isset( $beehiiv_is_connected ) ) {
+	$beehiiv_is_connected = Manager::is_connected();
+}
+
+if ( ! isset( $beehiiv_can_write_posts ) ) {
+	$beehiiv_can_write_posts = false;
+}
+
 $beehiiv_connected_user_label = Manager::get_connected_user_label();
 
 $beehiiv_status_icon_class = $beehiiv_is_connected
@@ -80,7 +88,7 @@ $beehiiv_status_icon_class = $beehiiv_is_connected
 				);
 				?>
 			</p>
-		<?php else : ?>
+		<?php elseif ( $beehiiv_can_write_posts ) : ?>
 			<div class="beehiiv-connection-next-steps">
 				<p class="description">
 					<?php
