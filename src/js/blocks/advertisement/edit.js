@@ -9,6 +9,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
 import {
 	Button,
+	ExternalLink,
 	Notice,
 	PanelBody,
 	Placeholder,
@@ -19,8 +20,12 @@ import { useSelect } from '@wordpress/data';
 import apiFetch from '@wordpress/api-fetch';
 import { megaphone } from '@wordpress/icons';
 
+import { useBeehiivEditorConfig } from '../../editor/post-settings/hooks/use-beehiiv-editor-config';
+
 export default function Edit( { attributes, setAttributes } ) {
 	const { adId, adLabel } = attributes;
+
+	const { canWritePosts, pricingUrl } = useBeehiivEditorConfig();
 
 	const postId = useSelect(
 		( select ) => select( 'core/editor' )?.getCurrentPostId(),
@@ -45,7 +50,7 @@ export default function Edit( { attributes, setAttributes } ) {
 
 	const loadAds = useCallback(
 		( { refresh = false } = {} ) => {
-			if ( ! postId ) {
+			if ( ! postId || ! canWritePosts ) {
 				return Promise.resolve();
 			}
 
@@ -68,7 +73,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					setIsLoading( false );
 				} );
 		},
-		[ postId ]
+		[ postId, canWritePosts ]
 	);
 
 	useEffect( () => {
@@ -136,6 +141,25 @@ export default function Edit( { attributes, setAttributes } ) {
 	};
 
 	const blockProps = useBlockProps();
+
+	if ( ! canWritePosts ) {
+		return (
+			<div { ...blockProps }>
+				<Placeholder
+					icon={ megaphone }
+					label={ __( 'beehiiv Advertisement', 'beehiiv' ) }
+					instructions={ __(
+						"Your connected beehiiv account doesn't have access to send newsletters. This integration requires the Max or Enterprise plan.",
+						'beehiiv'
+					) }
+				>
+					<ExternalLink href={ pricingUrl }>
+						{ __( 'Learn more about plans.', 'beehiiv' ) }
+					</ExternalLink>
+				</Placeholder>
+			</div>
+		);
+	}
 
 	const instructions = adId
 		? adLabel || adId
