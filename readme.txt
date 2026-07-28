@@ -1,4 +1,4 @@
-=== beehiiv - Publish WordPress posts as newsletters and grow your audience ===
+=== beehiiv ===
 Contributors: beehiiv
 Tags: newsletter, email, publishing, beehiiv, subscribe
 Requires at least: 6.8
