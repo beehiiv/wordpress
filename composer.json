@@ -92,7 +92,7 @@
 			".prettierignore",
 			".editorconfig",
 			".prettierrc.js",
-			".eslint.config.js",
+			"eslint.config.cjs",
 			"mise.toml",
 			".nvmrc",
 			".wp-env.json",
