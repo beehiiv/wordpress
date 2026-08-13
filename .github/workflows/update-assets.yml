@@ -31,3 +31,6 @@ jobs:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SLUG: beehiiv
+          # Deploy bakes BEEHIIV_REGISTRATION_TOKEN into Config.php on SVN while
+          # Git keeps the placeholder; only sync readme and .wordpress-org/.
+          IGNORE_OTHER_FILES: true

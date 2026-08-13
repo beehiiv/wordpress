@@ -41,21 +41,26 @@ jobs:
       - name: Install production Composer dependencies
         run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction --no-progress
 
+      - name: Inject registration token
+        env:
+          BEEHIIV_REGISTRATION_TOKEN: ${{ secrets.BEEHIIV_REGISTRATION_TOKEN }}
+        run: |
+          if [ -z "$BEEHIIV_REGISTRATION_TOKEN" ]; then
+            echo "BEEHIIV_REGISTRATION_TOKEN secret is not set"
+            exit 1
+          fi
+          perl -pi -e 's/BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER/$ENV{BEEHIIV_REGISTRATION_TOKEN}/g' includes/OAuth/Config.php
+          if grep -q 'BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER' includes/OAuth/Config.php; then
+            echo "Failed to replace registration token placeholder"
+            exit 1
+          fi
+
       - name: WordPress Plugin Deploy
-        id: deploy
         uses: 10up/action-wordpress-plugin-deploy@stable
         with:
           # Remove or set to false after a successful dry-run.
           dry-run: true
-          generate-zip: true
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SLUG: beehiiv
-
-      - name: Upload plugin zip
-        uses: actions/upload-artifact@v4
-        with:
-          name: beehiiv-${{ github.ref_name }}
-          path: ${{ steps.deploy.outputs.zip-path }}
-          if-no-files-found: error
