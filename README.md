@@ -170,19 +170,13 @@ On every pull request (and pushes to `main` / `master`), GitHub Actions runs the
 
 Only accounts with commit access to the WordPress.org `beehiiv` plugin can publish releases and asset updates.
 
-Merging to `main` does **not** publish a new plugin version to WordPress.org. Releases are driven by Git tags.
+Merging to `main` does **not** publish a new plugin version to WordPress.org. Deploy runs only when a **stable** GitHub Release is published (not on tag pushes or pre-releases), so beta tags can be used for testing without shipping to WordPress.org.
 
 ### New plugin version
 
 1. Land changes on `main` via PR (CI must pass).
 2. Bump the version in `beehiiv.php` and `readme.txt` (`Stable tag` + changelog).
-3. Tag that commit and push the tag:
+3. Publish a GitHub Release for that version (e.g. tag `1.0.1`) — do **not** mark it as a pre-release.
+4. [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds the plugin and deploys it to WordPress.org (`trunk`, `tags/<version>`, and `assets` from `.wordpress-org/`).
 
-```bash
-git checkout main
-git pull
-git tag 1.0.1
-git push origin 1.0.1
-```
-
-4. Builds the plugin and deploys it to the WP.org (`trunk`, `tags/<version>`, and `assets` from `.wordpress-org/`).
+While `dry-run: true` is set in that workflow, the job validates the package but does not commit to SVN. Set `dry-run: false` (or remove it) for real deploys.

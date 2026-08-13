@@ -1,9 +1,10 @@
 name: Deploy to WordPress.org
 
+# Stable GitHub Releases only (not tag pushes or pre-releases), so beta tags
+# can exist without deploying to WordPress.org.
 on:
-  push:
-    tags:
-      - "*"
+  release:
+    types: [released]
 
 concurrency:
   group: deploy-${{ github.ref }}
