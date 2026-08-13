@@ -778,9 +778,11 @@ final class BlockConverter {
 	/**
 	 * Convert WordPress quote block to beehiiv quote block.
 	 *
-	 * WordPress quote block uses paragraph block for quote text (first child)
-	 * and optionally has citation. A quote transformed to a pullquote nests
-	 * `core/pullquote` as the first inner block instead.
+	 * Quote text is collected from the paragraph inner blocks; the citation is
+	 * read from the `<cite>` element in the block HTML because the `citation`
+	 * attribute is source: rich-text, so parse_blocks() does not hydrate it. A
+	 * quote transformed to a pullquote nests `core/pullquote` as the first inner
+	 * block instead.
 	 *
 	 * @param array<string, mixed> $wp_block WordPress quote block data.
 	 * @return array<string, mixed> beehiiv quote block data.
@@ -789,6 +791,7 @@ final class BlockConverter {
 	public static function convert_quote_block( array $wp_block ): array {
 
 		$attrs        = $wp_block['attrs'] ?? [];
+		$inner_html   = (string) ( $wp_block['innerHTML'] ?? '' );
 		$inner_blocks = $wp_block['innerBlocks'] ?? [];
 
 		// Transforming a quote to a pullquote nests core/pullquote inside core/quote.
@@ -796,27 +799,29 @@ final class BlockConverter {
 			return self::convert_pullquote_block( $inner_blocks[0] );
 		}
 
-		// Get quote text from first paragraph block.
-		$quote_text = '';
+		// Keep every paragraph so multi-paragraph quotes are not truncated to the first line.
+		$quote_lines = [];
 
-		if ( ! empty( $inner_blocks[0] ) && 'core/paragraph' === $inner_blocks[0]['blockName'] ) {
-			$quote_html = $inner_blocks[0]['innerHTML'] ?? '';
-			$quote_text = wp_strip_all_tags( $quote_html );
-			$quote_text = trim( $quote_text );
+		foreach ( $inner_blocks as $inner_block ) {
+			if ( 'core/paragraph' !== ( $inner_block['blockName'] ?? '' ) ) {
+				continue;
+			}
+
+			$line = trim( wp_strip_all_tags( $inner_block['innerHTML'] ?? '' ) );
+
+			if ( '' !== $line ) {
+				$quote_lines[] = $line;
+			}
 		}
 
-		if ( empty( $quote_text ) ) {
+		$quote_text = implode( "\n", $quote_lines );
+
+		if ( '' === $quote_text ) {
 			return [];
 		}
 
-		// Get citation/author if available (usually second paragraph or cite element).
-		$citation = '';
-
-		if ( ! empty( $inner_blocks[1] ) && 'core/paragraph' === $inner_blocks[1]['blockName'] ) {
-			$citation_html = $inner_blocks[1]['innerHTML'] ?? '';
-			$citation      = wp_strip_all_tags( $citation_html );
-			$citation      = trim( $citation );
-		}
+		// The citation lives in a <cite> element, not a second paragraph.
+		$citation = self::extract_cite_text( $inner_html );
 
 		$alignment = self::get_text_align_from_attrs( $attrs );
 
@@ -839,6 +844,21 @@ final class BlockConverter {
 		}
 
 		return $beehiiv_block;
+	}
+
+	/**
+	 * Extract citation text from the first `<cite>` element in block HTML.
+	 *
+	 * @param string $html Saved block HTML.
+	 * @return string Plain-text citation, or an empty string when none is present.
+	 * @since 1.0.0
+	 */
+	private static function extract_cite_text( string $html ): string {
+		if ( '' === $html || ! preg_match( '/<cite[^>]*>(.*?)<\/cite>/is', $html, $matches ) ) {
+			return '';
+		}
+
+		return trim( wp_strip_all_tags( $matches[1] ) );
 	}
 
 	/**
