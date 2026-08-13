@@ -1,0 +1,33 @@
+name: Update WordPress.org Assets
+
+# Syncs readme.txt and .wordpress-org/ to SVN when those are the only
+# changes since the last deploy. Use for screenshot/banner/icon updates
+# and readme tweaks between releases — without cutting a new version tag.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - readme.txt
+      - .wordpress-org/**
+
+concurrency:
+  group: update-assets-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Update assets / readme
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: WordPress.org plugin asset/readme update
+        uses: 10up/action-wordpress-plugin-asset-update@stable
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SLUG: beehiiv

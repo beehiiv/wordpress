@@ -1,0 +1,45 @@
+# Directories
+/.wordpress-org
+/.git
+/.github
+/.vscode
+/.zed
+/node_modules
+/src
+/tests
+/scripts
+/bin
+/dist
+/build-dev
+/build-module
+/build-style
+
+# Dotfiles and local tooling
+.distignore
+.gitignore
+.npmrc
+.nvmrc
+.editorconfig
+.prettierignore
+.prettierrc.js
+.stylelintignore
+.stylelintrc.json
+.wp-env.json
+.wp-env.override.json
+.wp-env.override.tmpl
+.phpcs.xml.dist
+.DS_Store
+
+# Build / package config (not needed at runtime)
+package.json
+package-lock.json
+composer.json
+composer.lock
+webpack.config.js
+eslint.config.cjs
+mise.toml
+phpunit.xml
+phpunit.xml.dist
+README.md
+docker-compose.extra-hosts.example.yml
+docker-compose.extra-hosts.yml

@@ -42,12 +42,12 @@ While developing JS/CSS, run `npm run start` in a second terminal.
 
 OAuth and API bases default to production. For a local/staging beehiiv app, set these secrets in Doppler and start wp-env so they become `wp-config.php` constants:
 
-| Doppler secret / constant    | Purpose                                      |
-| ---------------------------- | -------------------------------------------- |
-| `BEEHIIV_REGISTRATION_TOKEN` | Bearer token for `/oauth/register`           |
-| `BEEHIIV_OAUTH_BASE_URL`     | App origin (authorize / token / revoke)      |
+| Doppler secret / constant    | Purpose                                       |
+| ---------------------------- | --------------------------------------------- |
+| `BEEHIIV_REGISTRATION_TOKEN` | Bearer token for `/oauth/register`            |
+| `BEEHIIV_OAUTH_BASE_URL`     | App origin (authorize / token / revoke)       |
 | `BEEHIIV_API_BASE_URL`       | Public API origin including `/v2` path prefix |
-| `BEEHIIV_SSLVERIFY`          | Set `false` when using a private local CA    |
+| `BEEHIIV_SSLVERIFY`          | Set `false` when using a private local CA     |
 
 ```bash
 cp docker-compose.extra-hosts.example.yml docker-compose.extra-hosts.yml
@@ -70,16 +70,16 @@ If your local app uses HTTPS with a private CA, set `BEEHIIV_SSLVERIFY` to `fals
 
 ## Development Commands
 
-| Command                     | Purpose                                                       |
-| --------------------------- | ------------------------------------------------------------- |
-| `npm run start`             | Webpack watcher — rebuilds `build/` on save                   |
-| `npm run build`             | Production asset build                                        |
-| `npm run env:start`         | Start wp-env (+ optional extra_hosts overlay)                 |
-| `npm run env:start:doppler` | Start with Doppler-mounted OAuth/API overrides                |
-| `npm run env:hosts`         | Re-apply `docker-compose.extra-hosts.yml` if present          |
-| `npm run env:stop`          | Stop wp-env                                                   |
-| `npm run env:destroy`       | Tear down wp-env                                              |
-| `npm run lint`              | Lint JS, CSS, and PHP (or individually)                       |
+| Command                     | Purpose                                              |
+| --------------------------- | ---------------------------------------------------- |
+| `npm run start`             | Webpack watcher — rebuilds `build/` on save          |
+| `npm run build`             | Production asset build                               |
+| `npm run env:start`         | Start wp-env (+ optional extra_hosts overlay)        |
+| `npm run env:start:doppler` | Start with Doppler-mounted OAuth/API overrides       |
+| `npm run env:hosts`         | Re-apply `docker-compose.extra-hosts.yml` if present |
+| `npm run env:stop`          | Stop wp-env                                          |
+| `npm run env:destroy`       | Tear down wp-env                                     |
+| `npm run lint`              | Lint JS, CSS, and PHP (or individually)              |
 
 ## Project layout
 
@@ -116,18 +116,18 @@ See `src/js/blocks/signup-form/` and `src/js/blocks/advertisement/` for block sc
 
 A top-level **beehiiv** wp-admin menu (not under Settings) is wired from `Plugin::bootstrap_admin_features()`:
 
-| Class                     | Responsibility                                                   |
-| ------------------------- | ---------------------------------------------------------------- |
-| `Config`                  | Shared constants (slug, option name, REST namespace, view paths) |
-| `Admin\SettingsPage`      | Registers Settings API fields; renders the screen                |
-| `Admin\Menu`              | Sidebar menu → calls `SettingsPage::render`                      |
-| `Admin\Options`           | `beehiiv_settings` option: defaults, `get()`, sanitize           |
-| `Admin\Registrar`         | Registers publication ID and default post template fields       |
-| `Connection\Manager`      | OAuth connection status and connect/disconnect URLs              |
-| `OAuth\*`                 | Dynamic client registration, PKCE, token storage, refresh        |
-| `REST\PostTemplatesController` | REST endpoint for publication post templates               |
-| `Views/connection.php`    | Connection card and post-connect next steps                      |
-| `Views/settings-page.php` | Form wrapper (`settings_fields`, `do_settings_sections`)         |
+| Class                          | Responsibility                                                   |
+| ------------------------------ | ---------------------------------------------------------------- |
+| `Config`                       | Shared constants (slug, option name, REST namespace, view paths) |
+| `Admin\SettingsPage`           | Registers Settings API fields; renders the screen                |
+| `Admin\Menu`                   | Sidebar menu → calls `SettingsPage::render`                      |
+| `Admin\Options`                | `beehiiv_settings` option: defaults, `get()`, sanitize           |
+| `Admin\Registrar`              | Registers publication ID and default post template fields        |
+| `Connection\Manager`           | OAuth connection status and connect/disconnect URLs              |
+| `OAuth\*`                      | Dynamic client registration, PKCE, token storage, refresh        |
+| `REST\PostTemplatesController` | REST endpoint for publication post templates                     |
+| `Views/connection.php`         | Connection card and post-connect next steps                      |
+| `Views/settings-page.php`      | Form wrapper (`settings_fields`, `do_settings_sections`)         |
 
 ### Post settings sidebar
 
@@ -165,3 +165,24 @@ npm run lint
 Or individually: `lint:js`, `lint:css`, `lint:php`. Autofix variants: `lint:js:fix`, `lint:css:fix`, `lint:php:fix`, plus `npm run format` for Prettier.
 
 On every pull request (and pushes to `main` / `master`), GitHub Actions runs the same checks via [`.github/workflows/lint.yml`](.github/workflows/lint.yml) on PHP **7.4** through **8.5**.
+
+## Releasing (maintainers)
+
+Only accounts with commit access to the WordPress.org `beehiiv` plugin can publish releases and asset updates.
+
+Merging to `main` does **not** publish a new plugin version to WordPress.org. Releases are driven by Git tags.
+
+### New plugin version
+
+1. Land changes on `main` via PR (CI must pass).
+2. Bump the version in `beehiiv.php` and `readme.txt` (`Stable tag` + changelog).
+3. Tag that commit and push the tag:
+
+```bash
+git checkout main
+git pull
+git tag 1.0.1
+git push origin 1.0.1
+```
+
+4. Builds the plugin and deploys it to the WP.org (`trunk`, `tags/<version>`, and `assets` from `.wordpress-org/`).
