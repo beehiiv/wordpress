@@ -42,7 +42,7 @@ final class Config {
 	 *
 	 * @since 1.0.0
 	 */
-	public const SIGNUP_URL = 'https://www.beehiiv.com/';
+	public const SIGNUP_URL = 'https://www.beehiiv.com/?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace';
 
 	/**
 	 * Beehiiv web app URL (post editor, account dashboard).
@@ -63,7 +63,7 @@ final class Config {
 	 *
 	 * @since 1.0.0
 	 */
-	public const PRICING_URL = 'https://www.beehiiv.com/pricing';
+	public const PRICING_URL = 'https://www.beehiiv.com/pricing?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace';
 
 	/**
 	 * Absolute path to admin view templates.

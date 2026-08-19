@@ -13,9 +13,9 @@ Publish WordPress posts as newsletters, grow your email subscriber lists, add si
 
 == Description ==
 
-**The beehiiv integration is available to publications on the Max and Enterprise plans. [Learn more about plans](https://www.beehiiv.com/pricing).**
+**The beehiiv integration is available to publications on the Max and Enterprise plans. [Learn more about plans](https://www.beehiiv.com/pricing?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace).**
 
-The official [beehiiv](https://www.beehiiv.com/) plugin connects your WordPress site to your beehiiv account so you can create posts in the block editor and send posts to your newsletter subscribers.
+The official [beehiiv](https://www.beehiiv.com/?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace) plugin connects your WordPress site to your beehiiv account so you can create posts in the block editor and send posts to your newsletter subscribers.
 
 Write once in WordPress, publish to your site, and queue the same post for delivery through beehiiv, without copying content between platforms or creating new content for your newsletters.
 
@@ -47,7 +47,7 @@ The editor warns you about any unsupported blocks before you publish. More block
 
 = What is beehiiv? =
 
-[beehiiv](https://www.beehiiv.com/) is an all-in-one newsletter platform built for creators, writers, and publishers.
+[beehiiv](https://www.beehiiv.com/?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace) is an all-in-one newsletter platform built for creators, writers, and publishers.
 
 It brings together everything you need to write, grow, and monetize an email newsletter in one place.
 
@@ -63,7 +63,7 @@ beehiiv is designed for people who treat their newsletter as a core part of thei
 
 You will need an active beehiiv account to use this plugin.
 
-If you do not have one yet, you can [sign up at beehiiv.com](https://www.beehiiv.com/).
+If you do not have one yet, you can [sign up at beehiiv.com](https://www.beehiiv.com/?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace).
 
 
 == Installation ==
@@ -72,7 +72,7 @@ If you do not have one yet, you can [sign up at beehiiv.com](https://www.beehiiv
 
 * WordPress 6.8 or later
 * PHP 7.4 or later
-* An active [beehiiv](https://www.beehiiv.com/) account on the Max or Enterprise plan ([learn more about plans](https://www.beehiiv.com/pricing))
+* An active [beehiiv](https://www.beehiiv.com/?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace) account on the Max or Enterprise plan ([learn more about plans](https://www.beehiiv.com/pricing?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace))
 
 = Setup =
 
@@ -87,7 +87,7 @@ Once connected and configured, any post with "Send to newsletter" enabled will b
 
 == External services ==
 
-This plugin connects to beehiiv services hosted at [beehiiv.com](https://www.beehiiv.com).
+This plugin connects to beehiiv services hosted at [beehiiv.com](https://www.beehiiv.com/?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace).
 It is used to authenticate your account, sync publication settings, publish WordPress posts as newsletters, and embed beehiiv subscribe forms on your site.
 
 When you connect your account, the plugin exchanges OAuth credentials with beehiiv. When you send a post as a newsletter, post content and related newsletter settings are sent to the beehiiv API. The subscribe form loads beehiiv’s form script so visitors can join your publication.
@@ -107,9 +107,9 @@ The beehiiv WordPress GitHub repository includes the uncompressed source files: 
 
 = Does this require a beehiiv account? =
 
-Yes. You need an active beehiiv account on the Max or Enterprise plan to connect the plugin and send newsletters. [Learn more about plans](https://www.beehiiv.com/pricing).
+Yes. You need an active beehiiv account on the Max or Enterprise plan to connect the plugin and send newsletters. [Learn more about plans](https://www.beehiiv.com/pricing?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace).
 
-You can create a free account at [beehiiv.com](https://www.beehiiv.com/).
+You can create a free account at [beehiiv.com](https://www.beehiiv.com/?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace).
 
 = How do I connect my beehiiv account? =
 
