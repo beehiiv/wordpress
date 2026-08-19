@@ -42,14 +42,14 @@ final class Config {
 	 *
 	 * @since 1.0.0
 	 */
-	private const MARKETING_UTM = 'utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace';
+	private const MARKETING_UTM = '?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace';
 
 	/**
 	 * Beehiiv sign-up URL for users without an account.
 	 *
 	 * @since 1.0.0
 	 */
-	public const SIGNUP_URL = 'https://www.beehiiv.com/?' . self::MARKETING_UTM;
+	public const SIGNUP_URL = 'https://www.beehiiv.com/' . self::MARKETING_UTM;
 
 	/**
 	 * Beehiiv web app URL (post editor, account dashboard).
@@ -70,7 +70,7 @@ final class Config {
 	 *
 	 * @since 1.0.0
 	 */
-	public const PRICING_URL = 'https://www.beehiiv.com/pricing?' . self::MARKETING_UTM;
+	public const PRICING_URL = 'https://www.beehiiv.com/pricing' . self::MARKETING_UTM;
 
 	/**
 	 * Absolute path to admin view templates.
