@@ -136,6 +136,13 @@ No. The beehiiv Advertisement block is for newsletter content only.
 It is visible in the editor but does not render on the front end of your site.
 
 
+== Screenshots ==
+
+1. **Plugin settings (disconnected)** - Connect your beehiiv account from the plugin settings page
+2. **Plugin settings (connected)** - Choose your publication and default post template after connecting
+3. **Post editor** - Manage newsletter settings from the beehiiv panel in the block editor sidebar
+
+
 == Changelog ==
 
 = 1.0.0 =
