@@ -16,7 +16,14 @@ module.exports = defineConfig( {
 	expect: {
 		timeout: 5 * 1000,
 	},
+	// fullyParallel: false only serializes tests *within* a file -- separate
+	// spec files still default to running in separate parallel workers.
+	// Every spec here writes real data (posts, users, plugin state) into the
+	// one shared wp-env tests environment, so cross-file concurrency corrupts
+	// state the same way parallel qa-e2e-author runs would -- force a single
+	// worker so every spec file runs strictly one at a time too.
 	fullyParallel: false,
+	workers: 1,
 	retries: process.env.CI ? 1 : 0,
 	reporter: [
 		[ 'list' ],
