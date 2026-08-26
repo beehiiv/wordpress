@@ -11,7 +11,10 @@
 	"testsEnvironment": true,
 	"env": {
 		"tests": {
-			"port": 8891
+			"port": 8891,
+			"mappings": {
+				"wp-content/mu-plugins": "./tests/e2e/plugins"
+			}
 		}
 	}
 }
