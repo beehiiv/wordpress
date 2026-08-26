@@ -9,62 +9,104 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Short-circuits beehiiv's live GET /workspaces/permissions call so specs
- * can exercise the Workspace::can_write_posts()-gated settings UI (the
- * publication/template dropdowns, plan-gating notices) without a real
- * OAuth connection or beehiiv account -- the one live network call in that
- * flow with no other seam (publications/templates are already cacheable
- * via the seed helpers below).
+ * Short-circuits any outbound wp_remote_request() whose URL contains a
+ * registered substring, so specs can exercise code gated behind a live
+ * beehiiv API/OAuth call (permissions checks, token exchange, user
+ * identity) without a real OAuth connection or beehiiv account. Both
+ * Beehiiv\API\Client (api.beehiiv.com) and Beehiiv\OAuth\HttpClient
+ * (app.beehiiv.com/oauth/*) route through wp_remote_request(), so this one
+ * filter covers every beehiiv-bound call in the plugin.
  *
- * Opt-in via the `beehiiv_e2e_permissions_mock` option: when unset, this
- * filter is a no-op and every request passes through to the real beehiiv
- * API unchanged, so specs relying on genuine "not connected" / genuine 401
- * behavior (e.g. connection-status-card) are unaffected.
+ * Opt-in per URL substring via the `beehiiv_e2e_http_mocks` option: a URL
+ * with no matching registered substring passes through to the real network
+ * unchanged, so specs relying on genuine "not connected" / genuine error
+ * responses (e.g. connection-status-card) are unaffected.
  */
 add_filter(
 	'pre_http_request',
 	static function ( $preempt, $parsed_args, $url ) {
-		if ( false === strpos( $url, '/workspaces/permissions' ) ) {
+		$mocks = get_option( 'beehiiv_e2e_http_mocks', [] );
+
+		if ( ! is_array( $mocks ) ) {
 			return $preempt;
 		}
 
-		$mock = get_option( 'beehiiv_e2e_permissions_mock', null );
+		foreach ( $mocks as $needle => $mock ) {
+			if ( ! is_string( $needle ) || '' === $needle || false === strpos( $url, $needle ) ) {
+				continue;
+			}
 
-		if ( ! is_array( $mock ) ) {
-			return $preempt;
+			$body = $mock['body'] ?? [];
+
+			return [
+				'headers'  => [],
+				'body'     => is_string( $body ) ? $body : wp_json_encode( $body ),
+				'response' => [
+					'code'    => $mock['status'] ?? 200,
+					'message' => $mock['message'] ?? 'OK',
+				],
+				'cookies'  => [],
+				'filename' => null,
+			];
 		}
 
-		return [
-			'headers'  => [],
-			'body'     => wp_json_encode( [ 'data' => $mock ] ),
-			'response' => [
-				'code'    => 200,
-				'message' => 'OK',
-			],
-			'cookies'  => [],
-			'filename' => null,
-		];
+		return $preempt;
 	},
 	10,
 	3
 );
 
 /**
- * Sets the mocked /workspaces/permissions response for the current test.
+ * Registers a mocked HTTP response for any outbound wp_remote_request()
+ * whose URL contains $url_substring.
  *
  * Call via `wp eval`, e.g. from a spec's wp-cli helper:
+ *   wp eval 'beehiiv_e2e_mock_http( "/workspaces/permissions", [ "body" => [ "data" => [ "posts" => [ "read", "write" ] ] ] ] );'
+ *   wp eval 'beehiiv_e2e_mock_http( "/oauth/token", [ "body" => [ "access_token" => "qa-tok", "refresh_token" => "qa-refresh", "expires_in" => 3600 ] ] );'
+ *   wp eval 'beehiiv_e2e_mock_http( "/users/identify", [ "body" => [ "first_name" => "QA" ] ] );'
+ *
+ * @param string $url_substring Substring matched against the outbound request URL.
+ * @param array{status?: int, message?: string, body?: array<string,mixed>|string} $response Response to return.
+ */
+function beehiiv_e2e_mock_http( string $url_substring, array $response ): void {
+	$mocks                    = get_option( 'beehiiv_e2e_http_mocks', [] );
+	$mocks                    = is_array( $mocks ) ? $mocks : [];
+	$mocks[ $url_substring ]  = $response;
+	update_option( 'beehiiv_e2e_http_mocks', $mocks, false );
+}
+
+/** Clears one HTTP mock by its substring, or every mock if omitted. */
+function beehiiv_e2e_clear_http_mocks( string $url_substring = '' ): void {
+	if ( '' === $url_substring ) {
+		delete_option( 'beehiiv_e2e_http_mocks' );
+		return;
+	}
+
+	$mocks = get_option( 'beehiiv_e2e_http_mocks', [] );
+
+	if ( is_array( $mocks ) ) {
+		unset( $mocks[ $url_substring ] );
+		update_option( 'beehiiv_e2e_http_mocks', $mocks, false );
+	}
+}
+
+/**
+ * Sets the mocked /workspaces/permissions response for the current test.
+ * Thin convenience wrapper over beehiiv_e2e_mock_http() -- kept for the
+ * specs already written against this exact signature.
+ *
  *   wp eval 'beehiiv_e2e_mock_permissions( [ "posts" => [ "read", "write" ] ] );'
  *   wp eval 'beehiiv_e2e_mock_permissions( [ "posts" => [ "read" ] ] );' // connected, read-only
  *
  * @param array<string,array<int,string>> $permissions Resource => granted actions.
  */
 function beehiiv_e2e_mock_permissions( array $permissions ): void {
-	update_option( 'beehiiv_e2e_permissions_mock', $permissions, false );
+	beehiiv_e2e_mock_http( '/workspaces/permissions', [ 'body' => [ 'data' => $permissions ] ] );
 }
 
 /** Clears the permissions mock, restoring real network behavior. */
 function beehiiv_e2e_clear_permissions_mock(): void {
-	delete_option( 'beehiiv_e2e_permissions_mock' );
+	beehiiv_e2e_clear_http_mocks( '/workspaces/permissions' );
 }
 
 /**
@@ -118,13 +160,13 @@ function beehiiv_e2e_seed_post_templates( string $publication_id, array $templat
 }
 
 /**
- * Resets every seam this file installs: permissions mock, OAuth connection,
+ * Resets every seam this file installs: all HTTP mocks, OAuth connection,
  * and all beehiiv transient caches. Call in afterAll() so one spec's
  * mocked "connected" state never leaks into the next sequential
  * qa-e2e-author run against this shared environment.
  */
 function beehiiv_e2e_reset_all(): void {
-	beehiiv_e2e_clear_permissions_mock();
+	beehiiv_e2e_clear_http_mocks();
 	beehiiv_e2e_clear_connection();
 	\Beehiiv\API\Cache::flush_all();
 }
