@@ -3,8 +3,8 @@
  * Reads the Playwright JSON reporter output (tests/e2e/test-results/results.json)
  * and writes a self-contained HTML dashboard (tests/e2e/test-results/dashboard.html):
  * overall pass/fail counts and a by-area breakdown up top, then failing cases with
- * their error details and screenshots (click to enlarge), and the full pass/fail
- * case table at the bottom for reference.
+ * their error details and screenshots (click to enlarge), the full pass/fail case
+ * table, and a "reproducing this run" command reference at the bottom.
  */
 
 const fs = require( 'fs' );
@@ -348,6 +348,32 @@ function renderAreaTable( area, cases ) {
 	</section>`;
 }
 
+function renderReproSection( exampleCase ) {
+	const oneFile = exampleCase
+		? `npx playwright test tests/e2e/specs/${ exampleCase.area }.spec.js`
+		: 'npx playwright test tests/e2e/specs/smoke.spec.js';
+	const oneCase = exampleCase
+		? `npx playwright test --grep "${ exampleCase.caseId || exampleCase.title }"`
+		: 'npx playwright test --grep "AC-001"';
+	const lines = [
+		[ 'npm install', 'installs deps and the matching browsers' ],
+		[ 'npm run env:start', 'boots the wp-env tests environment' ],
+		[ 'npm run test:e2e', 'all cases, chromium' ],
+		[ oneFile, 'one spec file' ],
+		[ oneCase, 'one case' ],
+		[ 'npm run test:e2e:report', 'regenerate this dashboard' ],
+	];
+	const rows = lines
+		.map( ( [ cmd, note ] ) => `${ esc( cmd ) }  # ${ esc( note ) }` )
+		.join( '\n' );
+	return `
+	<section class="block" id="reproduce">
+		<h2>Reproducing this run</h2>
+		<p class="block-sub">Runs against wp-env's dedicated tests environment, never dev data.</p>
+		<pre class="repro">${ rows }</pre>
+	</section>`;
+}
+
 function render( results ) {
 	const cases = collectCases( results );
 	const total = cases.length;
@@ -374,6 +400,8 @@ function render( results ) {
 	const areaTables = [ ...areas.entries() ]
 		.map( ( [ area, areaCases ] ) => renderAreaTable( area, areaCases ) )
 		.join( '' );
+
+	const reproSection = renderReproSection( failedCases[ 0 ] || cases[ 0 ] );
 
 	const startTime = new Date( results.stats.startTime );
 	const runAt = startTime.toLocaleString( 'en-US', {
@@ -620,6 +648,16 @@ tr.status-flaky { background: color-mix(in srgb, var(--c-flaky) 6%, transparent)
 	color: var(--c-fail);
 	margin: 6px 0 0;
 }
+.repro {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	padding: 16px 18px;
+	font-size: 0.85rem;
+	overflow-x: auto;
+	white-space: pre;
+	margin: 0;
+}
 .shots { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .shot-thumb {
 	display: flex;
@@ -684,6 +722,7 @@ tr.status-flaky { background: color-mix(in srgb, var(--c-flaky) 6%, transparent)
 	<nav class="jump">
 		<a href="#failures">Failing cases (${ failed })</a>
 		<a href="#results">Full results</a>
+		<a href="#reproduce">Reproducing this run</a>
 	</nav>
 
 	<div class="summary" id="summary">
@@ -709,6 +748,8 @@ tr.status-flaky { background: color-mix(in srgb, var(--c-flaky) 6%, transparent)
 		<p class="block-sub">Every case in this run, passed or failed.</p>
 		${ areaTables }
 	</section>
+
+	${ reproSection }
 </div>
 
 <div class="lightbox" id="lightbox" hidden>
