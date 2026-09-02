@@ -10,4 +10,7 @@
 			<directory suffix="Test.php">./tests/phpunit</directory>
 		</testsuite>
 	</testsuites>
+	<logging>
+		<log type="junit" target="tests/phpunit/test-results/junit.xml"/>
+	</logging>
 </phpunit>

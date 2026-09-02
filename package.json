@@ -42,11 +42,14 @@
 		"env:start": "wp-env start && npm run env:hosts",
 		"env:start:doppler": "doppler run --mount .wp-env.override.json --mount-template .wp-env.override.tmpl -- npm run env:start",
 		"env:hosts": "sh scripts/wp-env-extra-hosts.sh",
+		"env:set-version": "node scripts/wp-env-set-version.js",
 		"env:stop": "wp-env stop",
 		"env:destroy": "wp-env destroy",
 		"test:e2e": "playwright test",
 		"test:e2e:ui": "playwright test --ui",
-		"test:e2e:report": "node tests/e2e/report/generate-dashboard.js"
+		"test:e2e:report": "node tests/e2e/report/generate-dashboard.js",
+		"test:php:report": "node tests/phpunit/report/generate-dashboard.js",
+		"test:compat": "node scripts/test-compat.js"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.60.0",
