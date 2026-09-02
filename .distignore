@@ -33,7 +33,6 @@
 # Build / package config (not needed at runtime)
 package.json
 package-lock.json
-composer.json
 composer.lock
 webpack.config.js
 eslint.config.cjs

@@ -197,5 +197,3 @@ Merging to `main` does **not** publish a new plugin version to WordPress.org. De
 2. Bump the version in `beehiiv.php` and `readme.txt` (`Stable tag` + changelog).
 3. Publish a GitHub Release for that version (e.g. tag `1.0.1`) — do **not** mark it as a pre-release.
 4. [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds the plugin and deploys it to WordPress.org (`trunk`, `tags/<version>`, and `assets` from `.wordpress-org/`).
-
-While `dry-run: true` is set in that workflow, the job validates the package but does not commit to SVN. Set `dry-run: false` (or remove it) for real deploys.
