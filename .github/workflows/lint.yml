@@ -12,6 +12,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  inject-token-guard:
+    name: Registration token inject
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Simulate WordPress.org token inject
+        env:
+          BEEHIIV_REGISTRATION_TOKEN: dummy-token-for-ci
+        run: |
+          bash scripts/inject-registration-token.sh
+          grep -q "private const REGISTRATION_TOKEN = 'dummy-token-for-ci'" includes/OAuth/Config.php
+          grep -q "'BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER' !== \$token" includes/OAuth/Config.php
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
