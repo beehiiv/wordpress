@@ -59,6 +59,15 @@ final class Meta {
 	public const BEEHIIV_SCHEDULED_AT = '_beehiiv_scheduled_at';
 
 	/**
+	 * Whether beehiiv has already sent the linked newsletter. Internal; not exposed to REST.
+	 *
+	 * Once set, later saves never contact beehiiv for this post.
+	 *
+	 * @since 1.1.0
+	 */
+	public const BEEHIIV_NEWSLETTER_SENT = '_beehiiv_newsletter_sent';
+
+	/**
 	 * User-facing error after a failed newsletter save or send (`save` or `send`).
 	 *
 	 * @since 1.0.0

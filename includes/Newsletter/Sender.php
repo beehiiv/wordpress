@@ -229,6 +229,7 @@ final class Sender {
 
 		delete_post_meta( $post_id, Meta::BEEHIIV_POST_ID );
 		delete_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT );
+		delete_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
 		self::clear_error( $post_id );
 	}
@@ -284,6 +285,11 @@ final class Sender {
 	 */
 	public static function maybe_update_post_newsletter( WP_Post $post ): void {
 		if ( ! self::can_sync_newsletter( $post ) ) {
+			return;
+		}
+
+		// A newsletter beehiiv already sent is never updated; skip without contacting beehiiv.
+		if ( self::is_newsletter_sent( $post->ID ) ) {
 			return;
 		}
 
@@ -375,6 +381,7 @@ final class Sender {
 		// Save the beehiiv post ID in the post meta.
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, false );
+		delete_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT );
 		self::persist_scheduled_at_meta( $post_id, $beehiiv_post_data['scheduled_at'] ?? null );
 		self::clear_error( $post_id );
 	}
@@ -416,6 +423,26 @@ final class Sender {
 
 		if ( '' === $beehiiv_post_id ) {
 			return;
+		}
+
+		if ( self::should_confirm_sent_state( $post_id ) ) {
+			$state = Posts::get( $publication_id, $beehiiv_post_id );
+
+			// Never update a newsletter whose sent state is unknown; the next save retries.
+			if ( ! $state['success'] ) {
+				self::fail(
+					$post_id,
+					'send',
+					self::format_update_error_message( $state['error'] ),
+					'Could not confirm whether the newsletter was sent: ' . $state['error']
+				);
+				return;
+			}
+
+			if ( self::is_sent_beehiiv_post( $state['post'] ) ) {
+				update_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT, true );
+				return;
+			}
 		}
 
 		$post_object = get_post( $post_id );
@@ -523,6 +550,7 @@ final class Sender {
 		if ( ! $result['success'] ) {
 			delete_post_meta( $post_id, Meta::BEEHIIV_POST_ID );
 			delete_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT );
+			delete_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT );
 			update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
 
 			self::fail(
@@ -601,6 +629,61 @@ final class Sender {
 		$beehiiv_post_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true );
 
 		return is_string( $beehiiv_post_id ) && '' !== $beehiiv_post_id;
+	}
+
+	/**
+	 * Whether this post's linked newsletter is already known to have been sent.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since 1.1.0
+	 */
+	public static function is_newsletter_sent( int $post_id ): bool {
+		return rest_sanitize_boolean( get_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT, true ) );
+	}
+
+	/**
+	 * Whether the linked newsletter's sent state must be confirmed with beehiiv before updating.
+	 *
+	 * True when the last synced send time is unknown or has passed. A newsletter still
+	 * scheduled for the future cannot have sent, so it updates without the extra request.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since 1.1.0
+	 */
+	private static function should_confirm_sent_state( int $post_id ): bool {
+		$scheduled_at = get_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT, true );
+		$scheduled_at = is_string( $scheduled_at ) ? trim( $scheduled_at ) : '';
+
+		if ( '' === $scheduled_at ) {
+			return true;
+		}
+
+		$timestamp = strtotime( $scheduled_at );
+
+		return false === $timestamp || $timestamp <= time();
+	}
+
+	/**
+	 * Whether a beehiiv post (from the Get Post endpoint) has already been sent.
+	 *
+	 * beehiiv has no sent-at field; a confirmed post whose publish date has passed has gone out.
+	 *
+	 * @param array<string, mixed> $beehiiv_post Post data from beehiiv.
+	 * @return bool
+	 * @since 1.1.0
+	 */
+	private static function is_sent_beehiiv_post( array $beehiiv_post ): bool {
+		if ( ! isset( $beehiiv_post['status'] ) || 'confirmed' !== $beehiiv_post['status'] ) {
+			return false;
+		}
+
+		if ( ! isset( $beehiiv_post['publish_date'] ) || ! is_numeric( $beehiiv_post['publish_date'] ) ) {
+			return false;
+		}
+
+		return (int) $beehiiv_post['publish_date'] <= time();
 	}
 
 	/**

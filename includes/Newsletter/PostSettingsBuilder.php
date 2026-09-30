@@ -15,6 +15,7 @@ use Beehiiv\Editor\Meta;
 use DateTimeImmutable;
 use DateTimeZone;
 use Exception;
+use Throwable;
 use WP_Error;
 use WP_Post;
 
@@ -108,6 +109,14 @@ final class PostSettingsBuilder {
 			'social_share'        => 'none',
 		];
 
+		$seo_settings = self::get_seo_settings( $post_object );
+
+		if ( null !== $seo_settings ) {
+			$settings['seo_settings'] = $seo_settings;
+		}
+
+		$settings['content_tags'] = self::get_content_tags( $post_object );
+
 		if ( ! $for_update ) {
 			$scheduled_at = self::convert_send_date_to_scheduled_at_utc( $post_object );
 
@@ -169,7 +178,12 @@ final class PostSettingsBuilder {
 			'email_settings'      => $settings['email_settings'],
 			'web_settings'        => $settings['web_settings'],
 			'social_share'        => $settings['social_share'],
+			'content_tags'        => $settings['content_tags'],
 		];
+
+		if ( isset( $settings['seo_settings'] ) ) {
+			$payload['seo_settings'] = $settings['seo_settings'];
+		}
 
 		$schedule = self::resolve_update_scheduled_at( $post_object );
 
@@ -217,6 +231,55 @@ final class PostSettingsBuilder {
 		}
 
 		return $update['payload'];
+	}
+
+	/**
+	 * Search and social-sharing metadata for the beehiiv `seo_settings` field.
+	 *
+	 * Returns null when it cannot be resolved so the field is omitted and never blocks a send.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return array<string, string>|null
+	 * @since 1.1.0
+	 */
+	private static function get_seo_settings( WP_Post $post ): ?array {
+		try {
+			return SeoMetadata::resolve( $post );
+		} catch ( Throwable $e ) {
+			return null;
+		}
+	}
+
+	/**
+	 * WordPress tag names for the beehiiv `content_tags` field.
+	 *
+	 * Always returns a list so beehiiv's tags match WordPress, including clearing them when
+	 * the post has no tags.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return array<int, string>
+	 * @since 1.1.0
+	 */
+	private static function get_content_tags( WP_Post $post ): array {
+		$names = wp_get_post_tags( $post->ID, [ 'fields' => 'names' ] );
+
+		if ( ! is_array( $names ) ) {
+			return [];
+		}
+
+		return array_values(
+			array_filter(
+				array_map(
+					static function ( $name ): string {
+						return is_scalar( $name ) ? html_entity_decode( (string) $name, ENT_QUOTES, 'UTF-8' ) : '';
+					},
+					$names
+				),
+				static function ( string $name ): bool {
+					return '' !== $name;
+				}
+			)
+		);
 	}
 
 	/**
