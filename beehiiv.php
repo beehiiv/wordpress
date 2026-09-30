@@ -2,7 +2,7 @@
 /**
  * Plugin Name: beehiiv
  * Description: Official beehiiv WordPress plugin. Publish posts as newsletters and grow your audience with beehiiv.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: beehiiv
  * Text Domain: beehiiv
  * Domain Path: /languages
@@ -18,7 +18,7 @@
 defined( 'ABSPATH' ) || exit;
 
 if ( ! defined( 'BEEHIIV_VERSION' ) ) {
-	define( 'BEEHIIV_VERSION', '1.0.1' );
+	define( 'BEEHIIV_VERSION', '1.0.2' );
 }
 
 if ( ! defined( 'BEEHIIV_PLUGIN_FILE' ) ) {

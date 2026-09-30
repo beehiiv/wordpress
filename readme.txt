@@ -4,7 +4,7 @@ Tags: newsletter, email, publishing, beehiiv, subscribe
 Requires at least: 6.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -144,6 +144,9 @@ It is visible in the editor but does not render on the front end of your site.
 
 
 == Changelog ==
+
+= 1.0.2 =
+* Fixed connecting a beehiiv account on WordPress.org installs of 1.0.1.
 
 = 1.0.1 =
 * Updated readme.txt

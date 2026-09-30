@@ -45,16 +45,7 @@ jobs:
       - name: Inject registration token
         env:
           BEEHIIV_REGISTRATION_TOKEN: ${{ secrets.BEEHIIV_REGISTRATION_TOKEN }}
-        run: |
-          if [ -z "$BEEHIIV_REGISTRATION_TOKEN" ]; then
-            echo "BEEHIIV_REGISTRATION_TOKEN secret is not set"
-            exit 1
-          fi
-          perl -pi -e 's/BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER/$ENV{BEEHIIV_REGISTRATION_TOKEN}/g' includes/OAuth/Config.php
-          if grep -q 'BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER' includes/OAuth/Config.php; then
-            echo "Failed to replace registration token placeholder"
-            exit 1
-          fi
+        run: bash scripts/inject-registration-token.sh
 
       - name: WordPress Plugin Deploy
         uses: 10up/action-wordpress-plugin-deploy@stable
