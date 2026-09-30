@@ -71,4 +71,18 @@ final class Meta {
 	 * @since 1.0.0
 	 */
 	public const NEWSLETTER_ERROR_TYPE = '_beehiiv_newsletter_error_type';
+
+	/**
+	 * Newsletter title for the post, used as the email subject line. Empty means the post title is used.
+	 *
+	 * @since x.x.x
+	 */
+	public const NEWSLETTER_TITLE = '_beehiiv_newsletter_title';
+
+	/**
+	 * Newsletter subtitle for the post, sent as the beehiiv post subtitle. Empty means no subtitle.
+	 *
+	 * @since x.x.x
+	 */
+	public const NEWSLETTER_SUBTITLE = '_beehiiv_newsletter_subtitle';
 }
