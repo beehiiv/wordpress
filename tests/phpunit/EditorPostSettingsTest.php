@@ -138,4 +138,68 @@ class EditorPostSettingsTest extends WP_UnitTestCase {
 			);
 		}
 	}
+
+	/**
+	 * PRD-06.8.01 AC-024 / BR-008: users without publish rights cannot write
+	 * the email title/subtitle display choice.
+	 */
+	public function test_show_title_in_email_is_denied_for_contributor(): void {
+		$contributor_id = self::factory()->user->create( array( 'role' => 'contributor' ) );
+		$post_id        = self::factory()->post->create(
+			array(
+				'post_author' => $contributor_id,
+				'post_status' => 'draft',
+			)
+		);
+
+		wp_set_current_user( $contributor_id );
+
+		$this->assertFalse(
+			PostSettings::authorize_meta( false, Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL, $post_id ),
+			'PRD-06.8.01 AC-024: a contributor must not be authorized to write the email display choice.'
+		);
+	}
+
+	/**
+	 * PRD-06.8.01 AC-024: users with publish rights can write the email
+	 * title/subtitle display choice.
+	 */
+	public function test_show_title_in_email_is_allowed_for_author(): void {
+		$author_id = self::factory()->user->create( array( 'role' => 'author' ) );
+		$post_id   = self::factory()->post->create( array( 'post_author' => $author_id ) );
+
+		wp_set_current_user( $author_id );
+
+		$this->assertTrue(
+			PostSettings::authorize_meta( false, Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL, $post_id ),
+			'PRD-06.8.01 AC-024: an author must be authorized to write the email display choice.'
+		);
+	}
+
+	/**
+	 * PRD-06.8.01 AC-021, AC-022, AC-026: the email display choice is a
+	 * REST-visible single boolean that reads as hidden when never set.
+	 */
+	public function test_show_title_in_email_is_registered_and_hidden_by_default(): void {
+		PostSettings::register_meta();
+
+		$registered = get_registered_meta_keys( 'post', 'post' );
+		$post_id    = self::factory()->post->create();
+		$meta_key   = Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL;
+
+		$this->assertArrayHasKey( $meta_key, $registered );
+		$this->assertSame( 'boolean', $registered[ $meta_key ]['type'] );
+		$this->assertTrue( $registered[ $meta_key ]['single'] );
+		$this->assertNotEmpty( $registered[ $meta_key ]['show_in_rest'] );
+		$this->assertFalse(
+			(bool) get_post_meta( $post_id, $meta_key, true ),
+			'PRD-06.8.01 AC-021: a post that never set the choice must read as hidden.'
+		);
+
+		update_post_meta( $post_id, $meta_key, true );
+		$this->assertTrue(
+			(bool) get_post_meta( $post_id, $meta_key, true ),
+			'PRD-06.8.01 AC-022: the saved choice must persist on the post.'
+		);
+	}
 }
