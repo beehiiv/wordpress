@@ -45,6 +45,7 @@ final class Plugin {
 		add_action( 'admin_init', [ self::class, 'bootstrap_admin_features' ] );
 		add_action( 'rest_api_init', [ REST\PostTemplatesController::class, 'register_routes' ] );
 		add_action( 'rest_api_init', [ REST\AdvertisementOpportunitiesController::class, 'register_routes' ] );
+		add_action( 'rest_api_init', [ REST\TestSendController::class, 'register_routes' ] );
 	}
 
 	/**

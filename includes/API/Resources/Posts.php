@@ -83,11 +83,13 @@ final class Posts {
 	/**
 	 * Delete or archive a post in a beehiiv publication.
 	 *
-	 * Confirmed posts are archived; drafts are permanently deleted.
+	 * Confirmed posts are archived; drafts are permanently deleted. beehiiv answers
+	 * 202 while a Send API post is still processing, in which case nothing was
+	 * deleted yet; `status_code` lets callers tell that apart from a 204.
 	 *
 	 * @param string $publication_id Publication ID.
 	 * @param string $post_id        beehiiv post ID.
-	 * @return array{success: bool, error: string}
+	 * @return array{success: bool, error: string, status_code: int|null}
 	 * @since 1.0.0
 	 */
 	public static function delete( string $publication_id, string $post_id ): array {
@@ -96,8 +98,9 @@ final class Posts {
 
 		if ( '' === $publication_id || '' === $post_id ) {
 			return [
-				'success' => false,
-				'error'   => 'Publication ID or post ID is empty.',
+				'success'     => false,
+				'error'       => 'Publication ID or post ID is empty.',
+				'status_code' => null,
 			];
 		}
 
@@ -112,8 +115,9 @@ final class Posts {
 
 		if ( null !== $wp_error ) {
 			return [
-				'success' => false,
-				'error'   => $wp_error,
+				'success'     => false,
+				'error'       => $wp_error,
+				'status_code' => null,
 			];
 		}
 
@@ -121,22 +125,91 @@ final class Posts {
 
 		if ( null !== $status_code && 204 === $status_code ) {
 			return [
-				'success' => true,
-				'error'   => '',
+				'success'     => true,
+				'error'       => '',
+				'status_code' => $status_code,
 			];
 		}
 
 		if ( null !== $status_code && $status_code > 299 ) {
 			return [
-				'success' => false,
-				'error'   => self::format_error_message( $response, $status_code ),
+				'success'     => false,
+				'error'       => self::format_error_message( $response, $status_code ),
+				'status_code' => $status_code,
 			];
 		}
 
 		return [
-			'success' => true,
-			'error'   => '',
+			'success'     => true,
+			'error'       => '',
+			'status_code' => $status_code,
 		];
+	}
+
+	/**
+	 * Send a test email of a beehiiv post to one or more addresses.
+	 *
+	 * @link https://developers.beehiiv.com/api-reference/posts/test-send
+	 *
+	 * @param string            $publication_id   Publication ID.
+	 * @param string            $post_id          beehiiv post ID.
+	 * @param array<int,string> $recipient_emails Addresses to send the test to.
+	 * @return array{
+	 *     success: bool,
+	 *     status_code: int|null,
+	 *     remaining_test_sends: int|null,
+	 *     reset_at: int|null,
+	 *     error: string
+	 * }
+	 * @since 1.0.0
+	 */
+	public static function test_send( string $publication_id, string $post_id, array $recipient_emails ): array {
+		$publication_id = trim( $publication_id );
+		$post_id        = trim( $post_id );
+		$result         = [
+			'success'              => false,
+			'status_code'          => null,
+			'remaining_test_sends' => null,
+			'reset_at'             => null,
+			'error'                => '',
+		];
+
+		if ( '' === $publication_id || '' === $post_id ) {
+			$result['error'] = 'Publication ID or post ID is empty.';
+			return $result;
+		}
+
+		$path     = sprintf(
+			'/publications/%s/posts/%s/test_sends',
+			rawurlencode( $publication_id ),
+			rawurlencode( $post_id )
+		);
+		$response = Client::post( $path, [ 'recipient_emails' => array_values( $recipient_emails ) ] );
+
+		$wp_error = Client::get_last_wp_error();
+
+		if ( null !== $wp_error ) {
+			$result['error'] = $wp_error;
+			return $result;
+		}
+
+		$status_code           = Client::get_last_status_code();
+		$result['status_code'] = $status_code;
+
+		if ( null !== $status_code && $status_code > 299 ) {
+			$result['error'] = self::format_error_message( $response, $status_code );
+			return $result;
+		}
+
+		$data      = isset( $response['data'] ) && is_array( $response['data'] ) ? $response['data'] : [];
+		$remaining = $data['remaining_test_sends'] ?? null;
+		$reset_at  = $data['reset_at'] ?? null;
+
+		$result['success']              = true;
+		$result['remaining_test_sends'] = is_numeric( $remaining ) ? (int) $remaining : null;
+		$result['reset_at']             = is_numeric( $reset_at ) ? (int) $reset_at : null;
+
+		return $result;
 	}
 
 	/**
