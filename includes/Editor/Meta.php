@@ -85,4 +85,11 @@ final class Meta {
 	 * @since x.x.x
 	 */
 	public const NEWSLETTER_SUBTITLE = '_beehiiv_newsletter_subtitle';
+
+	/**
+	 * Whether the beehiiv email shows the title and subtitle. Unset means hidden.
+	 *
+	 * @since x.x.x
+	 */
+	public const NEWSLETTER_SHOW_TITLE_IN_EMAIL = '_beehiiv_newsletter_show_title_in_email';
 }

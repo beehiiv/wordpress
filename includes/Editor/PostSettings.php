@@ -50,51 +50,55 @@ final class PostSettings {
 	 * @var array<string, array{type: string, default: bool|string, readonly?: bool, sanitize?: callable-string}>
 	 */
 	private const META_KEYS = [
-		Meta::SEND_TO_NEWSLETTER         => [
+		Meta::SEND_TO_NEWSLETTER             => [
 			'type'    => 'boolean',
 			'default' => false,
 		],
-		Meta::SEND_TO_NEWSLETTER_DATE    => [
+		Meta::SEND_TO_NEWSLETTER_DATE        => [
 			'type'    => 'string',
 			'default' => '',
 		],
-		Meta::SEND_TO_NEWSLETTER_SNIPPET => [
+		Meta::SEND_TO_NEWSLETTER_SNIPPET     => [
 			'type'    => 'boolean',
 			'default' => false,
 		],
-		Meta::BEEHIIV_POST_TEMPLATE_ID   => [
+		Meta::BEEHIIV_POST_TEMPLATE_ID       => [
 			'type'    => 'string',
 			'default' => '',
 		],
-		Meta::BEEHIIV_POST_ID            => [
+		Meta::BEEHIIV_POST_ID                => [
 			'type'     => 'string',
 			'default'  => '',
 			'readonly' => true,
 		],
-		Meta::BEEHIIV_SCHEDULED_AT       => [
+		Meta::BEEHIIV_SCHEDULED_AT           => [
 			'type'     => 'string',
 			'default'  => '',
 			'readonly' => true,
 		],
-		Meta::NEWSLETTER_ERROR           => [
+		Meta::NEWSLETTER_ERROR               => [
 			'type'     => 'string',
 			'default'  => '',
 			'readonly' => true,
 		],
-		Meta::NEWSLETTER_ERROR_TYPE      => [
+		Meta::NEWSLETTER_ERROR_TYPE          => [
 			'type'     => 'string',
 			'default'  => '',
 			'readonly' => true,
 		],
-		Meta::NEWSLETTER_TITLE           => [
+		Meta::NEWSLETTER_TITLE               => [
 			'type'     => 'string',
 			'default'  => '',
 			'sanitize' => 'sanitize_text_field',
 		],
-		Meta::NEWSLETTER_SUBTITLE        => [
+		Meta::NEWSLETTER_SUBTITLE            => [
 			'type'     => 'string',
 			'default'  => '',
 			'sanitize' => 'sanitize_text_field',
+		],
+		Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL => [
+			'type'    => 'boolean',
+			'default' => false,
 		],
 	];
 
@@ -154,6 +158,7 @@ final class PostSettings {
 			Meta::SEND_TO_NEWSLETTER_SNIPPET,
 			Meta::NEWSLETTER_TITLE,
 			Meta::NEWSLETTER_SUBTITLE,
+			Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL,
 		];
 
 		if ( in_array( $meta_key, $writable_keys, true ) ) {

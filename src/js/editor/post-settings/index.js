@@ -61,6 +61,7 @@ function BeehiivPostSettingsPanel() {
 		newsletterAlreadySent,
 		newsletterTitle,
 		newsletterSubtitle,
+		newsletterShowTitleInEmail,
 		newsletterPublished,
 		setSendToNewsletter,
 		setSendToNewsletterDate,
@@ -68,6 +69,7 @@ function BeehiivPostSettingsPanel() {
 		setBeehiivPostTemplateId,
 		setNewsletterTitle,
 		setNewsletterSubtitle,
+		setShowTitleInEmail,
 	} = beehiivMeta;
 
 	const isNewsletterReady =
@@ -103,6 +105,18 @@ function BeehiivPostSettingsPanel() {
 				) }
 				value={ newsletterSubtitle }
 				onChange={ setNewsletterSubtitle }
+				disabled={ newsletterPublished }
+			/>
+			<ToggleControl
+				__nextHasNoMarginBottom
+				className="beehiiv-newsletter-wording__show-title"
+				label={ __( 'Show title and subtitle in email', 'beehiiv' ) }
+				help={ __(
+					'Shows the newsletter title and subtitle at the top of the beehiiv email. Off by default.',
+					'beehiiv'
+				) }
+				checked={ newsletterShowTitleInEmail }
+				onChange={ setShowTitleInEmail }
 				disabled={ newsletterPublished }
 			/>
 		</div>
