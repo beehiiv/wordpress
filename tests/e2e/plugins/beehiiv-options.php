@@ -31,10 +31,22 @@ add_filter(
 			return $preempt;
 		}
 
-		foreach ( $mocks as $needle => $mock ) {
+		$method = strtoupper( (string) ( $parsed_args['method'] ?? 'GET' ) );
+
+		foreach ( $mocks as $key => $mock ) {
+			// A mock may carry its own `needle` (so several mocks can share one
+			// URL substring, told apart by `method`); otherwise the key is the needle.
+			$needle = isset( $mock['needle'] ) && is_string( $mock['needle'] ) ? $mock['needle'] : $key;
+
 			if ( ! is_string( $needle ) || '' === $needle || false === strpos( $url, $needle ) ) {
 				continue;
 			}
+
+			if ( isset( $mock['method'] ) && strtoupper( (string) $mock['method'] ) !== $method ) {
+				continue;
+			}
+
+			beehiiv_e2e_log_http( $method, $url, $parsed_args['body'] ?? null );
 
 			$body = $mock['body'] ?? [];
 
@@ -73,6 +85,38 @@ function beehiiv_e2e_mock_http( string $url_substring, array $response ): void {
 	$mocks                    = is_array( $mocks ) ? $mocks : [];
 	$mocks[ $url_substring ]  = $response;
 	update_option( 'beehiiv_e2e_http_mocks', $mocks, false );
+}
+
+/**
+ * Records one mocked outbound request (method, URL, decoded JSON body) so
+ * specs can assert on the exact payload the plugin sent to beehiiv. Only
+ * requests answered by a registered mock are logged -- nothing that reaches
+ * the real network is captured.
+ *
+ * @param string     $method HTTP method.
+ * @param string     $url    Request URL.
+ * @param mixed      $body   Raw request body (JSON string for POST/PATCH).
+ */
+function beehiiv_e2e_log_http( string $method, string $url, $body ): void {
+	$log   = get_option( 'beehiiv_e2e_http_log', [] );
+	$log   = is_array( $log ) ? $log : [];
+	$log[] = [
+		'method' => $method,
+		'url'    => $url,
+		'body'   => is_string( $body ) && '' !== $body ? json_decode( $body, true ) : $body,
+	];
+	update_option( 'beehiiv_e2e_http_log', $log, false );
+}
+
+/** Prints the mocked-request log as JSON (for `wp eval` from a spec). */
+function beehiiv_e2e_print_http_log(): void {
+	$log = get_option( 'beehiiv_e2e_http_log', [] );
+	echo wp_json_encode( is_array( $log ) ? $log : [] ) . "\n";
+}
+
+/** Empties the mocked-request log. */
+function beehiiv_e2e_clear_http_log(): void {
+	delete_option( 'beehiiv_e2e_http_log' );
 }
 
 /** Clears one HTTP mock by its substring, or every mock if omitted. */
@@ -167,6 +211,7 @@ function beehiiv_e2e_seed_post_templates( string $publication_id, array $templat
  */
 function beehiiv_e2e_reset_all(): void {
 	beehiiv_e2e_clear_http_mocks();
+	beehiiv_e2e_clear_http_log();
 	beehiiv_e2e_clear_connection();
 	\Beehiiv\API\Cache::flush_all();
 }
