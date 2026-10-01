@@ -112,7 +112,7 @@ function BeehiivPostSettingsPanel() {
 				className="beehiiv-newsletter-wording__show-title"
 				label={ __( 'Show title and subtitle in email', 'beehiiv' ) }
 				help={ __(
-					'Shows the newsletter title and subtitle at the top of the beehiiv email. Off by default.',
+					'Shows the newsletter title and subtitle in the beehiiv email. Off by default.',
 					'beehiiv'
 				) }
 				checked={ newsletterShowTitleInEmail }
