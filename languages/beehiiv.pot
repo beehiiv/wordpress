@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-01T18:10:36+00:00\n"
+"POT-Creation-Date: 2026-10-02T13:25:45+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: beehiiv\n"
@@ -213,7 +213,7 @@ msgstr ""
 #: includes/Newsletter/Sender.php:340
 #: includes/Newsletter/Sender.php:427
 #: includes/Newsletter/Sender.php:690
-#: includes/Newsletter/TestSender.php:68
+#: includes/Newsletter/TestSender.php:69
 msgid "This post no longer exists. Save or reload the editor and try again."
 msgstr ""
 
@@ -243,7 +243,7 @@ msgid "Connect your beehiiv account in <a>beehiiv settings</a> to send this news
 msgstr ""
 
 #: includes/Newsletter/Sender.php:734
-#: includes/Newsletter/TestSender.php:109
+#: includes/Newsletter/TestSender.php:110
 msgid "Choose a publication in <a>beehiiv settings</a>, then try again."
 msgstr ""
 
@@ -263,7 +263,7 @@ msgid "beehiiv rejected this newsletter: %s"
 msgstr ""
 
 #: includes/Newsletter/Sender.php:773
-#: includes/Newsletter/TestSender.php:322
+#: includes/Newsletter/TestSender.php:330
 msgid "Too many requests. Try again in a moment."
 msgstr ""
 
@@ -292,47 +292,51 @@ msgstr ""
 msgid "Something went wrong and the newsletter couldn't be updated. Try saving the post again."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:75
+#: includes/Newsletter/TestSender.php:76
 #: src/js/editor/post-settings/components/test-email-send.js:75
 msgid "Test emails are available for drafts, pending posts, and scheduled posts."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:83
+#: includes/Newsletter/TestSender.php:84
 #: src/js/editor/post-settings/components/test-email-send.js:68
 msgid "This post's newsletter was already sent, so it can't send a test email."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:90
+#: includes/Newsletter/TestSender.php:91
 #: src/js/editor/post-settings/components/test-email-send.js:82
 msgid "This post's newsletter isn't in sync with beehiiv. Save the post again, then send a test email."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:102
+#: includes/Newsletter/TestSender.php:103
 msgid "Connect your beehiiv account in <a>beehiiv settings</a> to send a test email."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:116
+#: includes/Newsletter/TestSender.php:117
+msgid "Choose a default post template in <a>beehiiv settings</a> to send a test email."
+msgstr ""
+
+#: includes/Newsletter/TestSender.php:124
 msgid "Test emails need beehiiv Send API access, available on the Max and Enterprise plans."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:206
-#: includes/Newsletter/TestSender.php:342
+#: includes/Newsletter/TestSender.php:214
+#: includes/Newsletter/TestSender.php:357
 #: src/js/editor/post-settings/components/test-email-send.js:224
 msgid "Something went wrong and the test email wasn't sent. Try again."
 msgstr ""
 
 #. translators: %s: date, time, and timezone when test sends reset.
-#: includes/Newsletter/TestSender.php:307
+#: includes/Newsletter/TestSender.php:315
 #, php-format
 msgid "You've used all test sends for today. They reset on %s."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:315
+#: includes/Newsletter/TestSender.php:323
 msgid "You've used all test sends for today."
 msgstr ""
 
 #. translators: %s: error message from beehiiv.
-#: includes/Newsletter/TestSender.php:350
+#: includes/Newsletter/TestSender.php:365
 #, php-format
 msgid "The test email wasn't sent: %s"
 msgstr ""

@@ -7,6 +7,7 @@
 
 namespace Beehiiv\Newsletter;
 
+use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\Posts;
 use Beehiiv\API\Resources\Workspace;
 use Beehiiv\Connection\Manager;
@@ -107,6 +108,13 @@ final class TestSender {
 			return new WP_Error(
 				'beehiiv_missing_publication',
 				__( 'Choose a publication in <a>beehiiv settings</a>, then try again.', 'beehiiv' )
+			);
+		}
+
+		if ( '' === self::get_default_post_template_id() ) {
+			return new WP_Error(
+				'beehiiv_missing_post_template',
+				__( 'Choose a default post template in <a>beehiiv settings</a> to send a test email.', 'beehiiv' )
 			);
 		}
 
@@ -334,7 +342,14 @@ final class TestSender {
 	 * @since 1.0.0
 	 */
 	private static function api_error( string $error ): WP_Error {
-		$mapped = Sender::format_api_error_message( $error );
+		// Keep beehiiv's own wording for request errors; only auth and rate-limit
+		// statuses, and transport errors, use the shared editor-friendly copy.
+		if ( preg_match( '/^HTTP (\d+):\s*(.+)$/is', trim( $error ), $matches )
+			&& ! in_array( (int) $matches[1], [ 401, 403, 429 ], true ) ) {
+			$mapped = trim( $matches[2] );
+		} else {
+			$mapped = Sender::format_api_error_message( $error );
+		}
 
 		if ( '' === $mapped ) {
 			return new WP_Error(
@@ -351,6 +366,20 @@ final class TestSender {
 				$mapped
 			)
 		);
+	}
+
+	/**
+	 * Site-wide default beehiiv post template from plugin settings.
+	 *
+	 * The same setting the editor's newsletter readiness rule checks.
+	 *
+	 * @return string
+	 * @since 1.0.0
+	 */
+	private static function get_default_post_template_id(): string {
+		$settings = Options::get();
+
+		return isset( $settings['post_template_id'] ) ? trim( (string) $settings['post_template_id'] ) : '';
 	}
 
 	/**

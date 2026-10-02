@@ -394,6 +394,28 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * AC-015, AC-017, BR-002: without a default post template, a linked newsletter
+	 * is refused on the server too, and nothing reaches beehiiv.
+	 */
+	public function test_missing_default_template_is_refused_on_linked_path(): void {
+		update_option( Config::OPTION_NAME, [ 'publication_id' => self::PUBLICATION_ID ] );
+
+		$post_id = $this->create_post(
+			'future',
+			[
+				Meta::BEEHIIV_POST_ID      => self::LINKED_POST_ID,
+				Meta::BEEHIIV_SCHEDULED_AT => gmdate( 'Y-m-d\TH:i:s\Z', time() + DAY_IN_SECONDS ),
+			]
+		);
+
+		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'beehiiv_missing_post_template', $result->get_error_code() );
+		$this->assertSame( [], $this->request_log() );
+	}
+
+	/**
 	 * AC-022: content problems show the same message a real send would.
 	 */
 	public function test_content_problem_uses_real_send_message(): void {
@@ -425,7 +447,31 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
 
 		$this->assertSame( 'beehiiv_test_send_failed', $result->get_error_code() );
-		$this->assertStringStartsWith( "The test email wasn't sent:", $result->get_error_message() );
+		$this->assertSame( "The test email wasn't sent: Recipient list rejected", $result->get_error_message() );
+
+		$this->responses[ 'POST /posts/' . self::TEMP_POST_ID . '/test_sends' ] = [
+			'status' => 503,
+			'body'   => [ 'errors' => [ [ 'message' => 'Service unavailable' ] ] ],
+		];
+
+		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
+		$this->assertSame( "The test email wasn't sent: Service unavailable", $result->get_error_message() );
+	}
+
+	/**
+	 * AC-022: auth failures keep the reconnect guidance instead of beehiiv's text.
+	 */
+	public function test_auth_failure_points_to_reconnect(): void {
+		$post_id = $this->create_post( 'draft' );
+
+		$this->responses[ 'POST /posts/' . self::TEMP_POST_ID . '/test_sends' ] = [
+			'status' => 403,
+			'body'   => [ 'errors' => [ [ 'message' => 'Forbidden' ] ] ],
+		];
+
+		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
+
+		$this->assertStringContainsString( 'Reconnect in <a>beehiiv settings</a>', $result->get_error_message() );
 	}
 
 	/**
