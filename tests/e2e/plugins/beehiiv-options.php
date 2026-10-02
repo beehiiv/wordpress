@@ -32,8 +32,32 @@ add_filter(
 		}
 
 		foreach ( $mocks as $needle => $mock ) {
-			if ( ! is_string( $needle ) || '' === $needle || false === strpos( $url, $needle ) ) {
+			if ( ! is_string( $needle ) || '' === $needle || ! is_array( $mock ) ) {
 				continue;
+			}
+
+			// Optional `pattern` (regex) replaces the plain substring match, and
+			// optional `method` restricts the mock to one HTTP verb -- needed when
+			// several endpoints share a URL prefix (e.g. beehiiv post create,
+			// delete, and test_sends all live under /publications/{id}/posts).
+			if ( isset( $mock['pattern'] ) && is_string( $mock['pattern'] ) ) {
+				if ( ! preg_match( $mock['pattern'], $url ) ) {
+					continue;
+				}
+			} elseif ( false === strpos( $url, $needle ) ) {
+				continue;
+			}
+
+			$method = strtoupper( (string) ( $parsed_args['method'] ?? 'GET' ) );
+
+			if ( isset( $mock['method'] ) && strtoupper( (string) $mock['method'] ) !== $method ) {
+				continue;
+			}
+
+			beehiiv_e2e_log_http( $method, $url, $parsed_args['body'] ?? null, $needle );
+
+			if ( ! empty( $mock['delay_ms'] ) ) {
+				usleep( (int) $mock['delay_ms'] * 1000 );
 			}
 
 			$body = $mock['body'] ?? [];
@@ -167,6 +191,61 @@ function beehiiv_e2e_seed_post_templates( string $publication_id, array $templat
  */
 function beehiiv_e2e_reset_all(): void {
 	beehiiv_e2e_clear_http_mocks();
+	beehiiv_e2e_clear_http_log();
+	delete_option( 'beehiiv_e2e_force_settings_status' );
 	beehiiv_e2e_clear_connection();
 	\Beehiiv\API\Cache::flush_all();
 }
+
+/**
+ * Records one mocked outbound request (method, URL, decoded JSON body, and
+ * the mock key that answered it) so specs can assert what the plugin
+ * actually sent to beehiiv. Only mocked requests are logged.
+ *
+ * @param string     $method HTTP method.
+ * @param string     $url    Request URL.
+ * @param mixed      $body   Raw request body.
+ * @param string     $mock   Key of the mock that answered.
+ */
+function beehiiv_e2e_log_http( string $method, string $url, $body, string $mock ): void {
+	$log     = get_option( 'beehiiv_e2e_http_log', [] );
+	$log     = is_array( $log ) ? $log : [];
+	$decoded = is_string( $body ) ? json_decode( $body, true ) : $body;
+	$log[]   = [
+		'method' => $method,
+		'url'    => $url,
+		'body'   => null === $decoded ? $body : $decoded,
+		'mock'   => $mock,
+	];
+	update_option( 'beehiiv_e2e_http_log', $log, false );
+}
+
+/** Clears the mocked-request log. */
+function beehiiv_e2e_clear_http_log(): void {
+	delete_option( 'beehiiv_e2e_http_log' );
+}
+
+/**
+ * Third-party filter stand-in for BR-005: when the
+ * `beehiiv_e2e_force_settings_status` option is set, the public
+ * `beehiiv_newsletter_post_settings` filter rewrites the payload to that
+ * status and adds a `scheduled_at`, the way a hostile/careless third-party
+ * filter could -- so specs can check the plugin forces test drafts back to
+ * draft *after* this filter runs.
+ */
+add_filter(
+	'beehiiv_newsletter_post_settings',
+	static function ( $settings ) {
+		$status = get_option( 'beehiiv_e2e_force_settings_status', '' );
+
+		if ( ! is_array( $settings ) || ! is_string( $status ) || '' === $status ) {
+			return $settings;
+		}
+
+		$settings['status']       = $status;
+		$settings['scheduled_at'] = gmdate( 'c', time() + DAY_IN_SECONDS );
+
+		return $settings;
+	},
+	999
+);
