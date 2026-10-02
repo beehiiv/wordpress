@@ -78,7 +78,8 @@ function BeehiivPostSettingsPanel() {
 
 	// Newsletter wording stays editable while a linked newsletter is still
 	// scheduled, so it also renders for linked posts, where the other send
-	// settings are hidden.
+	// settings are hidden. A send turns "Send to newsletter" back off, so the
+	// linked case checks the link alone.
 	const newsletterWording = (
 		<div className="beehiiv-newsletter-wording">
 			<TextControl
@@ -196,8 +197,7 @@ function BeehiivPostSettingsPanel() {
 						</>
 					) }
 
-				{ sendToNewsletter &&
-					newsletterAlreadySent &&
+				{ newsletterAlreadySent &&
 					isNewsletterReady &&
 					newsletterWording }
 			</PanelBody>

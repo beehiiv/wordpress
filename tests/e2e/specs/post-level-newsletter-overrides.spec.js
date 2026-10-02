@@ -491,7 +491,9 @@ test.describe( 'US-005: edits reach an unsent beehiiv newsletter', () => {
 	test( 'AC-019 / AC-025: title, subtitle and display toggle stay editable while a linked newsletter is still scheduled', async ( {
 		page,
 	} ) => {
+		// A real send turns "Send to newsletter" back off once the post is linked.
 		const id = createPost( 'QA E2E overrides AC-019-025 scheduled', {
+			send: false,
 			meta: {
 				[ META_POST_ID ]: 'post_qa_linked_scheduled',
 				[ META_SCHEDULED_AT ]: isoFromNow( 7 * 24 * 60 * 60 * 1000 ),
@@ -531,6 +533,7 @@ test.describe( 'US-005: edits reach an unsent beehiiv newsletter', () => {
 	} ) => {
 		// Sent immediately: linked with no scheduled time.
 		const sentNow = createPost( 'QA E2E overrides AC-018 sent now', {
+			send: false,
 			meta: {
 				[ META_POST_ID ]: 'post_qa_linked_sent',
 				[ META_TITLE ]: 'Sent title',
@@ -540,6 +543,7 @@ test.describe( 'US-005: edits reach an unsent beehiiv newsletter', () => {
 		const sentLater = createPost(
 			'QA E2E overrides AC-018 schedule passed',
 			{
+				send: false,
 				meta: {
 					[ META_POST_ID ]: 'post_qa_linked_past',
 					[ META_SCHEDULED_AT ]: isoFromNow( -60 * 60 * 1000 ),
