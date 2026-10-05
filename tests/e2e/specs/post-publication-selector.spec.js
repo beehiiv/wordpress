@@ -650,4 +650,45 @@ test.describe( 'Post-level publication selector (PRD-06.8.02)', () => {
 		expect( stored.post_template_id ).toBe( 'tpl_a1' );
 		expect( Object.keys( stored ).some( ( k ) => /default/i.test( k ) ) ).toBe( false );
 	} );
+
+	test( 'AC-021: Refresh publications reloads the list from beehiiv bypassing the cache, keeps the selection, confirms, and the editor offers the refreshed list', async ( { page } ) => {
+		const PUB_C = { id: 'pub_qa_gamma', name: 'Gamma Monthly' };
+		// The cache is freshly seeded with A + B; beehiiv itself now returns A + B + C.
+		// Only the list call ("/publications?limit=...") is mocked, so per-publication post mocks are untouched.
+		php( `beehiiv_e2e_mock_http( "/publications?", [ "body" => [ "data" => ${ phpJson( [ PUB_A, PUB_B, PUB_C ] ) } ] ] );` );
+
+		await page.goto( '/wp-admin/admin.php?page=beehiiv' );
+		const select = page.locator( '#beehiiv_publication_id' );
+		await expect( select ).toBeVisible();
+		await expect( select.locator( 'option', { hasText: PUB_C.name } ) ).toHaveCount( 0 );
+
+		// Change the (unsaved) selection to B so "keeps the current selection" is a real check, not the saved default.
+		await select.selectOption( PUB_B.id );
+		resetLog();
+
+		const button = page.getByRole( 'button', { name: 'Refresh publications' } );
+		await expect( button ).toBeVisible();
+		const restResp = page.waitForResponse( ( r ) => /publications/.test( decodeURIComponent( r.url() ) ) && /refresh=1/.test( r.url() ) && r.request().method() === 'GET' );
+		await button.click();
+		expect( ( await restResp ).status() ).toBe( 200 );
+
+		await expect( page.getByText( 'Publications updated from beehiiv.' ) ).toBeVisible();
+		await expect( select.locator( 'option', { hasText: PUB_C.name } ) ).toHaveCount( 1 );
+		await expect( select ).toHaveValue( PUB_B.id );
+		await expect( select ).toBeEnabled();
+		await expect( button ).toBeEnabled();
+
+		// The cache was bypassed: a real outbound list call to beehiiv happened despite a fresh cached list.
+		const out = php( 'echo "JSON=" . wp_json_encode( beehiiv_e2e_get_http_log() );' );
+		const log = JSON.parse( out.slice( out.indexOf( 'JSON=' ) + 5 ) );
+		expect( log.some( ( e ) => e.method === 'GET' && /\/publications\?/.test( e.url ) ) ).toBe( true );
+
+		// The post editor's Publication selector offers the refreshed list.
+		const id = createPost( { title: 'QA AC-021', meta: { _beehiiv_send_to_newsletter: '1' } } );
+		await openEditorWithSidebar( page, id );
+		const pubSelect = page.locator( PUB_SELECT );
+		await expect( pubSelect ).toBeVisible( { timeout: 15000 } );
+		const texts = await optionTexts( pubSelect );
+		expect( texts ).toEqual( expect.arrayContaining( [ PUB_A.name, PUB_B.name, PUB_C.name ] ) );
+	} );
 } );
