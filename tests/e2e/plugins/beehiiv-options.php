@@ -166,7 +166,58 @@ function beehiiv_e2e_seed_post_templates( string $publication_id, array $templat
  * qa-e2e-author run against this shared environment.
  */
 function beehiiv_e2e_reset_all(): void {
+	beehiiv_e2e_stop_http_log();
 	beehiiv_e2e_clear_http_mocks();
 	beehiiv_e2e_clear_connection();
 	\Beehiiv\API\Cache::flush_all();
+}
+
+/**
+ * Records every outbound wp_remote_request() (method + URL) while logging is
+ * enabled, so specs can assert *which* beehiiv endpoint (e.g. which
+ * publication) a server-side action targeted. Runs at priority 5, before the
+ * mock filter above, and never short-circuits the request itself.
+ */
+add_filter(
+	'pre_http_request',
+	static function ( $preempt, $parsed_args, $url ) {
+		if ( ! get_option( 'beehiiv_e2e_http_log_enabled' ) ) {
+			return $preempt;
+		}
+
+		$log   = get_option( 'beehiiv_e2e_http_log', [] );
+		$log   = is_array( $log ) ? $log : [];
+		$log[] = [
+			'method' => strtoupper( (string) ( $parsed_args['method'] ?? 'GET' ) ),
+			'url'    => (string) $url,
+		];
+		update_option( 'beehiiv_e2e_http_log', $log, false );
+
+		return $preempt;
+	},
+	5,
+	3
+);
+
+/** Starts (and empties) the outbound HTTP request log. */
+function beehiiv_e2e_start_http_log(): void {
+	update_option( 'beehiiv_e2e_http_log', [], false );
+	update_option( 'beehiiv_e2e_http_log_enabled', 1, false );
+}
+
+/**
+ * Logged outbound requests since the last start.
+ *
+ * @return array<int, array{method: string, url: string}>
+ */
+function beehiiv_e2e_get_http_log(): array {
+	$log = get_option( 'beehiiv_e2e_http_log', [] );
+
+	return is_array( $log ) ? $log : [];
+}
+
+/** Stops logging and clears the log. */
+function beehiiv_e2e_stop_http_log(): void {
+	delete_option( 'beehiiv_e2e_http_log_enabled' );
+	delete_option( 'beehiiv_e2e_http_log' );
 }
