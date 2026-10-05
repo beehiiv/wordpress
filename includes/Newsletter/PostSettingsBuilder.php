@@ -30,12 +30,13 @@ final class PostSettingsBuilder {
 	/**
 	 * Create beehiiv post settings array for the WordPress post.
 	 *
-	 * @param int  $post_id    Post ID.
-	 * @param bool $for_update When true, omit schedule validation and `scheduled_at` (used for linked-post updates).
+	 * @param int         $post_id        Post ID.
+	 * @param bool        $for_update     When true, omit schedule validation and `scheduled_at` (linked-post updates).
+	 * @param string|null $publication_id Publication the payload is for. Defaults to the post's resolved publication.
 	 * @return array<string, mixed>|WP_Error beehiiv post settings or error.
 	 * @since 1.0.0
 	 */
-	public static function get_post_settings( int $post_id, bool $for_update = false ) {
+	public static function get_post_settings( int $post_id, bool $for_update = false, ?string $publication_id = null ) {
 		$post_object = get_post( $post_id );
 
 		if ( ! $post_object instanceof WP_Post ) {
@@ -45,7 +46,25 @@ final class PostSettingsBuilder {
 			);
 		}
 
-		$post_template_id = self::get_post_template_id( $post_id );
+		if ( null === $publication_id ) {
+			$publication_id = PublicationResolver::resolve_for_post( $post_id );
+		}
+
+		if ( '' === $publication_id ) {
+			return new WP_Error(
+				'beehiiv_publication_missing',
+				sprintf( 'No beehiiv publication is chosen for post ID: %d.', $post_id )
+			);
+		}
+
+		$post_template_id = self::resolve_post_template_id( $post_id, $publication_id );
+
+		if ( '' === $post_template_id && PublicationResolver::get_default_publication_id() !== $publication_id ) {
+			return new WP_Error(
+				'beehiiv_post_template_required',
+				sprintf( 'No post template is chosen for this post\'s publication (post ID: %d).', $post_id )
+			);
+		}
 
 		if ( '' === $post_template_id ) {
 			return new WP_Error(
@@ -139,15 +158,16 @@ final class PostSettingsBuilder {
 	 * {@see Sender::reschedule_linked_post()} recreates the beehiiv post because the API
 	 * does not allow updating `scheduled_at` on confirmed posts.
 	 *
-	 * @param int $post_id Post ID.
+	 * @param int         $post_id        Post ID.
+	 * @param string|null $publication_id Publication the payload is for. Defaults to the post's resolved publication.
 	 * @return array{
 	 *     payload: array<string, mixed>,
 	 *     meta: array{scheduled_at: string|null, clear_custom_date: bool}
 	 * }|WP_Error
 	 * @since 1.0.0
 	 */
-	public static function build_update( int $post_id ) {
-		$settings = self::get_post_settings( $post_id, true );
+	public static function build_update( int $post_id, ?string $publication_id = null ) {
+		$settings = self::get_post_settings( $post_id, true, $publication_id );
 
 		if ( is_wp_error( $settings ) ) {
 			return $settings;
@@ -288,7 +308,7 @@ final class PostSettingsBuilder {
 			return null;
 		}
 
-		$publication_id = self::get_publication_id();
+		$publication_id = self::get_ad_publication_id();
 
 		if ( '' === $publication_id ) {
 			return null;
@@ -344,38 +364,47 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Post template for the post: post meta when set and valid, else plugin default.
+	 * Post template for the post in a publication.
 	 *
-	 * @since 1.0.0
+	 * The post's own template when it exists in that publication. Otherwise the
+	 * plugin default template, but only for the site-wide default publication,
+	 * which is the only publication that has a default template. Empty when
+	 * neither applies.
 	 *
-	 * @param int $post_id Post ID.
+	 * @since x.x.x
+	 *
+	 * @param int    $post_id        Post ID.
+	 * @param string $publication_id Publication ID.
 	 *
 	 * @return string
 	 */
-	private static function get_post_template_id( int $post_id ): string {
+	public static function resolve_post_template_id( int $post_id, string $publication_id ): string {
 
 		$post_template_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, true );
 		$post_template_id = is_string( $post_template_id ) ? trim( $post_template_id ) : '';
 
-		if ( '' !== $post_template_id && self::post_template_exists( $post_template_id ) ) {
+		if ( '' !== $post_template_id && self::post_template_exists( $post_template_id, $publication_id ) ) {
 			return $post_template_id;
 		}
 
-		return self::get_site_post_template_id();
+		if ( '' !== $publication_id && PublicationResolver::get_default_publication_id() === $publication_id ) {
+			return self::get_site_post_template_id();
+		}
+
+		return '';
 	}
 
 	/**
-	 * Whether a template ID exists for the configured publication.
+	 * Whether a template ID exists in a publication.
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param string $template_id Template ID.
+	 * @param string $template_id    Template ID.
+	 * @param string $publication_id Publication ID.
 	 *
 	 * @return bool
 	 */
-	private static function post_template_exists( string $template_id ): bool {
-
-		$publication_id = self::get_publication_id();
+	private static function post_template_exists( string $template_id, string $publication_id ): bool {
 
 		if ( '' === $publication_id ) {
 			return false;
@@ -392,13 +421,16 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Configured beehiiv publication ID.
+	 * Publication used to validate Advertisement blocks.
+	 *
+	 * Advertisements stay on the site-wide default publication until per-post
+	 * publications are decided for ads (PRD-06.8.02 Q-001).
 	 *
 	 * @since 1.0.0
 	 *
 	 * @return string
 	 */
-	private static function get_publication_id(): string {
+	private static function get_ad_publication_id(): string {
 
 		$settings = Options::get();
 

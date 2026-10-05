@@ -20,6 +20,7 @@ import NewsletterDatePicker, {
 } from './components/newsletter-date-picker';
 import NewsletterLinkedNotice from './components/newsletter-linked-notice';
 import NewsletterStatusNotices from './components/newsletter-status-notices';
+import NewsletterPublicationSelect from './components/newsletter-publication-select';
 import NewsletterTemplateSelect from './components/newsletter-template-select';
 import PostSettingsNotice from './components/post-settings-notice';
 import SendNewsletterToggle from './components/send-newsletter-toggle';
@@ -27,6 +28,7 @@ import IncompleteAdvertisementNotice from './components/incomplete-advertisement
 import { OmittedBlocksNoticeMessage } from './components/omitted-blocks-notice';
 import { useBeehiivEditorConfig } from './hooks/use-beehiiv-editor-config';
 import { useBeehiivPostMeta } from './hooks/use-beehiiv-post-meta';
+import { usePostPublication } from './hooks/use-post-publication';
 
 import './filters/with-omitted-block-indicator';
 import './editor.scss';
@@ -44,10 +46,77 @@ function usePostPublishDate() {
 	);
 }
 
+/**
+ * Publication and template pickers for a post's newsletter.
+ *
+ * @param {Object}                                                  props
+ * @param {import('./hooks/use-beehiiv-post-meta').BeehiivPostMeta} props.beehiivMeta     Post meta.
+ * @param {import('./hooks/use-post-publication').PostPublication}  props.postPublication Per-post publication state.
+ */
+function NewsletterPublicationAndTemplate( { beehiivMeta, postPublication } ) {
+	const {
+		beehiivPostTemplateId,
+		newsletterPublished,
+		setBeehiivPublicationId,
+		setBeehiivPostTemplateId,
+	} = beehiivMeta;
+	const {
+		publications,
+		storedPublicationId,
+		defaultPublicationId,
+		effectivePublicationId,
+		isDefaultPublication,
+		isFallback,
+	} = postPublication;
+
+	return (
+		<>
+			<NewsletterPublicationSelect
+				publications={ publications }
+				value={
+					isFallback
+						? storedPublicationId
+						: storedPublicationId || defaultPublicationId
+				}
+				onChange={ setBeehiivPublicationId }
+				disabled={ newsletterPublished }
+			/>
+
+			{ effectivePublicationId && (
+				<NewsletterTemplateSelect
+					value={ isFallback ? '' : beehiivPostTemplateId }
+					onChange={ setBeehiivPostTemplateId }
+					publicationId={ effectivePublicationId }
+					isDefaultPublication={ isDefaultPublication }
+					disabled={ newsletterPublished }
+				/>
+			) }
+		</>
+	);
+}
+
+/**
+ * Whether newsletters can be sent from this site at all.
+ *
+ * Per-post publication and template readiness is reported by
+ * {@link NewsletterStatusNotices} and enforced on save.
+ *
+ * @param {import('./hooks/use-post-publication').PostPublication} postPublication Per-post publication state.
+ * @return {boolean} Whether the send settings can be used.
+ */
+function useIsNewsletterReady( postPublication ) {
+	const { isConnected, canWritePosts } = useBeehiivEditorConfig();
+
+	return (
+		isConnected && canWritePosts && postPublication.publications.length > 0
+	);
+}
+
 function BeehiivPostSettingsPanel() {
 	const beehiivMeta = useBeehiivPostMeta();
-	const { isConnected, canWritePosts, hasPublication, hasPostTemplate } =
-		useBeehiivEditorConfig();
+	const { isConnected, canWritePosts } = useBeehiivEditorConfig();
+	const postPublication = usePostPublication( beehiivMeta );
+	const isNewsletterReady = useIsNewsletterReady( postPublication );
 
 	if ( ! beehiivMeta ) {
 		return null;
@@ -57,16 +126,12 @@ function BeehiivPostSettingsPanel() {
 		sendToNewsletter,
 		sendToNewsletterDate,
 		sendToNewsletterSnippet,
-		beehiivPostTemplateId,
 		newsletterAlreadySent,
 		setSendToNewsletter,
 		setSendToNewsletterDate,
 		setSendToNewsletterSnippet,
-		setBeehiivPostTemplateId,
 	} = beehiivMeta;
 
-	const isNewsletterReady =
-		isConnected && canWritePosts && hasPublication && hasPostTemplate;
 	const showSendToggle = ! isConnected || canWritePosts;
 
 	return (
@@ -85,6 +150,12 @@ function BeehiivPostSettingsPanel() {
 				<NewsletterStatusNotices beehiivMeta={ beehiivMeta } />
 
 				<NewsletterLinkedNotice beehiivMeta={ beehiivMeta } />
+				{ newsletterAlreadySent && isNewsletterReady && (
+					<NewsletterPublicationAndTemplate
+						beehiivMeta={ beehiivMeta }
+						postPublication={ postPublication }
+					/>
+				) }
 				{ sendToNewsletter &&
 					! newsletterAlreadySent &&
 					isNewsletterReady && (
@@ -109,9 +180,9 @@ function BeehiivPostSettingsPanel() {
 								onChange={ setSendToNewsletterDate }
 							/>
 
-							<NewsletterTemplateSelect
-								value={ beehiivPostTemplateId }
-								onChange={ setBeehiivPostTemplateId }
+							<NewsletterPublicationAndTemplate
+								beehiivMeta={ beehiivMeta }
+								postPublication={ postPublication }
 							/>
 
 							<ToggleControl
@@ -186,8 +257,9 @@ function BeehiivSendNewsletterPrePublishPanel() {
 	const { postType, canPublishPosts } = useBeehiivPostSettingsEligibility();
 	const beehiivMeta = useBeehiivPostMeta();
 	const postPublishDate = usePostPublishDate();
-	const { isConnected, canWritePosts, hasPublication, hasPostTemplate } =
-		useBeehiivEditorConfig();
+	const { isConnected, canWritePosts } = useBeehiivEditorConfig();
+	const postPublication = usePostPublication( beehiivMeta );
+	const isNewsletterReady = useIsNewsletterReady( postPublication );
 
 	if ( postType && postType !== 'post' ) {
 		return null;
@@ -207,8 +279,6 @@ function BeehiivSendNewsletterPrePublishPanel() {
 		setSendToNewsletter,
 		newsletterAlreadySent,
 	} = beehiivMeta;
-	const isNewsletterReady =
-		isConnected && canWritePosts && hasPublication && hasPostTemplate;
 	const showSendToggle = ! isConnected || canWritePosts;
 	const sendDateValidation = getNewsletterSendDateValidation(
 		sendToNewsletterDate,

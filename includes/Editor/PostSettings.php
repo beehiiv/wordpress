@@ -11,6 +11,7 @@ use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\Workspace;
 use Beehiiv\Config;
 use Beehiiv\Connection\Manager;
+use Beehiiv\Newsletter\PublicationResolver;
 use Beehiiv\Newsletter\SupportedBlocks;
 use Beehiiv\OAuth\Config as OAuthConfig;
 
@@ -63,6 +64,10 @@ final class PostSettings {
 			'default' => false,
 		],
 		Meta::BEEHIIV_POST_TEMPLATE_ID   => [
+			'type'    => 'string',
+			'default' => '',
+		],
+		Meta::BEEHIIV_PUBLICATION_ID     => [
 			'type'    => 'string',
 			'default' => '',
 		],
@@ -127,7 +132,8 @@ final class PostSettings {
 	/**
 	 * Whether the current user may read or write a beehiiv post meta key.
 	 *
-	 * Newsletter send settings require `publish_posts`; other keys allow `edit_posts`.
+	 * Newsletter send settings and the post's publication require `publish_posts`;
+	 * other keys allow `edit_posts`.
 	 *
 	 * @param bool   $allowed   Whether the user can add or edit the meta key.
 	 * @param string $meta_key  Meta key.
@@ -140,6 +146,7 @@ final class PostSettings {
 			Meta::SEND_TO_NEWSLETTER,
 			Meta::SEND_TO_NEWSLETTER_DATE,
 			Meta::SEND_TO_NEWSLETTER_SNIPPET,
+			Meta::BEEHIIV_PUBLICATION_ID,
 		];
 
 		if ( in_array( $meta_key, $writable_keys, true ) ) {
@@ -285,6 +292,7 @@ final class PostSettings {
 			[
 				Meta::BEEHIIV_POST_ID,
 				Meta::BEEHIIV_SCHEDULED_AT,
+				Meta::BEEHIIV_PUBLICATION_ID,
 				Meta::SEND_TO_NEWSLETTER,
 				Meta::NEWSLETTER_ERROR,
 				Meta::NEWSLETTER_ERROR_TYPE,
@@ -318,6 +326,7 @@ final class PostSettings {
 		$settings        = Options::get();
 		$is_connected    = Manager::is_connected();
 		$can_write_posts = $is_connected && Workspace::can_write_posts();
+		$default_pub_id  = PublicationResolver::get_default_publication_id();
 
 		return [
 			'isConnected'           => $is_connected,
@@ -330,6 +339,8 @@ final class PostSettings {
 			'publicationId'         => trim( (string) ( $settings['publication_id'] ?? '' ) ),
 			'defaultPostTemplateId' => trim( (string) ( $settings['post_template_id'] ?? '' ) ),
 			'canPublishPosts'       => current_user_can( 'publish_posts' ),
+			'defaultPublicationId'  => $default_pub_id,
+			'publications'          => $is_connected ? PublicationResolver::get_editor_publications() : [],
 		];
 	}
 }

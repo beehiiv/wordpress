@@ -18,24 +18,34 @@ import {
 	META_SEND_TO_NEWSLETTER,
 	META_SEND_TO_NEWSLETTER_DATE,
 	META_BEEHIIV_POST_TEMPLATE_ID,
+	META_BEEHIIV_PUBLICATION_ID,
 	META_SEND_TO_NEWSLETTER_SNIPPET,
 } from '../../../shared/meta';
 
 /**
+ * Milliseconds before `scheduled_at` from which a scheduled newsletter counts as
+ * sent. Matches the server's `Sender::SENT_SAFETY_MARGIN`.
+ */
+const SENT_SAFETY_MARGIN_MS = 60 * 1000;
+
+/**
  * @typedef {Object} BeehiivPostMeta
- * @property {boolean}                      sendToNewsletter           Whether this post is queued for beehiiv.
- * @property {string|null}                  sendToNewsletterDate       ISO 8601 datetime, or null to send on WP post publish.
- * @property {boolean}                      sendToNewsletterSnippet    Whether to send a snippet instead of the full post.
- * @property {string}                       beehiivPostTemplateId      beehiiv post template ID, or empty for plugin default.
- * @property {boolean}                      newsletterAlreadySent      Whether this post is linked to a beehiiv newsletter.
- * @property {string|null}                  beehiivPostId              Linked beehiiv post ID from post meta.
- * @property {string|null}                  beehiivScheduledAt         UTC ISO 8601 beehiiv send time, or null when sent immediately.
- * @property {string|null}                  newsletterError            User-facing save or send error from the server.
- * @property {string|null}                  newsletterErrorType        `save` or `send` when {@link newsletterError} is set.
- * @property {(enabled: boolean) => void}   setSendToNewsletter        Enable or disable newsletter delivery.
- * @property {(date: string|null) => void}  setSendToNewsletterDate    Set scheduled send time.
- * @property {(enabled: boolean) => void}   setSendToNewsletterSnippet Enable or disable snippet delivery.
- * @property {(templateId: string) => void} setBeehiivPostTemplateId   Set the post template for this post.
+ * @property {boolean}                         sendToNewsletter           Whether this post is queued for beehiiv.
+ * @property {string|null}                     sendToNewsletterDate       ISO 8601 datetime, or null to send on WP post publish.
+ * @property {boolean}                         sendToNewsletterSnippet    Whether to send a snippet instead of the full post.
+ * @property {string}                          beehiivPostTemplateId      beehiiv post template ID, or empty for plugin default.
+ * @property {string}                          beehiivPublicationId       beehiiv publication ID chosen for this post, or empty for the site default.
+ * @property {boolean}                         newsletterAlreadySent      Whether this post is linked to a beehiiv newsletter.
+ * @property {boolean}                         newsletterPublished        Whether beehiiv has sent (or is about to send) the linked newsletter.
+ * @property {string|null}                     beehiivPostId              Linked beehiiv post ID from post meta.
+ * @property {string|null}                     beehiivScheduledAt         UTC ISO 8601 beehiiv send time, or null when sent immediately.
+ * @property {string|null}                     newsletterError            User-facing save or send error from the server.
+ * @property {string|null}                     newsletterErrorType        `save` or `send` when {@link newsletterError} is set.
+ * @property {(enabled: boolean) => void}      setSendToNewsletter        Enable or disable newsletter delivery.
+ * @property {(date: string|null) => void}     setSendToNewsletterDate    Set scheduled send time.
+ * @property {(enabled: boolean) => void}      setSendToNewsletterSnippet Enable or disable snippet delivery.
+ * @property {(templateId: string) => void}    setBeehiivPostTemplateId   Set the post template for this post.
+ * @property {(publicationId: string) => void} setBeehiivPublicationId    Set the publication for this post and clear its template.
  */
 
 /**
@@ -132,6 +142,8 @@ export function useBeehiivPostMeta() {
 		if ( linkStateChanged ) {
 			syncedMeta[ META_SEND_TO_NEWSLETTER ] =
 				!! serverMeta[ META_SEND_TO_NEWSLETTER ];
+			syncedMeta[ META_BEEHIIV_PUBLICATION_ID ] =
+				serverMeta[ META_BEEHIIV_PUBLICATION_ID ] ?? '';
 		}
 
 		setMeta( syncedMeta );
@@ -193,6 +205,9 @@ export function useBeehiivPostMeta() {
 	const rawPostTemplateId = meta?.[ META_BEEHIIV_POST_TEMPLATE_ID ];
 	const beehiivPostTemplateId =
 		typeof rawPostTemplateId === 'string' ? rawPostTemplateId : '';
+	const rawPublicationId = meta?.[ META_BEEHIIV_PUBLICATION_ID ];
+	const beehiivPublicationId =
+		typeof rawPublicationId === 'string' ? rawPublicationId : '';
 	const rawDate = meta?.[ META_SEND_TO_NEWSLETTER_DATE ];
 	const sendToNewsletterDate =
 		typeof rawDate === 'string' && rawDate.length > 0 ? rawDate : null;
@@ -208,6 +223,13 @@ export function useBeehiivPostMeta() {
 		rawBeehiivScheduledAt.length > 0
 			? rawBeehiivScheduledAt
 			: null;
+	const scheduledAtTime = beehiivScheduledAt
+		? new Date( beehiivScheduledAt ).getTime()
+		: NaN;
+	const newsletterPublished =
+		newsletterAlreadySent &&
+		( Number.isNaN( scheduledAtTime ) ||
+			scheduledAtTime <= Date.now() + SENT_SAFETY_MARGIN_MS );
 	const rawNewsletterError = meta?.[ META_NEWSLETTER_ERROR ];
 	const newsletterError =
 		typeof rawNewsletterError === 'string' && rawNewsletterError.length > 0
@@ -229,7 +251,9 @@ export function useBeehiivPostMeta() {
 		sendToNewsletterDate,
 		sendToNewsletterSnippet,
 		beehiivPostTemplateId,
+		beehiivPublicationId,
 		newsletterAlreadySent,
+		newsletterPublished,
 		beehiivPostId,
 		beehiivScheduledAt,
 		newsletterError,
@@ -269,12 +293,23 @@ export function useBeehiivPostMeta() {
 			} );
 		},
 		setBeehiivPostTemplateId( templateId ) {
-			if ( newsletterAlreadySent ) {
+			if ( newsletterPublished ) {
 				return;
 			}
 
 			patchMeta( {
 				[ META_BEEHIIV_POST_TEMPLATE_ID ]: templateId ?? '',
+			} );
+		},
+		setBeehiivPublicationId( publicationId ) {
+			if ( newsletterPublished ) {
+				return;
+			}
+
+			// A template belongs to one publication, so switching clears it.
+			patchMeta( {
+				[ META_BEEHIIV_PUBLICATION_ID ]: publicationId ?? '',
+				[ META_BEEHIIV_POST_TEMPLATE_ID ]: '',
 			} );
 		},
 	};

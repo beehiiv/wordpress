@@ -90,4 +90,44 @@ class EditorPostSettingsTest extends WP_UnitTestCase {
 			'AC-022: newsletter title/subtitle/subject-line fields must be writable by edit_posts alone, not gated behind publish_posts.'
 		);
 	}
+
+	/**
+	 * Post-Level Publication Selector AC-006: only users who can publish may change a post's publication.
+	 */
+	public function test_publication_key_is_denied_for_contributor(): void {
+		$contributor_id = self::factory()->user->create( array( 'role' => 'contributor' ) );
+		$post_id        = self::factory()->post->create(
+			array(
+				'post_author' => $contributor_id,
+				'post_status' => 'draft',
+			)
+		);
+
+		wp_set_current_user( $contributor_id );
+
+		$this->assertFalse(
+			PostSettings::authorize_meta( false, Meta::BEEHIIV_PUBLICATION_ID, $post_id ),
+			'AC-006: a contributor must not be authorized to change the post\'s publication.'
+		);
+	}
+
+	/**
+	 * Post-Level Publication Selector AC-006: an author with publish_posts may change a post's publication.
+	 */
+	public function test_publication_key_is_allowed_for_author(): void {
+		$author_id = self::factory()->user->create( array( 'role' => 'author' ) );
+		$post_id   = self::factory()->post->create(
+			array(
+				'post_author' => $author_id,
+				'post_status' => 'draft',
+			)
+		);
+
+		wp_set_current_user( $author_id );
+
+		$this->assertTrue(
+			PostSettings::authorize_meta( false, Meta::BEEHIIV_PUBLICATION_ID, $post_id ),
+			'AC-006: an author (publish_posts) must be authorized to change the post\'s publication.'
+		);
+	}
 }

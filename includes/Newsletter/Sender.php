@@ -7,7 +7,6 @@
 
 namespace Beehiiv\Newsletter;
 
-use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\Posts;
 use Beehiiv\Connection\Manager;
 use Beehiiv\Editor\Meta;
@@ -17,7 +16,7 @@ use WP_REST_Request;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Creates or schedules a beehiiv post in the configured publication when newsletter
+ * Creates or schedules a beehiiv post in the post's publication when newsletter
  * send is enabled and the post is published (or scheduled). Updates linked beehiiv posts
  * when the WordPress post changes before the newsletter sends. Draft saves are skipped
  * unless retrying after a previous failed send. Future send times use beehiiv
@@ -37,6 +36,32 @@ final class Sender {
 	private const POST_TYPE = 'post';
 
 	/**
+	 * Seconds before `scheduled_at` from which a scheduled newsletter counts as sent.
+	 *
+	 * Keeps a publication or template move from racing beehiiv's own send.
+	 *
+	 * @since x.x.x
+	 */
+	private const SENT_SAFETY_MARGIN = 60;
+
+	/**
+	 * Meta keys that lock once beehiiv has sent the newsletter.
+	 *
+	 * @since x.x.x
+	 */
+	private const LOCKED_AFTER_SEND_META_KEYS = [
+		Meta::BEEHIIV_PUBLICATION_ID,
+		Meta::BEEHIIV_POST_TEMPLATE_ID,
+	];
+
+	/**
+	 * Whether the server is writing locked meta itself.
+	 *
+	 * @var bool
+	 */
+	private static $bypass_meta_lock = false;
+
+	/**
 	 * Register hooks that sync newsletters to beehiiv on save.
 	 *
 	 * @return void
@@ -48,6 +73,129 @@ final class Sender {
 		add_action( 'transition_post_status', [ self::class, 'on_transition_post_status' ], 10, 3 );
 		add_action( 'before_delete_post', [ self::class, 'on_before_delete_post' ], 10, 1 );
 		add_filter( 'update_post_metadata', [ self::class, 'guard_beehiiv_post_id' ], 10, 4 );
+		add_filter( 'update_post_metadata', [ self::class, 'guard_locked_newsletter_meta' ], 10, 4 );
+		add_filter( 'add_post_metadata', [ self::class, 'guard_locked_newsletter_meta' ], 10, 4 );
+	}
+
+	/**
+	 * Keep the post's publication and template unchanged once beehiiv has sent the newsletter.
+	 *
+	 * Applies to every save path (block editor, REST, PHP). Changes are ignored
+	 * rather than rejected so a full editor save does not fail.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed  $check      Whether to allow updating metadata for the given type.
+	 * @param int    $post_id    Post ID.
+	 * @param string $meta_key   Meta key.
+	 * @param mixed  $meta_value Proposed meta value.
+	 *
+	 * @return mixed Null to proceed, true to skip without updating.
+	 */
+	public static function guard_locked_newsletter_meta( $check, $post_id, $meta_key, $meta_value ) {
+
+		if ( self::$bypass_meta_lock || ! in_array( $meta_key, self::LOCKED_AFTER_SEND_META_KEYS, true ) ) {
+			return $check;
+		}
+
+		if ( ! self::is_newsletter_sent( (int) $post_id ) ) {
+			return $check;
+		}
+
+		$existing = get_post_meta( (int) $post_id, $meta_key, true );
+		$existing = is_string( $existing ) ? trim( $existing ) : '';
+		$incoming = is_string( $meta_value ) ? trim( wp_unslash( $meta_value ) ) : '';
+
+		if ( $incoming === $existing ) {
+			return $check;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Whether beehiiv has sent (or is about to send) the post's newsletter.
+	 *
+	 * A linked newsletter counts as sent when it was sent immediately (no
+	 * `scheduled_at`) or its scheduled send time is within
+	 * {@see SENT_SAFETY_MARGIN} seconds or has passed.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since x.x.x
+	 */
+	public static function is_newsletter_sent( int $post_id ): bool {
+		return self::has_beehiiv_post_id( $post_id ) && self::send_time_has_passed( $post_id );
+	}
+
+	/**
+	 * Whether the linked newsletter's send time has been reached.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since x.x.x
+	 */
+	private static function send_time_has_passed( int $post_id ): bool {
+		$scheduled_at = get_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT, true );
+		$scheduled_at = is_string( $scheduled_at ) ? trim( $scheduled_at ) : '';
+
+		if ( '' === $scheduled_at ) {
+			return true;
+		}
+
+		$timestamp = strtotime( $scheduled_at );
+
+		if ( false === $timestamp ) {
+			return true;
+		}
+
+		return $timestamp <= time() + self::SENT_SAFETY_MARGIN;
+	}
+
+	/**
+	 * Write a meta key that locks after send, bypassing the lock for server writes.
+	 *
+	 * @param int    $post_id  Post ID.
+	 * @param string $meta_key Meta key.
+	 * @param string $value    Value.
+	 * @return void
+	 * @since x.x.x
+	 */
+	private static function update_locked_meta( int $post_id, string $meta_key, string $value ): void {
+		self::$bypass_meta_lock = true;
+		update_post_meta( $post_id, $meta_key, $value );
+		self::$bypass_meta_lock = false;
+	}
+
+	/**
+	 * Record where the linked beehiiv post lives and which template it uses.
+	 *
+	 * @param int    $post_id          Post ID.
+	 * @param string $publication_id   Publication the beehiiv post was created in.
+	 * @param string $post_template_id Template it was created with.
+	 * @return void
+	 * @since x.x.x
+	 */
+	private static function record_linked_publication(
+		int $post_id,
+		string $publication_id,
+		string $post_template_id
+	): void {
+		self::update_locked_meta( $post_id, Meta::BEEHIIV_PUBLICATION_ID, $publication_id );
+		update_post_meta( $post_id, Meta::BEEHIIV_LINKED_PUBLICATION_ID, $publication_id );
+		update_post_meta( $post_id, Meta::BEEHIIV_LINKED_POST_TEMPLATE_ID, $post_template_id );
+	}
+
+	/**
+	 * Forget where a beehiiv post lived after it was deleted.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 * @since x.x.x
+	 */
+	private static function clear_linked_publication( int $post_id ): void {
+		delete_post_meta( $post_id, Meta::BEEHIIV_LINKED_PUBLICATION_ID );
+		delete_post_meta( $post_id, Meta::BEEHIIV_LINKED_POST_TEMPLATE_ID );
 	}
 
 	/**
@@ -58,7 +206,7 @@ final class Sender {
 	 * as an empty string even though the database already has a linked ID. Do not
 	 * overwrite the stored value; short-circuit as success so the REST save does not fail.
 	 *
-	 * Intentional ID changes (for example after {@see reschedule_linked_post()}) must
+	 * Intentional ID changes (for example after {@see recreate_linked_post()}) must
 	 * still be allowed so later updates target the active beehiiv post.
 	 *
 	 * @since 1.0.0
@@ -199,7 +347,7 @@ final class Sender {
 		}
 
 		if ( Manager::is_connected() ) {
-			$publication_id = self::get_publication_id();
+			$publication_id = PublicationResolver::get_linked_publication_id( $post_id );
 
 			if ( '' !== $publication_id ) {
 				$result = Posts::delete( $publication_id, $beehiiv_post_id );
@@ -229,6 +377,7 @@ final class Sender {
 
 		delete_post_meta( $post_id, Meta::BEEHIIV_POST_ID );
 		delete_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT );
+		self::clear_linked_publication( $post_id );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
 		self::clear_error( $post_id );
 	}
@@ -319,14 +468,15 @@ final class Sender {
 			return;
 		}
 
-		$publication_id = self::get_publication_id();
+		$target         = PublicationResolver::resolve_target( $post_id );
+		$publication_id = $target['publication_id'];
 
 		if ( '' === $publication_id ) {
 			self::fail(
 				$post_id,
 				'send',
-				self::no_publication_message(),
-				'Publication ID is not configured.'
+				self::no_post_publication_message(),
+				'No publication chosen for the post and no default publication configured.'
 			);
 			return;
 		}
@@ -347,7 +497,7 @@ final class Sender {
 			return;
 		}
 
-		$beehiiv_post_data = PostSettingsBuilder::get_post_settings( $post_id );
+		$beehiiv_post_data = PostSettingsBuilder::get_post_settings( $post_id, false, $publication_id );
 
 		if ( is_wp_error( $beehiiv_post_data ) ) {
 			self::fail(
@@ -372,11 +522,24 @@ final class Sender {
 		}
 
 		// Post created successfully for sending the newsletter.
-		// Save the beehiiv post ID in the post meta.
+		// Record its publication before the link so later actions target it.
+		self::record_linked_publication(
+			$post_id,
+			$publication_id,
+			(string) ( $beehiiv_post_data['post_template_id'] ?? '' )
+		);
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, false );
 		self::persist_scheduled_at_meta( $post_id, $beehiiv_post_data['scheduled_at'] ?? null );
 		self::clear_error( $post_id );
+
+		if ( '' !== $target['fallback_from'] ) {
+			self::record_error(
+				$post_id,
+				'publication_fallback',
+				self::publication_fallback_message( $target['fallback_from'], $publication_id )
+			);
+		}
 	}
 
 	/**
@@ -389,7 +552,7 @@ final class Sender {
 	public static function update( int $post_id ): void {
 		self::clear_error( $post_id );
 
-		if ( '' === Manager::is_connected() ) {
+		if ( ! Manager::is_connected() ) {
 			self::fail(
 				$post_id,
 				'send',
@@ -399,7 +562,7 @@ final class Sender {
 			return;
 		}
 
-		$publication_id = self::get_publication_id();
+		$publication_id = PublicationResolver::get_linked_publication_id( $post_id );
 
 		if ( '' === $publication_id ) {
 			self::fail(
@@ -430,7 +593,12 @@ final class Sender {
 			return;
 		}
 
-		$update = PostSettingsBuilder::build_update( $post_id );
+		$target_publication_id = self::get_move_target_publication( $post_id, $publication_id );
+
+		$update = PostSettingsBuilder::build_update(
+			$post_id,
+			'' !== $target_publication_id ? $target_publication_id : $publication_id
+		);
 
 		if ( is_wp_error( $update ) ) {
 			self::fail(
@@ -444,11 +612,29 @@ final class Sender {
 
 		$new_scheduled_at = $update['meta']['scheduled_at'];
 
-		if ( is_string( $new_scheduled_at ) && '' !== trim( $new_scheduled_at ) ) {
-			self::reschedule_linked_post(
+		if ( '' !== $target_publication_id ) {
+			if ( ! is_string( $new_scheduled_at ) || '' === trim( $new_scheduled_at ) ) {
+				$new_scheduled_at = get_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT, true );
+				$new_scheduled_at = is_string( $new_scheduled_at ) ? trim( $new_scheduled_at ) : '';
+			}
+
+			self::recreate_linked_post(
 				$post_id,
 				$publication_id,
 				$beehiiv_post_id,
+				$target_publication_id,
+				$new_scheduled_at,
+				$update['meta']
+			);
+			return;
+		}
+
+		if ( is_string( $new_scheduled_at ) && '' !== trim( $new_scheduled_at ) ) {
+			self::recreate_linked_post(
+				$post_id,
+				$publication_id,
+				$beehiiv_post_id,
+				$publication_id,
 				$new_scheduled_at,
 				$update['meta']
 			);
@@ -472,27 +658,69 @@ final class Sender {
 	}
 
 	/**
-	 * Recreate a linked beehiiv post when its send time must move later.
+	 * Publication a scheduled, unsent newsletter must move to, if any.
 	 *
-	 * The update API rejects `scheduled_at` changes on confirmed posts, so we archive the
-	 * existing post and create a new one with the same content and a later schedule.
+	 * A move is needed when the post's chosen publication differs from the one its
+	 * beehiiv post lives in, or when its chosen template differs from the one the
+	 * beehiiv post was created with (the update API cannot change the template).
+	 * Posts linked before per-post publications have no recorded template, so only
+	 * a publication change moves them.
 	 *
-	 * @param int                                                       $post_id         Post ID.
-	 * @param string                                                    $publication_id  Publication ID.
-	 * @param string                                                    $beehiiv_post_id Linked beehiiv post ID.
-	 * @param string                                                    $scheduled_at    New UTC `scheduled_at`.
-	 * @param array{scheduled_at: string|null, clear_custom_date: bool} $meta            Meta updates.
+	 * @param int    $post_id               Post ID.
+	 * @param string $linked_publication_id Publication the beehiiv post lives in.
+	 * @return string Target publication ID, or empty when no move is needed.
+	 * @since x.x.x
+	 */
+	private static function get_move_target_publication( int $post_id, string $linked_publication_id ): string {
+		if ( self::is_newsletter_sent( $post_id ) ) {
+			return '';
+		}
+
+		$target_publication_id = PublicationResolver::resolve_target( $post_id )['publication_id'];
+
+		if ( '' !== $target_publication_id && $target_publication_id !== $linked_publication_id ) {
+			return $target_publication_id;
+		}
+
+		$linked_template_id = get_post_meta( $post_id, Meta::BEEHIIV_LINKED_POST_TEMPLATE_ID, true );
+		$linked_template_id = is_string( $linked_template_id ) ? trim( $linked_template_id ) : '';
+		$chosen_template_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, true );
+		$chosen_template_id = is_string( $chosen_template_id ) ? trim( $chosen_template_id ) : '';
+
+		if ( '' !== $linked_template_id && '' !== $chosen_template_id && $chosen_template_id !== $linked_template_id ) {
+			return $linked_publication_id;
+		}
+
+		return '';
+	}
+
+	/**
+	 * Recreate a linked beehiiv post in a publication.
+	 *
+	 * Used when its send time must move later, or when a scheduled, unsent newsletter
+	 * moves to another publication or template. The update API rejects `scheduled_at`
+	 * and template changes on confirmed posts, so we delete the existing post and
+	 * create a new one. The new payload is validated first, so nothing is deleted
+	 * when it cannot be created.
+	 *
+	 * @param int                                                       $post_id             Post ID.
+	 * @param string                                                    $from_publication_id Current publication.
+	 * @param string                                                    $beehiiv_post_id     Linked beehiiv post ID.
+	 * @param string                                                    $to_publication_id   New publication.
+	 * @param string                                                    $scheduled_at        UTC send time.
+	 * @param array{scheduled_at: string|null, clear_custom_date: bool} $meta                Meta updates.
 	 * @return void
 	 * @since 1.0.0
 	 */
-	private static function reschedule_linked_post(
+	private static function recreate_linked_post(
 		int $post_id,
-		string $publication_id,
+		string $from_publication_id,
 		string $beehiiv_post_id,
+		string $to_publication_id,
 		string $scheduled_at,
 		array $meta
 	): void {
-		$create_payload = PostSettingsBuilder::get_post_settings( $post_id, true );
+		$create_payload = PostSettingsBuilder::get_post_settings( $post_id, true, $to_publication_id );
 
 		if ( is_wp_error( $create_payload ) ) {
 			self::fail(
@@ -504,9 +732,11 @@ final class Sender {
 			return;
 		}
 
-		$create_payload['scheduled_at'] = $scheduled_at;
+		if ( '' !== $scheduled_at ) {
+			$create_payload['scheduled_at'] = $scheduled_at;
+		}
 
-		$delete_result = Posts::delete( $publication_id, $beehiiv_post_id );
+		$delete_result = Posts::delete( $from_publication_id, $beehiiv_post_id );
 
 		if ( ! $delete_result['success'] ) {
 			self::fail(
@@ -518,11 +748,12 @@ final class Sender {
 			return;
 		}
 
-		$result = Posts::create( $publication_id, $create_payload );
+		$result = Posts::create( $to_publication_id, $create_payload );
 
 		if ( ! $result['success'] ) {
 			delete_post_meta( $post_id, Meta::BEEHIIV_POST_ID );
 			delete_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT );
+			self::clear_linked_publication( $post_id );
 			update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
 
 			self::fail(
@@ -534,6 +765,11 @@ final class Sender {
 			return;
 		}
 
+		self::record_linked_publication(
+			$post_id,
+			$to_publication_id,
+			(string) ( $create_payload['post_template_id'] ?? '' )
+		);
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
 		self::apply_update_meta( $post_id, $meta );
 		self::clear_error( $post_id );
@@ -577,17 +813,15 @@ final class Sender {
 	}
 
 	/**
-	 * Site-wide beehiiv publication ID from plugin settings.
+	 * Site-wide default beehiiv publication ID from plugin settings.
+	 *
+	 * Use {@see PublicationResolver::resolve_for_post()} for a post's publication.
 	 *
 	 * @return string
 	 * @since 1.0.0
 	 */
 	public static function get_publication_id(): string {
-		$settings = Options::get();
-
-		return isset( $settings['publication_id'] )
-			? trim( (string) $settings['publication_id'] )
-			: '';
+		return PublicationResolver::get_default_publication_id();
 	}
 
 	/**
@@ -667,6 +901,10 @@ final class Sender {
 					'Choose a default post template in <a>beehiiv settings</a>, or pick one for this post in the beehiiv sidebar.',
 					'beehiiv'
 				);
+			case 'beehiiv_post_template_required':
+				return __( "Pick a post template for this post's publication in the beehiiv sidebar.", 'beehiiv' );
+			case 'beehiiv_publication_missing':
+				return self::no_post_publication_message();
 			case 'beehiiv_post_title_or_content_empty':
 				return __( 'Add a title and body content before sending this newsletter.', 'beehiiv' );
 			case 'beehiiv_blocks_empty':
@@ -732,6 +970,40 @@ final class Sender {
 	 */
 	private static function no_publication_message(): string {
 		return __( 'Choose a publication in <a>beehiiv settings</a>, then try again.', 'beehiiv' );
+	}
+
+	/**
+	 * User-facing message when a post has no publication and there is no default.
+	 *
+	 * @return string
+	 * @since x.x.x
+	 */
+	private static function no_post_publication_message(): string {
+		return __( 'Choose a publication for this post in the beehiiv sidebar.', 'beehiiv' );
+	}
+
+	/**
+	 * User-facing notice when a post's publication is gone and the default was used.
+	 *
+	 * @param string $removed_publication_id Publication no longer connected.
+	 * @param string $default_publication_id Default publication used instead.
+	 * @return string
+	 * @since x.x.x
+	 */
+	private static function publication_fallback_message(
+		string $removed_publication_id,
+		string $default_publication_id
+	): string {
+		return sprintf(
+			/* translators: 1: removed publication name, 2: default publication name. */
+			__(
+				// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
+				'The publication "%1$s" is no longer connected, so this newsletter was sent to the default publication "%2$s" instead.',
+				'beehiiv'
+			),
+			PublicationResolver::get_publication_name( $removed_publication_id ),
+			PublicationResolver::get_publication_name( $default_publication_id )
+		);
 	}
 
 	/**
