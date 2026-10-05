@@ -147,6 +147,13 @@ final class Registrar {
 					</option>
 				<?php endif; ?>
 		</select>
+		<button
+			type="button"
+			id="beehiiv_refresh_publications"
+			class="button button-secondary beehiiv-refresh-button"
+		>
+			<?php esc_html_e( 'Refresh publications', 'beehiiv' ); ?>
+		</button>
 		<p class="description">
 			<?php
 			// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
