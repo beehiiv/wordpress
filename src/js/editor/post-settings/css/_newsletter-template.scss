@@ -16,4 +16,16 @@
 		margin: 0;
 	}
 }
+
+.beehiiv-newsletter-publication {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+
+	&__refresh-notice {
+		color: var(--wp-admin-theme-color, #2271b1);
+		font-size: 12px;
+		margin: 0;
+	}
+}
 /* stylelint-enable selector-class-pattern */

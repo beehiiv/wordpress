@@ -17,7 +17,7 @@ use WP_REST_Server;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Exposes connected publications so the settings screen can refresh its list.
+ * Exposes connected publications so the settings screen and editor can refresh their lists.
  *
  * @since x.x.x
  */
@@ -58,7 +58,9 @@ final class PublicationsController {
 	}
 
 	/**
-	 * Permission check: only the settings screen refreshes publications.
+	 * Permission check for publication requests.
+	 *
+	 * Settings screen requires manage_options; the editor's Publication selector requires publish_posts.
 	 *
 	 * @since x.x.x
 	 *
@@ -66,7 +68,7 @@ final class PublicationsController {
 	 */
 	public static function permissions_check(): bool {
 
-		return current_user_can( 'manage_options' );
+		return current_user_can( 'manage_options' ) || current_user_can( 'publish_posts' );
 	}
 
 	/**

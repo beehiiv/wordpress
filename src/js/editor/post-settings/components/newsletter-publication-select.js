@@ -1,9 +1,11 @@
 /**
  * Publication picker for a post's newsletter.
  */
-import { useMemo } from '@wordpress/element';
-import { SelectControl } from '@wordpress/components';
+import { useEffect, useMemo, useRef, useState } from '@wordpress/element';
+import { Button, SelectControl } from '@wordpress/components';
 import { __, sprintf } from '@wordpress/i18n';
+
+import { refreshEditorPublications } from '../hooks/use-editor-publications';
 
 /**
  * @param {Object}                            props
@@ -18,6 +20,41 @@ export default function NewsletterPublicationSelect( {
 	onChange,
 	disabled = false,
 } ) {
+	const [ isRefreshing, setIsRefreshing ] = useState( false );
+	const [ justRefreshed, setJustRefreshed ] = useState( false );
+	const noticeTimer = useRef( null );
+
+	useEffect( () => {
+		return () => {
+			if ( noticeTimer.current ) {
+				clearTimeout( noticeTimer.current );
+			}
+		};
+	}, [] );
+
+	const handleRefresh = () => {
+		setJustRefreshed( false );
+		setIsRefreshing( true );
+
+		if ( noticeTimer.current ) {
+			clearTimeout( noticeTimer.current );
+		}
+
+		refreshEditorPublications()
+			.then( ( refreshed ) => {
+				if ( ! refreshed ) {
+					return;
+				}
+
+				setJustRefreshed( true );
+				noticeTimer.current = setTimeout(
+					() => setJustRefreshed( false ),
+					4000
+				);
+			} )
+			.finally( () => setIsRefreshing( false ) );
+	};
+
 	const options = useMemo( () => {
 		const opts = publications.map( ( item ) => ( {
 			value: item.id,
@@ -56,7 +93,7 @@ export default function NewsletterPublicationSelect( {
 				value={ value }
 				options={ options }
 				onChange={ onChange }
-				disabled={ disabled }
+				disabled={ disabled || isRefreshing }
 				help={
 					disabled
 						? __(
@@ -67,6 +104,24 @@ export default function NewsletterPublicationSelect( {
 				}
 				__nextHasNoMarginBottom
 			/>
+			<Button
+				variant="secondary"
+				onClick={ handleRefresh }
+				disabled={ disabled || isRefreshing }
+				isBusy={ isRefreshing }
+			>
+				{ isRefreshing
+					? __( 'Refreshing…', 'beehiiv' )
+					: __( 'Refresh publications', 'beehiiv' ) }
+			</Button>
+			{ justRefreshed && (
+				<p
+					className="beehiiv-newsletter-publication__refresh-notice"
+					role="status"
+				>
+					{ __( 'Publications updated from beehiiv.', 'beehiiv' ) }
+				</p>
+			) }
 		</div>
 	);
 }

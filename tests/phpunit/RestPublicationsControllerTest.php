@@ -1,9 +1,9 @@
 <?php
 /**
- * Unit coverage for the publications REST route used by the settings screen's
- * Refresh publications button.
+ * Unit coverage for the publications REST route used by the Refresh publications
+ * buttons on the settings screen and in the editor.
  *
- * Post-Level Publication Selector PRD AC-021. beehiiv HTTP is mocked via `pre_http_request`.
+ * Post-Level Publication Selector PRD AC-021, AC-022. beehiiv HTTP is mocked via `pre_http_request`.
  *
  * @package beehiiv
  */
@@ -136,10 +136,20 @@ class RestPublicationsControllerTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Only users who manage settings can refresh publications.
+	 * AC-022: users who can publish posts can refresh publications from the editor.
 	 */
-	public function test_editor_cannot_refresh_publications(): void {
+	public function test_editor_can_refresh_publications(): void {
 		$response = $this->request_as( 'editor', true );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 1, $this->http_calls );
+	}
+
+	/**
+	 * Users who cannot publish posts cannot refresh publications.
+	 */
+	public function test_contributor_cannot_refresh_publications(): void {
+		$response = $this->request_as( 'contributor', true );
 
 		$this->assertSame( 403, $response->get_status() );
 		$this->assertSame( 0, $this->http_calls );

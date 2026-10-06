@@ -5,6 +5,7 @@
  * default publication, and a choice that is no longer connected falls back to it.
  */
 import { useBeehiivEditorConfig } from './use-beehiiv-editor-config';
+import { useEditorPublications } from './use-editor-publications';
 
 /**
  * @typedef {Object} PostPublication
@@ -24,15 +25,9 @@ import { useBeehiivEditorConfig } from './use-beehiiv-editor-config';
  * @return {PostPublication} Per-post publication state.
  */
 export function usePostPublication( beehiivMeta ) {
-	const {
-		publications: rawPublications,
-		defaultPublicationId,
-		defaultPostTemplateId,
-	} = useBeehiivEditorConfig();
-
-	const publications = Array.isArray( rawPublications )
-		? rawPublications.filter( ( item ) => item?.id )
-		: [];
+	const { defaultPublicationId, defaultPostTemplateId } =
+		useBeehiivEditorConfig();
+	const publications = useEditorPublications().filter( ( item ) => item?.id );
 	const storedPublicationId = beehiivMeta?.beehiivPublicationId || '';
 	const templateId = beehiivMeta?.beehiivPostTemplateId || '';
 
