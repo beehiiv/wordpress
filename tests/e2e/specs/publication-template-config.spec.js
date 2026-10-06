@@ -464,29 +464,29 @@ test.describe( 'Publication and Template Configuration', () => {
 			page.locator( TPL_SELECT ).locator( 'option', { hasText: 'QA Template AC013 Old' } )
 		).toHaveCount( 1 );
 
-		// Save the form via a real click, same publication selected --
-		// Options::sanitize() clears the per-publication template cache on
-		// every save where publication_id is non-empty (BR-004), regardless
-		// of whether the publication itself changed.
-		await page.locator( '#submit' ).click();
-		await page.waitForURL( /page=beehiiv/ );
-
-		expect( readCachedTemplates( pubId ) ).toBeNull();
-
-		// Stand in for "beehiiv now has a new template" the same way every
-		// other test in this file substitutes for beehiiv's per-publication
-		// data -- this environment has no live, authorized beehiiv account to
-		// actually create one in.
-		seedTemplates( pubId, [
+		// beehiiv now has a new template: mock its list call so the page that
+		// loads after the save fetches it without a live, slow network call.
+		mockLiveTemplates( pubId, [
 			{ id: 'qa-e2e-tpl-ac013-new', name: 'QA Template AC013 New' },
 		] );
 
-		await page.goto( SETTINGS_PATH );
+		// Save the form via a real click, same publication selected --
+		// Options::sanitize() clears the per-publication template cache on
+		// every save where publication_id is non-empty (BR-004), regardless
+		// of whether the publication itself changed. The settings page that
+		// loads after the save then fetches the list from beehiiv again.
+		await page.locator( '#submit' ).click();
+		await page.waitForURL( /page=beehiiv/ );
+
 		await expect(
 			page.locator( TPL_SELECT ).locator( 'option', { hasText: 'QA Template AC013 New' } )
 		).toHaveCount( 1 );
 		await expect(
 			page.locator( TPL_SELECT ).locator( 'option', { hasText: 'QA Template AC013 Old' } )
 		).toHaveCount( 0 );
+
+		// The old cached list was cleared and replaced by beehiiv's current one.
+		const cached = readCachedTemplates( pubId );
+		expect( cached.map( ( item ) => item.id ) ).toEqual( [ 'qa-e2e-tpl-ac013-new' ] );
 	} );
 } );
