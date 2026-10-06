@@ -99,6 +99,19 @@ function seedTemplates( publicationId, templates ) {
 	);
 }
 
+/**
+ * Answers beehiiv's post-templates list call for a publication with a fixed
+ * list, so a manual refresh never waits on the live API (a fake token there
+ * means a failed request plus a failed token refresh, up to 30s each).
+ */
+function mockLiveTemplates( publicationId, templates ) {
+	wpCli(
+		`eval 'beehiiv_e2e_mock_http( "/publications/${ publicationId }/post_templates", [ "body" => [ "data" => json_decode( base64_decode( "${ toPhpJsonArg(
+			templates
+		) }" ), true ) ] ] );'`
+	);
+}
+
 /** Writes the beehiiv_settings option directly, bypassing the form -- for arranging initial page-load state. */
 function setSettingsOption( publicationId, postTemplateId ) {
 	const json = JSON.stringify( {
@@ -298,16 +311,14 @@ test.describe( 'Publication and Template Configuration', () => {
 
 	test( 'AC-008: clicking "Refresh templates" fetches the latest template list from beehiiv without submitting the form', async ( { page } ) => {
 		// Refresh always bypasses the cache (Cache::delete_post_templates()
-		// runs before re-fetching), so unlike every other test in this file it
-		// necessarily reaches the live beehiiv API and waits out a failed
-		// auth + token-refresh round trip in this environment. Generous
-		// timeout to absorb that real network latency.
-		test.setTimeout( 45000 );
-
+		// runs before re-fetching), so it reaches beehiiv's list endpoint.
+		// That call is mocked with a *different* list than the seeded cache,
+		// so the test never depends on live network latency.
 		seedConnectedAndAuthorized();
 		const pubId = 'qa-e2e-pub-ac008';
 		seedPublications( [ { id: pubId, name: 'QA Publication AC008' } ] );
 		seedTemplates( pubId, [ { id: 'qa-e2e-tpl-ac008-old', name: 'QA Template AC008 Old' } ] );
+		mockLiveTemplates( pubId, [ { id: 'qa-e2e-tpl-ac008-new', name: 'QA Template AC008 New' } ] );
 		setSettingsOption( pubId, '' );
 
 		await page.goto( SETTINGS_PATH );
@@ -331,31 +342,28 @@ test.describe( 'Publication and Template Configuration', () => {
 		expect( page.url() ).toBe( urlBefore );
 
 		// PostTemplatesController::get_items() calls
-		// Cache::delete_post_templates() unconditionally before re-fetching
-		// when `refresh=1` is sent. The live re-fetch itself fails in this
-		// environment (no working OAuth token) and so does not repopulate the
-		// cache, leaving it genuinely empty -- proving the refresh handler
-		// really executed a bypass-cache round trip rather than serving the
-		// old seeded list.
-		expect( readCachedTemplates( pubId ) ).toBeNull();
+		// Cache::delete_post_templates() before re-fetching when `refresh=1`
+		// is sent. The cache now holds beehiiv's (mocked) new list instead of
+		// the old seeded one -- proving the refresh really executed a
+		// bypass-cache round trip rather than serving the cached list.
+		const cached = readCachedTemplates( pubId );
+		expect( cached.map( ( item ) => item.id ) ).toEqual( [ 'qa-e2e-tpl-ac008-new' ] );
+		await expect( page.locator( '#beehiiv_post_template_id' ) ).toContainText( 'QA Template AC008 New' );
 	} );
 
 	test( 'AC-009: a "Templates updated" notice appears briefly after manual refresh', async ( { page } ) => {
-		test.setTimeout( 45000 );
-
 		seedConnectedAndAuthorized();
 		const pubId = 'qa-e2e-pub-ac009';
 		seedPublications( [ { id: pubId, name: 'QA Publication AC009' } ] );
 		seedTemplates( pubId, [ { id: 'qa-e2e-tpl-ac009', name: 'QA Template AC009' } ] );
+		mockLiveTemplates( pubId, [ { id: 'qa-e2e-tpl-ac009', name: 'QA Template AC009' } ] );
 		setSettingsOption( pubId, '' );
 
 		await page.goto( SETTINGS_PATH );
 
 		// showRefreshNotice() runs on the success branch of loadTemplates()'s
-		// try block, which is reached as long as the REST call itself resolves
-		// (it always replies 200, even when the underlying live beehiiv call
-		// fails and the returned list is empty) -- so this notice is
-		// independent of the live-call outcome asserted in AC-008.
+		// try block, reached once the REST call resolves; beehiiv's list call
+		// is mocked so the round trip is fast and deterministic.
 		await Promise.all( [
 			page.waitForResponse(
 				( resp ) =>
