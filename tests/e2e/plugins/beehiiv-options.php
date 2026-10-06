@@ -9,6 +9,31 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
+ * Fails WordPress.org requests instantly in the tests environment.
+ *
+ * WordPress core checks api.wordpress.org for core, plugin and theme updates
+ * on the first wp-admin load after its 12-hour cache expires, and loads
+ * dashboard news. Those calls run synchronously and can stall an admin page
+ * load past a test's timeout (seen as a login that never reaches /wp-admin/).
+ * No spec needs WordPress.org, so they fail fast here instead. beehiiv
+ * requests are untouched.
+ */
+add_filter(
+	'pre_http_request',
+	static function ( $preempt, $parsed_args, $url ) {
+		$host = (string) wp_parse_url( $url, PHP_URL_HOST );
+
+		if ( preg_match( '/(^|\.)(wordpress\.org|w\.org)$/i', $host ) ) {
+			return new WP_Error( 'beehiiv_e2e_blocked', 'WordPress.org requests are blocked in the E2E tests environment.' );
+		}
+
+		return $preempt;
+	},
+	1,
+	3
+);
+
+/**
  * Short-circuits any outbound wp_remote_request() whose URL contains a
  * registered substring, so specs can exercise code gated behind a live
  * beehiiv API/OAuth call (permissions checks, token exchange, user
