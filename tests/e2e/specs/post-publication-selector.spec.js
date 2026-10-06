@@ -691,4 +691,54 @@ test.describe( 'Post-level publication selector (PRD-06.8.02)', () => {
 		const texts = await optionTexts( pubSelect );
 		expect( texts ).toEqual( expect.arrayContaining( [ PUB_A.name, PUB_B.name, PUB_C.name ] ) );
 	} );
+
+	test( 'AC-022: editor Refresh publications reloads the list from beehiiv bypassing the cache, keeps the post\'s choice, confirms, and is unavailable once sent', async ( { page } ) => {
+		const PUB_C = { id: 'pub_qa_gamma', name: 'Gamma Monthly' };
+		// Cache is freshly seeded with A + B; beehiiv itself now returns A + B + C (list call only).
+		php( `beehiiv_e2e_mock_http( "/publications?", [ "body" => [ "data" => ${ phpJson( [ PUB_A, PUB_B, PUB_C ] ) } ] ] );` );
+
+		const id = createPost( { title: 'QA AC-022', meta: { _beehiiv_send_to_newsletter: '1' } } );
+		await openEditorWithSidebar( page, id );
+		const box = page.locator( '.beehiiv-newsletter-publication' );
+		const pub = page.locator( PUB_SELECT );
+		await expect( pub ).toBeVisible();
+		await expect( pub.locator( 'option', { hasText: PUB_C.name } ) ).toHaveCount( 0 );
+
+		// Make the post's current (unsaved) choice B, not the site default A.
+		await pub.selectOption( PUB_B.id );
+		await waitForTemplateOptions( page, 'Beta Classic' );
+		resetLog();
+
+		const button = box.getByRole( 'button', { name: 'Refresh publications' } );
+		await expect( button ).toBeVisible();
+		await expect( button ).toBeEnabled();
+		const restResp = page.waitForResponse( ( r ) => /beehiiv\/v1\/publications/.test( decodeURIComponent( r.url() ) ) && /refresh=1/.test( r.url() ) && r.request().method() === 'GET' );
+		await button.click();
+		expect( ( await restResp ).status() ).toBe( 200 );
+
+		await expect( box.getByText( 'Publications updated from beehiiv.' ) ).toBeVisible();
+		await expect( pub.locator( 'option', { hasText: PUB_C.name } ) ).toHaveCount( 1 );
+		await expect( pub ).toHaveValue( PUB_B.id );
+		await expect( pub ).toBeEnabled();
+		await expect( button ).toBeEnabled();
+		const edited = await page.evaluate( () => window.wp.data.select( 'core/editor' ).getEditedPostAttribute( 'meta' )._beehiiv_publication_id );
+		expect( edited ).toBe( PUB_B.id );
+
+		// The cache was bypassed: a real outbound beehiiv list call happened despite a fresh cached list.
+		const out = php( 'echo "JSON=" . wp_json_encode( beehiiv_e2e_get_http_log() );' );
+		const log = JSON.parse( out.slice( out.indexOf( 'JSON=' ) + 5 ) );
+		expect( log.some( ( e ) => e.method === 'GET' && /\/publications\?/.test( e.url ) ) ).toBe( true );
+
+		// Once beehiiv has sent the newsletter, the button is unavailable.
+		const sent = createPost( {
+			title: 'QA AC-022 sent',
+			status: 'publish',
+			meta: linkedMeta( { pub: PUB_B.id, template: 'tpl_b1', beehiivPostId: 'bh_beta_sent22', scheduledDays: 0 } ),
+		} );
+		await openEditorWithSidebar( page, sent );
+		await expect( pub ).toBeDisabled();
+		const sentButton = page.locator( '.beehiiv-newsletter-publication' ).getByRole( 'button', { name: 'Refresh publications' } );
+		await expect( sentButton ).toBeVisible();
+		await expect( sentButton ).toBeDisabled();
+	} );
 } );
