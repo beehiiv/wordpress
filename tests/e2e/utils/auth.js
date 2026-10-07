@@ -1,3 +1,5 @@
+const { expect } = require( '@playwright/test' );
+
 const ADMIN_USERNAME = process.env.WP_ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.WP_ADMIN_PASSWORD || 'password';
 
@@ -21,8 +23,20 @@ async function loginAsAdmin( page ) {
  */
 async function loginAs( page, username, password ) {
 	await page.goto( '/wp-login.php' );
-	await page.fill( '#user_login', username );
-	await page.fill( '#user_pass', password );
+
+	const user = page.locator( '#user_login' );
+	const pass = page.locator( '#user_pass' );
+
+	// wp-login.php focuses and selects the username field ~200ms after load.
+	// Wait for that first so it can't steal focus mid-fill and type the
+	// password into the username field.
+	await expect( user ).toBeFocused();
+
+	await user.fill( username );
+	await pass.fill( password );
+	await expect( user ).toHaveValue( username );
+	await expect( pass ).toHaveValue( password );
+
 	await page.click( '#wp-submit' );
 	await page.waitForURL( '**/wp-admin/**' );
 }
