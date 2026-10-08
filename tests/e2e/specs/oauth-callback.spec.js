@@ -52,15 +52,24 @@ function clearConnection() {
 
 /** Seeds only a client_id, the same real storage path a successful registration would use. */
 function seedClientId() {
-	wpCli( `eval '\\Beehiiv\\OAuth\\TokenStore::save_client_id( "${ CLIENT_ID }" );'` );
+	wpCli(
+		`eval '\\Beehiiv\\OAuth\\TokenStore::save_client_id( "${ CLIENT_ID }" );'`
+	);
 }
 
-/** Deletes the PKCE verifier and CSRF state transients for one user. */
+/**
+ * Deletes the PKCE verifier and CSRF state transients for one user.
+ * @param {number|string} userId
+ */
 function clearAuthTransients( userId ) {
 	wpCliSafe( `option delete _transient_${ VERIFIER_PREFIX }${ userId }` );
-	wpCliSafe( `option delete _transient_timeout_${ VERIFIER_PREFIX }${ userId }` );
+	wpCliSafe(
+		`option delete _transient_timeout_${ VERIFIER_PREFIX }${ userId }`
+	);
 	wpCliSafe( `option delete _transient_${ STATE_PREFIX }${ userId }` );
-	wpCliSafe( `option delete _transient_timeout_${ STATE_PREFIX }${ userId }` );
+	wpCliSafe(
+		`option delete _transient_timeout_${ STATE_PREFIX }${ userId }`
+	);
 }
 
 /**
@@ -79,14 +88,19 @@ async function seedRealAuthorizationState( page ) {
 	await page.goto( SETTINGS_PATH );
 
 	const [ request ] = await Promise.all( [
-		page.waitForRequest( ( req ) => req.url().includes( '/oauth/authorize' ) ),
+		page.waitForRequest( ( req ) =>
+			req.url().includes( '/oauth/authorize' )
+		),
 		page.getByRole( 'link', { name: 'Connect to beehiiv' } ).click(),
 	] );
 
 	return new URL( request.url() ).searchParams.get( 'state' );
 }
 
-/** Builds a callback URL with the given query params appended. */
+/**
+ * Builds a callback URL with the given query params appended.
+ * @param {Object} params
+ */
 function callbackUrl( params ) {
 	return `${ CALLBACK_PATH }&${ new URLSearchParams( params ).toString() }`;
 }
@@ -120,24 +134,30 @@ test.describe( 'OAuth Callback & Token Exchange', () => {
 		await loginAsAdmin( page );
 	} );
 
-	test( 'AC-002: invalid or missing authorization codes show an error message and prevent incomplete connections', async ( { page } ) => {
+	test( 'AC-002: invalid or missing authorization codes show an error message and prevent incomplete connections', async ( {
+		page,
+	} ) => {
 		const state = await seedRealAuthorizationState( page );
 
 		// No `code` param at all -- CallbackHandler::process() rejects on
 		// `'' === $code` before even reaching Authorization::validate_state().
 		await page.goto( callbackUrl( { state } ) );
 		await page.waitForURL( SETTINGS_URL_RE );
-		await expect( page.locator( '.notice-error' ) ).toContainText( /invalid beehiiv connection response/i );
+		await expect( page.locator( '.notice-error' ) ).toContainText(
+			/invalid beehiiv connection response/i
+		);
 
 		const connectedAfter = wpCli(
-			"eval 'echo \\Beehiiv\\Connection\\Manager::is_connected() ? \"yes\" : \"no\";'"
+			'eval \'echo \\Beehiiv\\Connection\\Manager::is_connected() ? "yes" : "no";\''
 		);
 		expect( connectedAfter.trim() ).toBe( 'no' );
 
 		clearAuthTransients( adminUserId );
 	} );
 
-	test( 'AC-004: CSRF state validation prevents authorization codes obtained through redirects to other sites from being accepted', async ( { page } ) => {
+	test( 'AC-004: CSRF state validation prevents authorization codes obtained through redirects to other sites from being accepted', async ( {
+		page,
+	} ) => {
 		await seedRealAuthorizationState( page );
 
 		// A tampered/foreign state value must be rejected even with a
@@ -146,20 +166,27 @@ test.describe( 'OAuth Callback & Token Exchange', () => {
 		// handler uses one combined branch for `'' === $code ||
 		// !validate_state($state)`, not separate messages per failure mode.
 		await page.goto(
-			callbackUrl( { code: 'qa-e2e-fake-code', state: 'not-the-real-state-value-000000' } )
+			callbackUrl( {
+				code: 'qa-e2e-fake-code',
+				state: 'not-the-real-state-value-000000',
+			} )
 		);
 		await page.waitForURL( SETTINGS_URL_RE );
-		await expect( page.locator( '.notice-error' ) ).toContainText( /invalid beehiiv connection response/i );
+		await expect( page.locator( '.notice-error' ) ).toContainText(
+			/invalid beehiiv connection response/i
+		);
 
 		const connectedAfter = wpCli(
-			"eval 'echo \\Beehiiv\\Connection\\Manager::is_connected() ? \"yes\" : \"no\";'"
+			'eval \'echo \\Beehiiv\\Connection\\Manager::is_connected() ? "yes" : "no";\''
 		);
 		expect( connectedAfter.trim() ).toBe( 'no' );
 
 		clearAuthTransients( adminUserId );
 	} );
 
-	test( 'AC-003: expired authorization sessions (older than 10 minutes) display a clear error message', async ( { page } ) => {
+	test( 'AC-003: expired authorization sessions (older than 10 minutes) display a clear error message', async ( {
+		page,
+	} ) => {
 		const state = await seedRealAuthorizationState( page );
 
 		// BR-002 / Authorization::get_authorize_url(): the state and PKCE
@@ -174,17 +201,25 @@ test.describe( 'OAuth Callback & Token Exchange', () => {
 		// successful exchange already consumed both (BR-002's single-use
 		// guarantee). Reproduced precisely here rather than waiting out the
 		// shared TTL, which would not exercise this code path at all.
-		wpCliSafe( `option delete _transient_${ VERIFIER_PREFIX }${ adminUserId }` );
-		wpCliSafe( `option delete _transient_timeout_${ VERIFIER_PREFIX }${ adminUserId }` );
+		wpCliSafe(
+			`option delete _transient_${ VERIFIER_PREFIX }${ adminUserId }`
+		);
+		wpCliSafe(
+			`option delete _transient_timeout_${ VERIFIER_PREFIX }${ adminUserId }`
+		);
 
 		await page.goto( callbackUrl( { code: 'qa-e2e-fake-code', state } ) );
 		await page.waitForURL( SETTINGS_URL_RE );
-		await expect( page.locator( '.notice-error' ) ).toContainText( /connection session expired/i );
+		await expect( page.locator( '.notice-error' ) ).toContainText(
+			/connection session expired/i
+		);
 
 		clearAuthTransients( adminUserId );
 	} );
 
-	test( 'AC-001: after granting permission on beehiiv, the admin is redirected back to WordPress settings', async ( { page } ) => {
+	test( 'AC-001: after granting permission on beehiiv, the admin is redirected back to WordPress settings', async ( {
+		page,
+	} ) => {
 		const state = await seedRealAuthorizationState( page );
 
 		wpCli(
@@ -193,14 +228,18 @@ test.describe( 'OAuth Callback & Token Exchange', () => {
 
 		await page.goto( callbackUrl( { code: 'qa-e2e-real-code', state } ) );
 		await expect( page ).toHaveURL( SETTINGS_URL_RE );
-		await expect( page.locator( '.notice-success' ) ).toContainText( /successfully connected/i );
+		await expect( page.locator( '.notice-success' ) ).toContainText(
+			/successfully connected/i
+		);
 
 		clearConnection();
 		clearAuthTransients( adminUserId );
 		wpCliSafe( "eval 'beehiiv_e2e_reset_all();'" );
 	} );
 
-	test( 'AC-005: successfully exchanged tokens are stored and available for authenticated API requests', async ( { page } ) => {
+	test( 'AC-005: successfully exchanged tokens are stored and available for authenticated API requests', async ( {
+		page,
+	} ) => {
 		const state = await seedRealAuthorizationState( page );
 
 		wpCli(
@@ -210,7 +249,9 @@ test.describe( 'OAuth Callback & Token Exchange', () => {
 		await page.goto( callbackUrl( { code: 'qa-e2e-real-code', state } ) );
 		await page.waitForURL( SETTINGS_URL_RE );
 
-		const accessToken = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'" );
+		const accessToken = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'"
+		);
 		expect( accessToken.trim() ).toBe( 'qa-e2e-ac5-access' );
 
 		clearConnection();
@@ -218,7 +259,9 @@ test.describe( 'OAuth Callback & Token Exchange', () => {
 		wpCliSafe( "eval 'beehiiv_e2e_reset_all();'" );
 	} );
 
-	test( "AC-006: the authenticated user's identity is saved and displayed in the connection status", async ( { page } ) => {
+	test( "AC-006: the authenticated user's identity is saved and displayed in the connection status", async ( {
+		page,
+	} ) => {
 		const state = await seedRealAuthorizationState( page );
 
 		wpCli(
@@ -228,16 +271,18 @@ test.describe( 'OAuth Callback & Token Exchange', () => {
 		await page.goto( callbackUrl( { code: 'qa-e2e-real-code', state } ) );
 		await page.waitForURL( SETTINGS_URL_RE );
 
-		await expect( page.locator( '.beehiiv-connection-status__account' ) ).toContainText(
-			'QA Tester (qa-e2e-ac6@example.test)'
-		);
+		await expect(
+			page.locator( '.beehiiv-connection-status__account' )
+		).toContainText( 'QA Tester (qa-e2e-ac6@example.test)' );
 
 		clearConnection();
 		clearAuthTransients( adminUserId );
 		wpCliSafe( "eval 'beehiiv_e2e_reset_all();'" );
 	} );
 
-	test( 'AC-007: only users with admin permissions can complete the OAuth connection', async ( { page } ) => {
+	test( 'AC-007: only users with admin permissions can complete the OAuth connection', async ( {
+		page,
+	} ) => {
 		// CallbackHandler::process()'s own current_user_can('manage_options')
 		// check -- and its custom "You do not have permission to connect
 		// beehiiv." message -- is unreachable for this exact scenario. The
@@ -256,13 +301,20 @@ test.describe( 'OAuth Callback & Token Exchange', () => {
 		// complete the connection) still holds -- just via WP core's page
 		// registration, not the plugin's own redundant check.
 		await loginAs( page, NON_ADMIN_USERNAME, NON_ADMIN_PASSWORD );
-		const response = await page.goto( callbackUrl( { code: 'qa-e2e-any-code', state: 'qa-e2e-any-state' } ) );
+		const response = await page.goto(
+			callbackUrl( {
+				code: 'qa-e2e-any-code',
+				state: 'qa-e2e-any-state',
+			} )
+		);
 
 		expect( response.status() ).toBe( 403 );
-		await expect( page.getByText( /sorry, you are not allowed to access this page/i ) ).toBeVisible();
+		await expect(
+			page.getByText( /sorry, you are not allowed to access this page/i )
+		).toBeVisible();
 
 		const connectedAfter = wpCli(
-			"eval 'echo \\Beehiiv\\Connection\\Manager::is_connected() ? \"yes\" : \"no\";'"
+			'eval \'echo \\Beehiiv\\Connection\\Manager::is_connected() ? "yes" : "no";\''
 		);
 		expect( connectedAfter.trim() ).toBe( 'no' );
 	} );

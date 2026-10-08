@@ -55,24 +55,30 @@ test.describe( 'Secure Token Persistence', () => {
 		// the class's own decrypt path -- proves this is genuine encryption,
 		// not just garbled/corrupted data that happens not to contain the
 		// substring.
-		const accessToken = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'" );
+		const accessToken = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'"
+		);
 		expect( accessToken.trim() ).toBe( 'qa-e2e-ac1-plaintext-access' );
 
 		wpCliSafe( `option delete ${ OAUTH_OPTION }` );
 	} );
 
-	test( 'AC-002: connected user information is stored and retrievable for display in the admin UI', async ( { page } ) => {
+	test( 'AC-002: connected user information is stored and retrievable for display in the admin UI', async ( {
+		page,
+	} ) => {
 		wpCli(
 			'eval \'\\Beehiiv\\OAuth\\TokenStore::save_tokens( "qa-e2e-ac2-client", [ "access_token" => "qa-e2e-ac2-access", "refresh_token" => "qa-e2e-ac2-refresh", "expires_in" => 3600 ], [ "first_name" => "QA", "last_name" => "Tester", "email" => "qa-e2e-ac2@example.test" ] );\''
 		);
 
-		const label = wpCli( "eval 'echo \\Beehiiv\\Connection\\Manager::get_connected_user_label();'" );
+		const label = wpCli(
+			"eval 'echo \\Beehiiv\\Connection\\Manager::get_connected_user_label();'"
+		);
 		expect( label.trim() ).toBe( 'QA Tester (qa-e2e-ac2@example.test)' );
 
 		await page.goto( SETTINGS_PATH );
-		await expect( page.locator( '.beehiiv-connection-status__account' ) ).toContainText(
-			'QA Tester (qa-e2e-ac2@example.test)'
-		);
+		await expect(
+			page.locator( '.beehiiv-connection-status__account' )
+		).toContainText( 'QA Tester (qa-e2e-ac2@example.test)' );
 
 		wpCliSafe( `option delete ${ OAUTH_OPTION }` );
 	} );
@@ -82,9 +88,15 @@ test.describe( 'Secure Token Persistence', () => {
 			'eval \'\\Beehiiv\\OAuth\\TokenStore::save_tokens( "qa-e2e-ac3-client", [ "access_token" => "qa-e2e-ac3-access", "refresh_token" => "qa-e2e-ac3-refresh", "expires_in" => 3600 ] );\''
 		);
 
-		const clientId = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_client_id();'" );
-		const accessToken = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'" );
-		const refreshToken = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_refresh_token();'" );
+		const clientId = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_client_id();'"
+		);
+		const accessToken = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'"
+		);
+		const refreshToken = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_refresh_token();'"
+		);
 
 		expect( clientId.trim() ).toBe( 'qa-e2e-ac3-client' );
 		expect( accessToken.trim() ).toBe( 'qa-e2e-ac3-access' );
@@ -99,7 +111,9 @@ test.describe( 'Secure Token Persistence', () => {
 		);
 
 		const expiresAt = parseInt(
-			wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_expires_at();'" ).trim(),
+			wpCli(
+				"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_expires_at();'"
+			).trim(),
 			10
 		);
 		const expectedExpiry = Math.floor( Date.now() / 1000 ) + 1800;
@@ -121,8 +135,12 @@ test.describe( 'Secure Token Persistence', () => {
 			'eval \'\\Beehiiv\\OAuth\\TokenStore::save_tokens( "qa-e2e-ac5-client", [ "access_token" => "qa-e2e-ac5-new-access", "expires_in" => 3600 ] );\''
 		);
 
-		const accessToken = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'" );
-		const refreshToken = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_refresh_token();'" );
+		const accessToken = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'"
+		);
+		const refreshToken = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_refresh_token();'"
+		);
 
 		expect( accessToken.trim() ).toBe( 'qa-e2e-ac5-new-access' );
 		expect( refreshToken.trim() ).toBe( 'qa-e2e-ac5-original-refresh' );
@@ -133,21 +151,25 @@ test.describe( 'Secure Token Persistence', () => {
 	test( 'AC-006: the system provides a way to verify whether valid credentials are available before attempting API calls', async () => {
 		wpCliSafe( `option delete ${ OAUTH_OPTION }` );
 		const beforeAny = wpCli(
-			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::has_credentials() ? \"yes\" : \"no\";'"
+			'eval \'echo \\Beehiiv\\OAuth\\TokenStore::has_credentials() ? "yes" : "no";\''
 		);
 		expect( beforeAny.trim() ).toBe( 'no' );
 
 		// BR-001: client_id alone (no access_token) is still incomplete.
-		wpCli( 'eval \'\\Beehiiv\\OAuth\\TokenStore::save_client_id( "qa-e2e-ac6-client" );\'' );
+		wpCli(
+			'eval \'\\Beehiiv\\OAuth\\TokenStore::save_client_id( "qa-e2e-ac6-client" );\''
+		);
 		const clientOnly = wpCli(
-			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::has_credentials() ? \"yes\" : \"no\";'"
+			'eval \'echo \\Beehiiv\\OAuth\\TokenStore::has_credentials() ? "yes" : "no";\''
 		);
 		expect( clientOnly.trim() ).toBe( 'no' );
 
 		wpCli(
 			'eval \'\\Beehiiv\\OAuth\\TokenStore::save_tokens( "qa-e2e-ac6-client", [ "access_token" => "qa-e2e-ac6-access", "refresh_token" => "qa-e2e-ac6-refresh", "expires_in" => 3600 ] );\''
 		);
-		const full = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::has_credentials() ? \"yes\" : \"no\";'" );
+		const full = wpCli(
+			'eval \'echo \\Beehiiv\\OAuth\\TokenStore::has_credentials() ? "yes" : "no";\''
+		);
 		expect( full.trim() ).toBe( 'yes' );
 
 		wpCliSafe( `option delete ${ OAUTH_OPTION }` );
@@ -164,7 +186,7 @@ test.describe( 'Secure Token Persistence', () => {
 		expect( optionValue ).toBeNull();
 
 		const hasCredentials = wpCli(
-			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::has_credentials() ? \"yes\" : \"no\";'"
+			'eval \'echo \\Beehiiv\\OAuth\\TokenStore::has_credentials() ? "yes" : "no";\''
 		);
 		expect( hasCredentials.trim() ).toBe( 'no' );
 	} );
