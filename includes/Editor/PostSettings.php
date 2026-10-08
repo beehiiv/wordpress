@@ -139,7 +139,8 @@ final class PostSettings {
 	/**
 	 * Whether the current user may read or write a beehiiv post meta key.
 	 *
-	 * Newsletter send settings and newsletter wording require `publish_posts`; other keys allow `edit_posts`.
+	 * Readonly keys are never writable via REST. Newsletter send settings and
+	 * newsletter wording require `publish_posts`; other keys allow `edit_posts`.
 	 *
 	 * @param bool   $allowed   Whether the user can add or edit the meta key.
 	 * @param string $meta_key  Meta key.
@@ -148,6 +149,10 @@ final class PostSettings {
 	 * @since 1.0.0
 	 */
 	public static function authorize_meta( $allowed, $meta_key, $post_id ) {
+		if ( ! empty( self::META_KEYS[ $meta_key ]['readonly'] ) ) {
+			return false;
+		}
+
 		$writable_keys = [
 			Meta::SEND_TO_NEWSLETTER,
 			Meta::SEND_TO_NEWSLETTER_DATE,

@@ -16,8 +16,8 @@ async function loginAsAdmin( page ) {
  * apply.
  *
  * @param {import('@playwright/test').Page} page
- * @param {string} username
- * @param {string} password
+ * @param {string}                          username
+ * @param {string}                          password
  */
 async function loginAs( page, username, password ) {
 	await page.goto( '/wp-login.php' );

@@ -86,23 +86,35 @@ test.describe( 'Connection status card', () => {
 		await loginAsAdmin( page );
 	} );
 
-	test( 'AC-001: status icon visually distinguishes connected from disconnected states', async ( { page } ) => {
+	test( 'AC-001: status icon visually distinguishes connected from disconnected states', async ( {
+		page,
+	} ) => {
 		clearConnection();
 		await page.goto( SETTINGS_PATH );
-		const disconnectedIcon = page.locator( '.beehiiv-connection-status__icon' );
-		await expect( disconnectedIcon ).toHaveClass( /beehiiv-connection-status__icon--disconnected/ );
+		const disconnectedIcon = page.locator(
+			'.beehiiv-connection-status__icon'
+		);
+		await expect( disconnectedIcon ).toHaveClass(
+			/beehiiv-connection-status__icon--disconnected/
+		);
 		await expect( disconnectedIcon ).toHaveClass( /dashicons-marker/ );
 
 		seedConnected();
 		await page.goto( SETTINGS_PATH );
-		const connectedIcon = page.locator( '.beehiiv-connection-status__icon' );
-		await expect( connectedIcon ).toHaveClass( /beehiiv-connection-status__icon--connected/ );
+		const connectedIcon = page.locator(
+			'.beehiiv-connection-status__icon'
+		);
+		await expect( connectedIcon ).toHaveClass(
+			/beehiiv-connection-status__icon--connected/
+		);
 		await expect( connectedIcon ).toHaveClass( /dashicons-yes-alt/ );
 
 		clearConnection();
 	} );
 
-	test( 'AC-002: status label displays as "Connected" or "Disconnected"', async ( { page } ) => {
+	test( 'AC-002: status label displays as "Connected" or "Disconnected"', async ( {
+		page,
+	} ) => {
 		// Beehiiv\Connection\Manager::get_status_label() actually returns
 		// "Not connected", not "Disconnected" -- this assertion follows the
 		// PRD's literal AC text, so it is a known failure (real PRD/copy
@@ -112,22 +124,32 @@ test.describe( 'Connection status card', () => {
 
 		clearConnection();
 		await page.goto( SETTINGS_PATH );
-		await expect( page.locator( '.beehiiv-connection-status strong' ) ).toHaveText( 'Disconnected' );
+		await expect(
+			page.locator( '.beehiiv-connection-status strong' )
+		).toHaveText( 'Disconnected' );
 
 		seedConnected();
 		await page.goto( SETTINGS_PATH );
-		await expect( page.locator( '.beehiiv-connection-status strong' ) ).toHaveText( 'Connected' );
+		await expect(
+			page.locator( '.beehiiv-connection-status strong' )
+		).toHaveText( 'Connected' );
 
 		clearConnection();
 	} );
 
-	test( 'AC-003: "Connect to beehiiv" button is visible when disconnected', async ( { page } ) => {
+	test( 'AC-003: "Connect to beehiiv" button is visible when disconnected', async ( {
+		page,
+	} ) => {
 		clearConnection();
 		await page.goto( SETTINGS_PATH );
-		await expect( page.getByRole( 'link', { name: 'Connect to beehiiv' } ) ).toBeVisible();
+		await expect(
+			page.getByRole( 'link', { name: 'Connect to beehiiv' } )
+		).toBeVisible();
 	} );
 
-	test( 'AC-004: button initiates the OAuth authorization flow', async ( { page } ) => {
+	test( 'AC-004: button initiates the OAuth authorization flow', async ( {
+		page,
+	} ) => {
 		clearConnection();
 		await page.goto( SETTINGS_PATH );
 
@@ -145,28 +167,40 @@ test.describe( 'Connection status card', () => {
 		if ( SETTINGS_URL_RE.test( page.url() ) ) {
 			// `.notice` alone also matches the unrelated `.beehiiv-plans-notice`
 			// info box rendered above the card, so scope to the error notice.
-			await expect( page.locator( '.notice-error' ) ).toContainText( /not configured/i );
+			await expect( page.locator( '.notice-error' ) ).toContainText(
+				/not configured/i
+			);
 		} else {
 			expect( page.url() ).not.toContain( 'wp-admin' );
 		}
 	} );
 
-	test( 'AC-005: "Disconnect" button is visible when connected', async ( { page } ) => {
+	test( 'AC-005: "Disconnect" button is visible when connected', async ( {
+		page,
+	} ) => {
 		seedConnected();
 		await page.goto( SETTINGS_PATH );
-		await expect( page.getByRole( 'link', { name: 'Disconnect' } ) ).toBeVisible();
+		await expect(
+			page.getByRole( 'link', { name: 'Disconnect' } )
+		).toBeVisible();
 		clearConnection();
 	} );
 
-	test( 'AC-006: disconnect action removes the authorization token', async ( { page } ) => {
+	test( 'AC-006: disconnect action removes the authorization token', async ( {
+		page,
+	} ) => {
 		seedConnected();
 		await page.goto( SETTINGS_PATH );
-		await expect( page.getByRole( 'link', { name: 'Disconnect' } ) ).toBeVisible();
+		await expect(
+			page.getByRole( 'link', { name: 'Disconnect' } )
+		).toBeVisible();
 
 		await page.getByRole( 'link', { name: 'Disconnect' } ).click();
 		await page.waitForURL( SETTINGS_URL_RE );
 
-		await expect( page.getByRole( 'link', { name: 'Connect to beehiiv' } ) ).toBeVisible();
+		await expect(
+			page.getByRole( 'link', { name: 'Connect to beehiiv' } )
+		).toBeVisible();
 
 		const stillConnected = wpCliSafe(
 			`eval 'echo \\Beehiiv\\Connection\\Manager::is_connected() ? "yes" : "no";'`
@@ -174,41 +208,58 @@ test.describe( 'Connection status card', () => {
 		expect( stillConnected ).toBe( 'no' );
 	} );
 
-	test( "AC-007: connected user's account identifier displays when available", async ( { page } ) => {
+	test( "AC-007: connected user's account identifier displays when available", async ( {
+		page,
+	} ) => {
 		seedConnected();
 		await page.goto( SETTINGS_PATH );
-		await expect( page.locator( '.beehiiv-connection-status__account' ) ).toHaveText(
-			'QA Tester (qa-e2e@example.test)'
-		);
+		await expect(
+			page.locator( '.beehiiv-connection-status__account' )
+		).toHaveText( 'QA Tester (qa-e2e@example.test)' );
 		clearConnection();
 	} );
 
-	test( 'AC-008: signup link is shown to unconnected users without an existing beehiiv account', async ( { page } ) => {
+	test( 'AC-008: signup link is shown to unconnected users without an existing beehiiv account', async ( {
+		page,
+	} ) => {
 		clearConnection();
 		await page.goto( SETTINGS_PATH );
 		const signupLink = page.locator( '.beehiiv-connection-signup a' );
 		await expect( signupLink ).toBeVisible();
 		await expect( signupLink ).toHaveText( 'Create a beehiiv account now' );
-		await expect( signupLink ).toHaveAttribute( 'href', /^https:\/\/www\.beehiiv\.com\// );
+		await expect( signupLink ).toHaveAttribute(
+			'href',
+			/^https:\/\/www\.beehiiv\.com\//
+		);
 	} );
 
-	test( 'AC-009: documentation link always appears in the card', async ( { page } ) => {
+	test( 'AC-009: documentation link always appears in the card', async ( {
+		page,
+	} ) => {
 		clearConnection();
 		await page.goto( SETTINGS_PATH );
 		let docsLink = page.locator( '.beehiiv-connection-docs a' );
 		await expect( docsLink ).toBeVisible();
-		await expect( docsLink ).toHaveAttribute( 'href', 'https://wordpress.org/plugins/beehiiv/' );
+		await expect( docsLink ).toHaveAttribute(
+			'href',
+			'https://wordpress.org/plugins/beehiiv/'
+		);
 
 		seedConnected();
 		await page.goto( SETTINGS_PATH );
 		docsLink = page.locator( '.beehiiv-connection-docs a' );
 		await expect( docsLink ).toBeVisible();
-		await expect( docsLink ).toHaveAttribute( 'href', 'https://wordpress.org/plugins/beehiiv/' );
+		await expect( docsLink ).toHaveAttribute(
+			'href',
+			'https://wordpress.org/plugins/beehiiv/'
+		);
 
 		clearConnection();
 	} );
 
-	test( 'AC-010: plan-gating notice appears when the connected account lacks post-writing permissions', async ( { page } ) => {
+	test( 'AC-010: plan-gating notice appears when the connected account lacks post-writing permissions', async ( {
+		page,
+	} ) => {
 		seedConnected();
 		await page.goto( SETTINGS_PATH );
 		const notice = page.locator( '.beehiiv-plans-notice' );
@@ -219,7 +270,9 @@ test.describe( 'Connection status card', () => {
 		clearConnection();
 	} );
 
-	test( 'AC-011: messaging indicates the required plan tier (Max or Enterprise)', async ( { page } ) => {
+	test( 'AC-011: messaging indicates the required plan tier (Max or Enterprise)', async ( {
+		page,
+	} ) => {
 		seedConnected();
 		await page.goto( SETTINGS_PATH );
 		const notice = page.locator( '.beehiiv-plans-notice' );
@@ -251,19 +304,25 @@ test.describe( 'Connected + authorized to post (mocked permissions)', () => {
 		wpCliSafe( `eval 'beehiiv_e2e_reset_all();'` );
 	} );
 
-	test( 'AC-012: a next-steps list appears when connected and authorized for posting', async ( { page } ) => {
+	test( 'AC-012: a next-steps list appears when connected and authorized for posting', async ( {
+		page,
+	} ) => {
 		await page.goto( SETTINGS_PATH );
 
 		// The unauthorized plan-gating notice must NOT appear once the
 		// mocked permissions grant posts:write.
-		await expect( page.locator( '.beehiiv-plans-notice' ) ).toHaveCount( 0 );
+		await expect( page.locator( '.beehiiv-plans-notice' ) ).toHaveCount(
+			0
+		);
 
 		const nextSteps = page.locator( '.beehiiv-connection-next-steps' );
 		await expect( nextSteps ).toBeVisible();
 		await expect( nextSteps.locator( 'ol > li' ) ).toHaveCount( 3 );
 	} );
 
-	test( 'AC-013: next-steps guide includes creating/editing a post and enabling newsletter sending', async ( { page } ) => {
+	test( 'AC-013: next-steps guide includes creating/editing a post and enabling newsletter sending', async ( {
+		page,
+	} ) => {
 		await page.goto( SETTINGS_PATH );
 
 		const nextSteps = page.locator( '.beehiiv-connection-next-steps' );

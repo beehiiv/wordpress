@@ -59,10 +59,19 @@ const { ensurePluginActive } = require( '../utils/wp-cli' );
 
 const PLUGIN_ROOT = path.resolve( __dirname, '../../..' );
 const SETTINGS_CSS = path.join( PLUGIN_ROOT, 'build/admin-settings.css' );
-const SETTINGS_CSS_BAK = path.join( PLUGIN_ROOT, 'build/admin-settings.css.qa-bak' );
+const SETTINGS_CSS_BAK = path.join(
+	PLUGIN_ROOT,
+	'build/admin-settings.css.qa-bak'
+);
 const SETTINGS_JS = path.join( PLUGIN_ROOT, 'build/admin-settings.js' );
-const SETTINGS_JS_BAK = path.join( PLUGIN_ROOT, 'build/admin-settings.js.qa-bak' );
-const SETTINGS_ASSET_PHP = path.join( PLUGIN_ROOT, 'build/admin-settings.asset.php' );
+const SETTINGS_JS_BAK = path.join(
+	PLUGIN_ROOT,
+	'build/admin-settings.js.qa-bak'
+);
+const SETTINGS_ASSET_PHP = path.join(
+	PLUGIN_ROOT,
+	'build/admin-settings.asset.php'
+);
 
 /**
  * Reads the `version` value out of a webpack-generated `*.asset.php` file
@@ -76,14 +85,19 @@ function readAssetVersion( assetPhpPath ) {
 	const contents = fs.readFileSync( assetPhpPath, 'utf8' );
 	const match = contents.match( /'version'\s*=>\s*'([^']+)'/ );
 	if ( ! match ) {
-		throw new Error( `Could not find a version string in ${ assetPhpPath }` );
+		throw new Error(
+			`Could not find a version string in ${ assetPhpPath }`
+		);
 	}
 	return match[ 1 ];
 }
 
 /** Restore both build files from their .qa-bak counterparts if a prior crashed run left them renamed. */
 function restoreIfBackedUp() {
-	if ( fs.existsSync( SETTINGS_CSS_BAK ) && ! fs.existsSync( SETTINGS_CSS ) ) {
+	if (
+		fs.existsSync( SETTINGS_CSS_BAK ) &&
+		! fs.existsSync( SETTINGS_CSS )
+	) {
 		fs.renameSync( SETTINGS_CSS_BAK, SETTINGS_CSS );
 	}
 	if ( fs.existsSync( SETTINGS_JS_BAK ) && ! fs.existsSync( SETTINGS_JS ) ) {
@@ -101,7 +115,7 @@ test.afterAll( () => {
 } );
 
 test.describe( 'Settings Page Assets', () => {
-	test( 'AC-001: settings page CSS and JS load only when viewing the plugin\'s main settings page', async ( {
+	test( "AC-001: settings page CSS and JS load only when viewing the plugin's main settings page", async ( {
 		page,
 	} ) => {
 		const expectedVersion = readAssetVersion( SETTINGS_ASSET_PHP );
@@ -125,13 +139,21 @@ test.describe( 'Settings Page Assets', () => {
 
 		// A core wp-admin screen with no relation to beehiiv at all.
 		await page.goto( '/wp-admin/edit.php' );
-		await expect( page.locator( 'link#beehiiv-admin-settings-css' ) ).toHaveCount( 0 );
-		await expect( page.locator( 'script#beehiiv-admin-settings-js' ) ).toHaveCount( 0 );
+		await expect(
+			page.locator( 'link#beehiiv-admin-settings-css' )
+		).toHaveCount( 0 );
+		await expect(
+			page.locator( 'script#beehiiv-admin-settings-js' )
+		).toHaveCount( 0 );
 
 		// The WP dashboard.
 		await page.goto( '/wp-admin/' );
-		await expect( page.locator( 'link#beehiiv-admin-settings-css' ) ).toHaveCount( 0 );
-		await expect( page.locator( 'script#beehiiv-admin-settings-js' ) ).toHaveCount( 0 );
+		await expect(
+			page.locator( 'link#beehiiv-admin-settings-css' )
+		).toHaveCount( 0 );
+		await expect(
+			page.locator( 'script#beehiiv-admin-settings-js' )
+		).toHaveCount( 0 );
 	} );
 
 	test( 'AC-002: the settings script loads with its declared dependencies resolved and executes without errors', async ( {
@@ -154,9 +176,13 @@ test.describe( 'Settings Page Assets', () => {
 		// print those handles' own script tags on this page for
 		// admin-settings.js's `import apiFetch from '@wordpress/api-fetch'`
 		// and `import { __ } from '@wordpress/i18n'` to resolve at runtime.
-		await expect( page.locator( 'script#wp-api-fetch-js' ) ).toHaveCount( 1 );
+		await expect( page.locator( 'script#wp-api-fetch-js' ) ).toHaveCount(
+			1
+		);
 		await expect( page.locator( 'script#wp-i18n-js' ) ).toHaveCount( 1 );
-		await expect( page.locator( 'script#beehiiv-admin-settings-js' ) ).toHaveCount( 1 );
+		await expect(
+			page.locator( 'script#beehiiv-admin-settings-js' )
+		).toHaveCount( 1 );
 
 		// The interactive publication/template dropdowns this script wires up
 		// are gated behind a live beehiiv connection (Workspace::can_write_posts()
@@ -168,8 +194,14 @@ test.describe( 'Settings Page Assets', () => {
 		// as a ReferenceError/TypeError here, not silence).
 		await page.waitForLoadState( 'networkidle' );
 
-		expect( consoleIssues, `Console issues: ${ consoleIssues.join( '; ' ) }` ).toHaveLength( 0 );
-		expect( pageErrors, `Page errors: ${ pageErrors.join( '; ' ) }` ).toHaveLength( 0 );
+		expect(
+			consoleIssues,
+			`Console issues: ${ consoleIssues.join( '; ' ) }`
+		).toHaveLength( 0 );
+		expect(
+			pageErrors,
+			`Page errors: ${ pageErrors.join( '; ' ) }`
+		).toHaveLength( 0 );
 	} );
 
 	test( 'AC-004: missing settings CSS and JS build files are skipped silently -- no console errors and the page still renders', async ( {
@@ -192,22 +224,36 @@ test.describe( 'Settings Page Assets', () => {
 
 		try {
 			await loginAsAdmin( page );
-			const response = await page.goto( '/wp-admin/admin.php?page=beehiiv' );
+			const response = await page.goto(
+				'/wp-admin/admin.php?page=beehiiv'
+			);
 
 			expect( response.status() ).toBe( 200 );
 			// Page still renders normally -- the h1 is unconditional in
 			// settings-page.php regardless of connection state.
-			await expect( page.locator( 'h1' ) ).toHaveText( 'beehiiv Settings' );
+			await expect( page.locator( 'h1' ) ).toHaveText(
+				'beehiiv Settings'
+			);
 
 			// The tags for the missing bundles were never emitted -- proves
 			// the PHP-side file_exists() guards in enqueue_build_style() /
 			// enqueue_build_script() actually skipped enqueueing rather than
 			// emitting links/scripts to 404ing assets.
-			await expect( page.locator( 'link#beehiiv-admin-settings-css' ) ).toHaveCount( 0 );
-			await expect( page.locator( 'script#beehiiv-admin-settings-js' ) ).toHaveCount( 0 );
+			await expect(
+				page.locator( 'link#beehiiv-admin-settings-css' )
+			).toHaveCount( 0 );
+			await expect(
+				page.locator( 'script#beehiiv-admin-settings-js' )
+			).toHaveCount( 0 );
 
-			expect( consoleIssues, `Console issues: ${ consoleIssues.join( '; ' ) }` ).toHaveLength( 0 );
-			expect( pageErrors, `Page errors: ${ pageErrors.join( '; ' ) }` ).toHaveLength( 0 );
+			expect(
+				consoleIssues,
+				`Console issues: ${ consoleIssues.join( '; ' ) }`
+			).toHaveLength( 0 );
+			expect(
+				pageErrors,
+				`Page errors: ${ pageErrors.join( '; ' ) }`
+			).toHaveLength( 0 );
 		} finally {
 			fs.renameSync( SETTINGS_CSS_BAK, SETTINGS_CSS );
 			fs.renameSync( SETTINGS_JS_BAK, SETTINGS_JS );
