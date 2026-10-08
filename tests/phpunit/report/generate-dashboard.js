@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console -- CLI script, console is its output. */
 /**
  * Reads a PHPUnit JUnit XML report and writes a self-contained HTML
  * dashboard: overall pass/fail/error/skipped counts, a per-class breakdown,
@@ -30,8 +31,14 @@ function parseArgs( argv ) {
 }
 
 const args = parseArgs( process.argv.slice( 2 ) );
-const JUNIT_PATH = path.resolve( PLUGIN_ROOT, args.junit || 'tests/phpunit/test-results/junit.xml' );
-const OUTPUT_PATH = path.resolve( PLUGIN_ROOT, args.out || 'tests/phpunit/test-results/dashboard.html' );
+const JUNIT_PATH = path.resolve(
+	PLUGIN_ROOT,
+	args.junit || 'tests/phpunit/test-results/junit.xml'
+);
+const OUTPUT_PATH = path.resolve(
+	PLUGIN_ROOT,
+	args.out || 'tests/phpunit/test-results/dashboard.html'
+);
 const LABEL = args.label || 'PHPUnit';
 
 function readJunit() {
@@ -47,12 +54,10 @@ function readJunit() {
 const XML_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
 
 function xmlUnescape( str ) {
-	return str.replace(
-		/&(amp|lt|gt|quot|apos|#\d+);/g,
-		( _, entity ) =>
-			entity[ 0 ] === '#'
-				? String.fromCharCode( Number( entity.slice( 1 ) ) )
-				: XML_ENTITIES[ entity ]
+	return str.replace( /&(amp|lt|gt|quot|apos|#\d+);/g, ( _, entity ) =>
+		entity[ 0 ] === '#'
+			? String.fromCharCode( Number( entity.slice( 1 ) ) )
+			: XML_ENTITIES[ entity ]
 	);
 }
 
@@ -83,7 +88,8 @@ function parseAttrs( attrString ) {
 // PHPUnit's JUnit writer self-closes passing <testcase/> elements and only
 // gives failing/errored/skipped ones a body, so both shapes must match.
 const TESTCASE_RE = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
-const OUTCOME_RE = /<(failure|error|skipped|warning)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
+const OUTCOME_RE =
+	/<(failure|error|skipped|warning)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
 
 function parseTestcase( match ) {
 	const attrs = parseAttrs( match[ 1 ] );
@@ -145,7 +151,9 @@ function byClass( cases ) {
 }
 
 function fmtDuration( seconds ) {
-	if ( seconds < 1 ) return `${ Math.round( seconds * 1000 ) }ms`;
+	if ( seconds < 1 ) {
+		return `${ Math.round( seconds * 1000 ) }ms`;
+	}
 	return `${ seconds.toFixed( 2 ) }s`;
 }
 
@@ -181,7 +189,9 @@ function renderSummary( cases, totalTime ) {
 }
 
 function renderClassTable( classes ) {
-	const rows = [ ...classes.entries() ].sort( ( a, b ) => a[ 0 ].localeCompare( b[ 0 ] ) );
+	const rows = [ ...classes.entries() ].sort( ( a, b ) =>
+		a[ 0 ].localeCompare( b[ 0 ] )
+	);
 	return `<table class="class-table">
 		<thead><tr><th>Class</th><th>Tests</th><th>Passed</th><th>Failed</th><th>Errors</th><th>Skipped</th><th>Time</th></tr></thead>
 		<tbody>${ rows
@@ -192,7 +202,8 @@ function renderClassTable( classes ) {
 					counts[ t.status ] = ( counts[ t.status ] || 0 ) + 1;
 					time += t.time;
 				}
-				const rowClass = counts.failure || counts.error ? 'row-failing' : '';
+				const rowClass =
+					counts.failure || counts.error ? 'row-failing' : '';
 				return `<tr class="${ rowClass }">
 					<td>${ esc( className ) }</td>
 					<td>${ tests.length }</td>
@@ -208,17 +219,25 @@ function renderClassTable( classes ) {
 }
 
 function renderFailures( cases ) {
-	const failing = cases.filter( ( c ) => c.status === 'failure' || c.status === 'error' );
+	const failing = cases.filter(
+		( c ) => c.status === 'failure' || c.status === 'error'
+	);
 	if ( ! failing.length ) {
 		return '<p class="none">No failures or errors.</p>';
 	}
 	return failing
 		.map(
 			( c ) => `<div class="failure">
-				<div class="failure-title"><span class="badge status-${ c.status }">${ STATUS_LABEL[ c.status ] }</span> ${ esc(
-				c.class
-			) }::${ esc( c.name ) }</div>
-				${ c.file ? `<div class="failure-location">${ esc( c.file ) }${ c.line ? `:${ esc( c.line ) }` : '' }</div>` : '' }
+				<div class="failure-title"><span class="badge status-${ c.status }">${
+					STATUS_LABEL[ c.status ]
+				}</span> ${ esc( c.class ) }::${ esc( c.name ) }</div>
+				${
+					c.file
+						? `<div class="failure-location">${ esc( c.file ) }${
+								c.line ? `:${ esc( c.line ) }` : ''
+						  }</div>`
+						: ''
+				}
 				${ c.type ? `<div class="failure-type">${ esc( c.type ) }</div>` : '' }
 				${ c.message ? `<pre class="failure-message">${ esc( c.message ) }</pre>` : '' }
 			</div>`
@@ -228,14 +247,17 @@ function renderFailures( cases ) {
 
 function renderAllTests( cases ) {
 	const sorted = [ ...cases ].sort(
-		( a, b ) => a.class.localeCompare( b.class ) || a.name.localeCompare( b.name )
+		( a, b ) =>
+			a.class.localeCompare( b.class ) || a.name.localeCompare( b.name )
 	);
 	return `<table class="all-tests-table">
 		<thead><tr><th>Status</th><th>Class</th><th>Test</th><th>Time</th></tr></thead>
 		<tbody>${ sorted
 			.map(
 				( c ) => `<tr>
-					<td><span class="badge status-${ c.status }">${ STATUS_LABEL[ c.status ] }</span></td>
+					<td><span class="badge status-${ c.status }">${
+						STATUS_LABEL[ c.status ]
+					}</span></td>
 					<td>${ esc( c.class ) }</td>
 					<td>${ esc( c.name ) }</td>
 					<td>${ fmtDuration( c.time ) }</td>
@@ -294,7 +316,9 @@ function renderHtml( cases, totalTime ) {
 </head>
 <body>
 	<h1>${ esc( LABEL ) }</h1>
-	<div class="meta">Generated ${ esc( generatedAt ) } · ${ esc( path.relative( PLUGIN_ROOT, JUNIT_PATH ) ) }</div>
+	<div class="meta">Generated ${ esc( generatedAt ) } · ${ esc(
+		path.relative( PLUGIN_ROOT, JUNIT_PATH )
+	) }</div>
 
 	${ renderSummary( cases, totalTime ) }
 
@@ -317,7 +341,11 @@ const totalTime = parseTotalTime( xml, cases );
 fs.mkdirSync( path.dirname( OUTPUT_PATH ), { recursive: true } );
 fs.writeFileSync( OUTPUT_PATH, renderHtml( cases, totalTime ) );
 
-const failing = cases.filter( ( c ) => c.status === 'failure' || c.status === 'error' ).length;
+const failing = cases.filter(
+	( c ) => c.status === 'failure' || c.status === 'error'
+).length;
 console.log(
-	`Wrote ${ path.relative( PLUGIN_ROOT, OUTPUT_PATH ) } — ${ cases.length } tests, ${ failing } failing.`
+	`Wrote ${ path.relative( PLUGIN_ROOT, OUTPUT_PATH ) } — ${
+		cases.length
+	} tests, ${ failing } failing.`
 );
