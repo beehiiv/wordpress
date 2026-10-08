@@ -1,6 +1,11 @@
 const { execSync } = require( 'child_process' );
+const path = require( 'path' );
 
-const PLUGIN_ROOT = __dirname + '/../../..';
+const PLUGIN_ROOT = path.resolve( __dirname, '../../..' );
+
+// wp-env installs the plugin under its checkout folder name, which differs
+// between local (`beehiiv`) and CI (the repo name).
+const PLUGIN_SLUG = path.basename( PLUGIN_ROOT );
 
 /**
  * Runs a wp-cli command inside wp-env's tests-cli container.
@@ -41,7 +46,7 @@ function wpCliSafe( cmd ) {
  * came back inactive) -- every spec here depends on it being active.
  * @param {string} slug
  */
-function ensurePluginActive( slug = 'beehiiv' ) {
+function ensurePluginActive( slug = PLUGIN_SLUG ) {
 	if ( wpCliSafe( `plugin is-active ${ slug }` ) === null ) {
 		wpCli( `plugin activate ${ slug }` );
 	}
