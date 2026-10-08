@@ -23,11 +23,14 @@ const OAUTH_OPTION = 'beehiiv_oauth';
 const SETTINGS_OPTION = 'beehiiv_settings';
 const DEBUG_OPTION = 'qa_e2e_revoke_debug';
 
-/** Registers a one-off http_api_debug logger and returns what it captured for /oauth/revoke. */
+/**
+ * Registers a one-off http_api_debug logger and returns what it captured for /oauth/revoke.
+ * @param {Function} fn
+ */
 function captureRevokeRequest( fn ) {
 	wpCliSafe( `option delete ${ DEBUG_OPTION }` );
 	wpCli(
-		'eval \'' +
+		"eval '" +
 			'add_action( "http_api_debug", function( $r, $c, $cl, $args, $url ) {' +
 			'if ( false !== strpos( $url, "/oauth/revoke" ) ) {' +
 			'update_option( "' +
@@ -104,7 +107,7 @@ test.describe( 'OAuth Token Revocation', () => {
 		wpCli( "eval '\\Beehiiv\\OAuth\\Revoker::disconnect();'" );
 
 		const hasCredentials = wpCli(
-			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::has_credentials() ? \"yes\" : \"no\";'"
+			'eval \'echo \\Beehiiv\\OAuth\\TokenStore::has_credentials() ? "yes" : "no";\''
 		);
 		expect( hasCredentials.trim() ).toBe( 'no' );
 	} );
@@ -119,8 +122,12 @@ test.describe( 'OAuth Token Revocation', () => {
 		const optionValue = wpCliSafe( `option get ${ OAUTH_OPTION }` );
 		expect( optionValue ).toBeNull();
 
-		const accessToken = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'" );
-		const refreshToken = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_refresh_token();'" );
+		const accessToken = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'"
+		);
+		const refreshToken = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_refresh_token();'"
+		);
 		expect( accessToken.trim() ).toBe( '' );
 		expect( refreshToken.trim() ).toBe( '' );
 	} );
@@ -140,9 +147,11 @@ test.describe( 'OAuth Token Revocation', () => {
 
 		wpCli( "eval '\\Beehiiv\\OAuth\\Revoker::disconnect();'" );
 
-		const publications = wpCli( "eval 'echo wp_json_encode( \\Beehiiv\\API\\Cache::get_publications() );'" );
+		const publications = wpCli(
+			"eval 'echo wp_json_encode( \\Beehiiv\\API\\Cache::get_publications() );'"
+		);
 		const templates = wpCli(
-			"eval 'echo wp_json_encode( \\Beehiiv\\API\\Cache::get_post_templates( \"qa-e2e-ac5-pub\" ) );'"
+			'eval \'echo wp_json_encode( \\Beehiiv\\API\\Cache::get_post_templates( "qa-e2e-ac5-pub" ) );\''
 		);
 		expect( publications.trim() ).toBe( 'null' );
 		expect( templates.trim() ).toBe( 'null' );

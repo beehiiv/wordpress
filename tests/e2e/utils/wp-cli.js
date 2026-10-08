@@ -1,12 +1,18 @@
 const { execSync } = require( 'child_process' );
+const path = require( 'path' );
 
-const PLUGIN_ROOT = __dirname + '/../../..';
+const PLUGIN_ROOT = path.resolve( __dirname, '../../..' );
+
+// wp-env installs the plugin under its checkout folder name, which differs
+// between local (`beehiiv`) and CI (the repo name).
+const PLUGIN_SLUG = path.basename( PLUGIN_ROOT );
 
 /**
  * Runs a wp-cli command inside wp-env's tests-cli container.
  *
  * `wp-env run` wraps real output with its own "Starting.../Ran..." lines --
  * strip those out so callers get exactly what wp-cli itself printed.
+ * @param {string} cmd
  */
 function wpCli( cmd ) {
 	const raw = execSync( `npx wp-env run tests-cli -- wp ${ cmd }`, {
@@ -20,11 +26,14 @@ function wpCli( cmd ) {
 		.trim();
 }
 
-/** Same as wpCli, but returns null instead of throwing on a non-zero exit. */
+/**
+ * Same as wpCli, but returns null instead of throwing on a non-zero exit.
+ * @param {string} cmd
+ */
 function wpCliSafe( cmd ) {
 	try {
 		return wpCli( cmd );
-	} catch ( e ) {
+	} catch {
 		return null;
 	}
 }
@@ -35,8 +44,9 @@ function wpCliSafe( cmd ) {
  * wp-env's tests environment does not reliably keep the plugin active across
  * every `wp-env start` cycle (observed: dev site stayed active, tests site
  * came back inactive) -- every spec here depends on it being active.
+ * @param {string} slug
  */
-function ensurePluginActive( slug = 'beehiiv' ) {
+function ensurePluginActive( slug = PLUGIN_SLUG ) {
 	if ( wpCliSafe( `plugin is-active ${ slug }` ) === null ) {
 		wpCli( `plugin activate ${ slug }` );
 	}
@@ -61,4 +71,9 @@ function ensurePrettyPermalinks() {
 	}
 }
 
-module.exports = { wpCli, wpCliSafe, ensurePluginActive, ensurePrettyPermalinks };
+module.exports = {
+	wpCli,
+	wpCliSafe,
+	ensurePluginActive,
+	ensurePrettyPermalinks,
+};
