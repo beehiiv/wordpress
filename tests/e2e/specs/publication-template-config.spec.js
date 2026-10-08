@@ -99,26 +99,44 @@ function seedConnectedAndAuthorized() {
 	);
 }
 
-/** Base64-JSON-encodes a JS value for safe passage through a single-quoted `wp eval` argument. */
+/**
+ * Base64-JSON-encodes a JS value for safe passage through a single-quoted `wp eval` argument.
+ * @param {Object} data
+ */
 function toPhpJsonArg( data ) {
 	return Buffer.from( JSON.stringify( data ) ).toString( 'base64' );
 }
 
-/** Seeds the publications list cache directly (skips the real GET /publications call). */
+/**
+ * Seeds the publications list cache directly (skips the real GET /publications call).
+ * @param {Array} publications
+ */
 function seedPublications( publications ) {
 	wpCli(
-		`eval 'beehiiv_e2e_seed_publications( json_decode( base64_decode( "${ toPhpJsonArg( publications ) }" ), true ) );'`
+		`eval 'beehiiv_e2e_seed_publications( json_decode( base64_decode( "${ toPhpJsonArg(
+			publications
+		) }" ), true ) );'`
 	);
 }
 
-/** Seeds the post-templates cache for one publication (skips the real per-publication call). */
+/**
+ * Seeds the post-templates cache for one publication (skips the real per-publication call).
+ * @param {string} publicationId
+ * @param {Array}  templates
+ */
 function seedTemplates( publicationId, templates ) {
 	wpCli(
-		`eval 'beehiiv_e2e_seed_post_templates( "${ publicationId }", json_decode( base64_decode( "${ toPhpJsonArg( templates ) }" ), true ) );'`
+		`eval 'beehiiv_e2e_seed_post_templates( "${ publicationId }", json_decode( base64_decode( "${ toPhpJsonArg(
+			templates
+		) }" ), true ) );'`
 	);
 }
 
-/** Writes the beehiiv_settings option directly, bypassing the form -- for arranging initial page-load state. */
+/**
+ * Writes the beehiiv_settings option directly, bypassing the form -- for arranging initial page-load state.
+ * @param {string} publicationId
+ * @param {string} postTemplateId
+ */
 function setSettingsOption( publicationId, postTemplateId ) {
 	const json = JSON.stringify( {
 		publication_id: publicationId,
@@ -133,7 +151,10 @@ function readSettingsOption() {
 	return raw ? JSON.parse( raw ) : null;
 }
 
-/** Reads Cache::get_post_templates() for a publication via the real PHP read path. */
+/**
+ * Reads Cache::get_post_templates() for a publication via the real PHP read path.
+ * @param {string} publicationId
+ */
 function readCachedTemplates( publicationId ) {
 	const raw = wpCliSafe(
 		`eval 'echo wp_json_encode( \\Beehiiv\\API\\Cache::get_post_templates( "${ publicationId }" ) );'`
@@ -175,7 +196,9 @@ test.describe( 'Publication and Template Configuration', () => {
 		wpCliSafe( "eval 'beehiiv_e2e_reset_all();'" );
 	} );
 
-	test( 'AC-001: publication dropdown displays all publications available in the connected beehiiv account', async ( { page } ) => {
+	test( 'AC-001: publication dropdown displays all publications available in the connected beehiiv account', async ( {
+		page,
+	} ) => {
 		seedConnectedAndAuthorized();
 		seedPublications( [
 			{ id: 'qa-e2e-pub-ac001-a', name: 'QA Publication Alpha' },
@@ -187,16 +210,20 @@ test.describe( 'Publication and Template Configuration', () => {
 		const select = page.locator( PUB_SELECT );
 		await expect( select ).toHaveCount( 1 );
 
-		const optionTexts = ( await select.locator( 'option' ).allTextContents() ).map( ( t ) =>
-			t.trim()
-		);
+		const optionTexts = (
+			await select.locator( 'option' ).allTextContents()
+		).map( ( t ) => t.trim() );
 		expect( optionTexts ).toContain( 'QA Publication Alpha' );
 		expect( optionTexts ).toContain( 'QA Publication Beta' );
 	} );
 
-	test( 'AC-002: publication selection is required and a placeholder option guides the user to select one', async ( { page } ) => {
+	test( 'AC-002: publication selection is required and a placeholder option guides the user to select one', async ( {
+		page,
+	} ) => {
 		seedConnectedAndAuthorized();
-		seedPublications( [ { id: 'qa-e2e-pub-ac002', name: 'QA Publication AC002' } ] );
+		seedPublications( [
+			{ id: 'qa-e2e-pub-ac002', name: 'QA Publication AC002' },
+		] );
 		setSettingsOption( '', '' );
 
 		await page.goto( SETTINGS_PATH );
@@ -209,7 +236,9 @@ test.describe( 'Publication and Template Configuration', () => {
 		await expect( firstOption ).toHaveText( /Select a publication/ );
 	} );
 
-	test( 'AC-003: post template dropdown is disabled and empty until a publication is selected', async ( { page } ) => {
+	test( 'AC-003: post template dropdown is disabled and empty until a publication is selected', async ( {
+		page,
+	} ) => {
 		// "Disabled" half of this AC is a known failure -- see the assertion
 		// below for the concrete reason (real PRD/implementation mismatch,
 		// not flakiness). Remove test.fail() once Registrar.php or the PRD
@@ -244,11 +273,15 @@ test.describe( 'Publication and Template Configuration', () => {
 		await expect( select ).toBeDisabled();
 	} );
 
-	test( 'AC-004: post template dropdown populates automatically when publication selection changes', async ( { page } ) => {
+	test( 'AC-004: post template dropdown populates automatically when publication selection changes', async ( {
+		page,
+	} ) => {
 		seedConnectedAndAuthorized();
 		const pubId = 'qa-e2e-pub-ac004';
 		seedPublications( [ { id: pubId, name: 'QA Publication AC004' } ] );
-		seedTemplates( pubId, [ { id: 'qa-e2e-tpl-ac004', name: 'QA Template AC004' } ] );
+		seedTemplates( pubId, [
+			{ id: 'qa-e2e-tpl-ac004', name: 'QA Template AC004' },
+		] );
 		setSettingsOption( '', '' );
 
 		await page.goto( SETTINGS_PATH );
@@ -271,11 +304,15 @@ test.describe( 'Publication and Template Configuration', () => {
 		).toHaveCount( 1 );
 	} );
 
-	test( 'AC-005: post template selection is optional; a "No default template" option is always available', async ( { page } ) => {
+	test( 'AC-005: post template selection is optional; a "No default template" option is always available', async ( {
+		page,
+	} ) => {
 		seedConnectedAndAuthorized();
 		const pubId = 'qa-e2e-pub-ac005';
 		seedPublications( [ { id: pubId, name: 'QA Publication AC005' } ] );
-		seedTemplates( pubId, [ { id: 'qa-e2e-tpl-ac005', name: 'QA Template AC005' } ] );
+		seedTemplates( pubId, [
+			{ id: 'qa-e2e-tpl-ac005', name: 'QA Template AC005' },
+		] );
 		setSettingsOption( pubId, '' );
 
 		await page.goto( SETTINGS_PATH );
@@ -288,11 +325,15 @@ test.describe( 'Publication and Template Configuration', () => {
 		await expect( firstOption ).toHaveText( /No default template/ );
 	} );
 
-	test( 'AC-006: "Refresh templates" button is visible and enabled when a publication is selected', async ( { page } ) => {
+	test( 'AC-006: "Refresh templates" button is visible and enabled when a publication is selected', async ( {
+		page,
+	} ) => {
 		seedConnectedAndAuthorized();
 		const pubId = 'qa-e2e-pub-ac006';
 		seedPublications( [ { id: pubId, name: 'QA Publication AC006' } ] );
-		seedTemplates( pubId, [ { id: 'qa-e2e-tpl-ac006', name: 'QA Template AC006' } ] );
+		seedTemplates( pubId, [
+			{ id: 'qa-e2e-tpl-ac006', name: 'QA Template AC006' },
+		] );
 		setSettingsOption( pubId, '' );
 
 		await page.goto( SETTINGS_PATH );
@@ -302,7 +343,9 @@ test.describe( 'Publication and Template Configuration', () => {
 		await expect( button ).toBeEnabled();
 	} );
 
-	test( 'AC-007: "Refresh templates" button is disabled when no publication is selected', async ( { page } ) => {
+	test( 'AC-007: "Refresh templates" button is disabled when no publication is selected', async ( {
+		page,
+	} ) => {
 		seedConnectedAndAuthorized();
 		setSettingsOption( '', '' );
 
@@ -313,7 +356,9 @@ test.describe( 'Publication and Template Configuration', () => {
 		await expect( button ).toBeDisabled();
 	} );
 
-	test( 'AC-008: clicking "Refresh templates" fetches the latest template list from beehiiv without submitting the form', async ( { page } ) => {
+	test( 'AC-008: clicking "Refresh templates" fetches the latest template list from beehiiv without submitting the form', async ( {
+		page,
+	} ) => {
 		// Refresh always bypasses the cache (Cache::delete_post_templates()
 		// runs before re-fetching), so unlike every other test in this file it
 		// necessarily reaches the live beehiiv API and waits out a failed
@@ -324,7 +369,9 @@ test.describe( 'Publication and Template Configuration', () => {
 		seedConnectedAndAuthorized();
 		const pubId = 'qa-e2e-pub-ac008';
 		seedPublications( [ { id: pubId, name: 'QA Publication AC008' } ] );
-		seedTemplates( pubId, [ { id: 'qa-e2e-tpl-ac008-old', name: 'QA Template AC008 Old' } ] );
+		seedTemplates( pubId, [
+			{ id: 'qa-e2e-tpl-ac008-old', name: 'QA Template AC008 Old' },
+		] );
 		setSettingsOption( pubId, '' );
 
 		await page.goto( SETTINGS_PATH );
@@ -355,13 +402,17 @@ test.describe( 'Publication and Template Configuration', () => {
 		expect( readCachedTemplates( pubId ) ).toBeNull();
 	} );
 
-	test( 'AC-009: a "Templates updated" notice appears briefly after manual refresh', async ( { page } ) => {
+	test( 'AC-009: a "Templates updated" notice appears briefly after manual refresh', async ( {
+		page,
+	} ) => {
 		test.setTimeout( 45000 );
 
 		seedConnectedAndAuthorized();
 		const pubId = 'qa-e2e-pub-ac009';
 		seedPublications( [ { id: pubId, name: 'QA Publication AC009' } ] );
-		seedTemplates( pubId, [ { id: 'qa-e2e-tpl-ac009', name: 'QA Template AC009' } ] );
+		seedTemplates( pubId, [
+			{ id: 'qa-e2e-tpl-ac009', name: 'QA Template AC009' },
+		] );
 		setSettingsOption( pubId, '' );
 
 		await page.goto( SETTINGS_PATH );
@@ -384,7 +435,9 @@ test.describe( 'Publication and Template Configuration', () => {
 		await expect( notice ).toHaveText( /Templates updated/ );
 	} );
 
-	test( 'AC-010: "No templates available" notice appears and refresh button is shown when the selected publication has no templates', async ( { page } ) => {
+	test( 'AC-010: "No templates available" notice appears and refresh button is shown when the selected publication has no templates', async ( {
+		page,
+	} ) => {
 		seedConnectedAndAuthorized();
 		const pubId = 'qa-e2e-pub-ac010';
 		seedPublications( [ { id: pubId, name: 'QA Publication AC010' } ] );
@@ -403,7 +456,9 @@ test.describe( 'Publication and Template Configuration', () => {
 		await expect( page.locator( REFRESH_BTN ) ).toBeVisible();
 	} );
 
-	test( 'AC-011: previously selected publication and template values persist across a reload', async ( { page } ) => {
+	test( 'AC-011: previously selected publication and template values persist across a reload', async ( {
+		page,
+	} ) => {
 		seedConnectedAndAuthorized();
 		const pubId = 'qa-e2e-pub-ac011';
 		const tplId = 'qa-e2e-tpl-ac011';
@@ -421,7 +476,9 @@ test.describe( 'Publication and Template Configuration', () => {
 		await expect( page.locator( TPL_SELECT ) ).toHaveValue( tplId );
 	} );
 
-	test( 'AC-012: form saves selections when the user clicks "Save settings"', async ( { page } ) => {
+	test( 'AC-012: form saves selections when the user clicks "Save settings"', async ( {
+		page,
+	} ) => {
 		seedConnectedAndAuthorized();
 		const pubId = 'qa-e2e-pub-ac012';
 		const tplId = 'qa-e2e-tpl-ac012';
@@ -453,7 +510,9 @@ test.describe( 'Publication and Template Configuration', () => {
 		} );
 	} );
 
-	test( 'AC-013: new templates created in beehiiv appear when the user next loads the page after saving settings', async ( { page } ) => {
+	test( 'AC-013: new templates created in beehiiv appear when the user next loads the page after saving settings', async ( {
+		page,
+	} ) => {
 		seedConnectedAndAuthorized();
 		const pubId = 'qa-e2e-pub-ac013';
 		seedPublications( [ { id: pubId, name: 'QA Publication AC013' } ] );
@@ -464,7 +523,9 @@ test.describe( 'Publication and Template Configuration', () => {
 
 		await page.goto( SETTINGS_PATH );
 		await expect(
-			page.locator( TPL_SELECT ).locator( 'option', { hasText: 'QA Template AC013 Old' } )
+			page
+				.locator( TPL_SELECT )
+				.locator( 'option', { hasText: 'QA Template AC013 Old' } )
 		).toHaveCount( 1 );
 
 		// Save the form via a real click, same publication selected --
@@ -486,10 +547,14 @@ test.describe( 'Publication and Template Configuration', () => {
 
 		await page.goto( SETTINGS_PATH );
 		await expect(
-			page.locator( TPL_SELECT ).locator( 'option', { hasText: 'QA Template AC013 New' } )
+			page
+				.locator( TPL_SELECT )
+				.locator( 'option', { hasText: 'QA Template AC013 New' } )
 		).toHaveCount( 1 );
 		await expect(
-			page.locator( TPL_SELECT ).locator( 'option', { hasText: 'QA Template AC013 Old' } )
+			page
+				.locator( TPL_SELECT )
+				.locator( 'option', { hasText: 'QA Template AC013 Old' } )
 		).toHaveCount( 0 );
 	} );
 } );

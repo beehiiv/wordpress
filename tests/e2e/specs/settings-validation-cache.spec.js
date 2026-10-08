@@ -67,7 +67,10 @@ function readSettingsOption() {
 	return raw ? JSON.parse( raw ) : null;
 }
 
-/** Reads Cache::get_post_templates() for a publication via the real PHP read path. */
+/**
+ * Reads Cache::get_post_templates() for a publication via the real PHP read path.
+ * @param {string} publicationId
+ */
 function readCachedTemplates( publicationId ) {
 	const raw = wpCliSafe(
 		`eval 'echo wp_json_encode( \\Beehiiv\\API\\Cache::get_post_templates( "${ publicationId }" ) );'`
@@ -81,13 +84,18 @@ function readCachedTemplates( publicationId ) {
  * outputs for the current browser session: `option_page`, `action`,
  * `_wpnonce`, and (when present -- `wp_get_referer()` doesn't always find
  * one on a direct `page.goto()` navigation) `_wp_http_referer`.
+ * @param {import('@playwright/test').Page} page
  */
 async function readSettingsFormNonceFields( page ) {
 	await page.goto( SETTINGS_PATH );
-	await expect( page.locator( 'form[action="options.php"]' ) ).toHaveCount( 1 );
+	await expect( page.locator( 'form[action="options.php"]' ) ).toHaveCount(
+		1
+	);
 
 	const fields = {
-		option_page: await page.locator( 'input[name="option_page"]' ).inputValue(),
+		option_page: await page
+			.locator( 'input[name="option_page"]' )
+			.inputValue(),
 		action: await page.locator( 'input[name="action"]' ).inputValue(),
 		_wpnonce: await page.locator( 'input[name="_wpnonce"]' ).inputValue(),
 	};
@@ -106,6 +114,9 @@ async function readSettingsFormNonceFields( page ) {
  * page -- genuinely reachable by WordPress core's real Settings API dispatch
  * (`options.php` -> `update_option()` -> the `sanitize_option_beehiiv_settings`
  * filter -> `Options::sanitize()`), unlike a WP-CLI-minted nonce.
+ * @param {import('@playwright/test').Page} page
+ * @param {Object}                          nonceFields
+ * @param {Object}                          extraFields
  */
 function submitSettingsForm( page, nonceFields, extraFields ) {
 	return page.request.post( OPTIONS_PHP_PATH, {
@@ -145,9 +156,12 @@ test.describe( 'Settings validation & cache management', () => {
 		wpCliSafe( "eval 'beehiiv_e2e_reset_all();'" );
 	} );
 
-	test( 'AC-001: publication ID is sanitized as a text field before being saved', async ( { page } ) => {
+	test( 'AC-001: publication ID is sanitized as a text field before being saved', async ( {
+		page,
+	} ) => {
 		const nonceFields = await readSettingsFormNonceFields( page );
-		const rawPublicationId = '<script>window.__qaXss=1;</script>qa-e2e-pub-xss';
+		const rawPublicationId =
+			'<script>window.__qaXss=1;</script>qa-e2e-pub-xss';
 
 		const response = await submitSettingsForm( page, nonceFields, {
 			'beehiiv_settings[publication_id]': rawPublicationId,
@@ -161,7 +175,9 @@ test.describe( 'Settings validation & cache management', () => {
 		expect( saved.publication_id ).toContain( 'qa-e2e-pub-xss' );
 	} );
 
-	test( 'AC-002: post template ID is sanitized as a text field before being saved', async ( { page } ) => {
+	test( 'AC-002: post template ID is sanitized as a text field before being saved', async ( {
+		page,
+	} ) => {
 		const nonceFields = await readSettingsFormNonceFields( page );
 		const rawTemplateId = '<b>bold</b>qa-e2e-tmpl-xss';
 
@@ -177,7 +193,9 @@ test.describe( 'Settings validation & cache management', () => {
 		expect( saved.post_template_id ).toContain( 'qa-e2e-tmpl-xss' );
 	} );
 
-	test( 'AC-003: if input is not an array, the save is aborted and current settings are retained', async ( { page } ) => {
+	test( 'AC-003: if input is not an array, the save is aborted and current settings are retained', async ( {
+		page,
+	} ) => {
 		// Establish a known-good baseline through a real, valid save first.
 		let nonceFields = await readSettingsFormNonceFields( page );
 		await submitSettingsForm( page, nonceFields, {
@@ -204,7 +222,9 @@ test.describe( 'Settings validation & cache management', () => {
 		expect( readSettingsOption() ).toEqual( baseline );
 	} );
 
-	test( 'AC-004: post template cache is cleared when publication ID is set to a non-empty value', async ( { page } ) => {
+	test( 'AC-004: post template cache is cleared when publication ID is set to a non-empty value', async ( {
+		page,
+	} ) => {
 		const publicationId = 'qa-e2e-pub-cache-clear';
 		wpCli(
 			`eval '\\Beehiiv\\API\\Cache::set_post_templates( "${ publicationId }", [ [ "id" => "tpl_1", "name" => "QA Template" ] ] );'`
@@ -221,7 +241,9 @@ test.describe( 'Settings validation & cache management', () => {
 		expect( readCachedTemplates( publicationId ) ).toBeNull();
 	} );
 
-	test( 'AC-005: post template cache is not cleared when publication ID is empty', async ( { page } ) => {
+	test( 'AC-005: post template cache is not cleared when publication ID is empty', async ( {
+		page,
+	} ) => {
 		const publicationId = 'qa-e2e-pub-cache-keep';
 		wpCli(
 			`eval '\\Beehiiv\\API\\Cache::set_post_templates( "${ publicationId }", [ [ "id" => "tpl_1", "name" => "QA Template" ] ] );'`
