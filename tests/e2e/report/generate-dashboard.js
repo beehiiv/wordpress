@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console -- CLI script, console is its output. */
 /**
  * Reads the Playwright JSON reporter output (tests/e2e/test-results/results.json)
  * and writes a self-contained HTML dashboard (tests/e2e/test-results/dashboard.html):
@@ -50,7 +51,6 @@ function statusOf( spec ) {
 	return 'passed';
 }
 
-// eslint-disable-next-line no-control-regex
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
 
 function stripAnsi( str ) {
@@ -136,7 +136,7 @@ function readAttachmentAsDataUri( attachment ) {
 		return `data:${ attachment.contentType };base64,${ buffer.toString(
 			'base64'
 		) }`;
-	} catch ( err ) {
+	} catch {
 		return null;
 	}
 }
@@ -208,7 +208,9 @@ function esc( str ) {
 }
 
 function fmtDuration( ms ) {
-	if ( ms < 1000 ) return `${ Math.round( ms ) }ms`;
+	if ( ms < 1000 ) {
+		return `${ Math.round( ms ) }ms`;
+	}
 	return `${ ( ms / 1000 ).toFixed( 1 ) }s`;
 }
 
@@ -216,20 +218,24 @@ function fmtTotalDuration( ms ) {
 	const totalSeconds = Math.round( ms / 1000 );
 	const minutes = Math.floor( totalSeconds / 60 );
 	const seconds = totalSeconds % 60;
-	if ( minutes === 0 ) return `${ seconds }s`;
+	if ( minutes === 0 ) {
+		return `${ seconds }s`;
+	}
 	return `${ minutes }m ${ seconds }s`;
 }
 
 function renderShots( c, sizeClass ) {
-	if ( ! c.screenshots.length ) return '';
+	if ( ! c.screenshots.length ) {
+		return '';
+	}
 	return `<div class="shots">${ c.screenshots
 		.map(
 			( s ) => `
-		<button type="button" class="shot-thumb ${ sizeClass }" data-full="${ s.dataUri }" aria-label="Screenshot: ${ esc(
-				c.title
-			) } (${ esc( s.project ) }${
-				s.retried ? `, attempt ${ s.attempt }` : ''
-			})">
+		<button type="button" class="shot-thumb ${ sizeClass }" data-full="${
+			s.dataUri
+		}" aria-label="Screenshot: ${ esc( c.title ) } (${ esc( s.project ) }${
+			s.retried ? `, attempt ${ s.attempt }` : ''
+		})">
 			<img src="${ s.dataUri }" alt="" loading="lazy">
 			<span class="shot-caption">${ esc( s.project ) }${
 				s.retried ? ` · attempt ${ s.attempt }` : ''
@@ -297,7 +303,9 @@ function renderCaseRow( c ) {
 	return `
 		<tr class="case-row status-${ c.status }">
 			<td class="cell-id">${ idCell }</td>
-			<td class="cell-status"><span class="badge ${ badgeClass }">${ c.status }</span></td>
+			<td class="cell-status"><span class="badge ${ badgeClass }">${
+				c.status
+			}</span></td>
 			<td class="cell-title">${ esc( c.title ) }</td>
 			<td class="cell-projects">${ c.projects.map( esc ).join( ', ' ) }</td>
 			<td class="cell-duration">${ fmtDuration( c.duration ) }</td>
@@ -353,7 +361,9 @@ function renderReproSection( exampleCase ) {
 		? `npx playwright test tests/e2e/specs/${ exampleCase.area }.spec.js`
 		: 'npx playwright test tests/e2e/specs/smoke.spec.js';
 	const oneCase = exampleCase
-		? `npx playwright test --grep "${ exampleCase.caseId || exampleCase.title }"`
+		? `npx playwright test --grep "${
+				exampleCase.caseId || exampleCase.title
+		  }"`
 		: 'npx playwright test --grep "AC-001"';
 	const lines = [
 		[ 'npm install', 'installs deps and the matching browsers' ],
@@ -389,7 +399,9 @@ function render( results ) {
 	const areas = byArea( cases );
 
 	const areaSummaryCards = [ ...areas.entries() ]
-		.map( ( [ area, areaCases ] ) => renderAreaSummaryCard( area, areaCases ) )
+		.map( ( [ area, areaCases ] ) =>
+			renderAreaSummaryCard( area, areaCases )
+		)
 		.join( '' );
 
 	const failedCases = cases.filter( ( c ) => c.status === 'failed' );
@@ -412,10 +424,10 @@ function render( results ) {
 	const gradientStops = [];
 	let cursor = 0;
 	const seg = ( amount, color ) => {
-		if ( amount <= 0 ) return;
-		gradientStops.push(
-			`${ color } ${ cursor }% ${ cursor + amount }%`
-		);
+		if ( amount <= 0 ) {
+			return;
+		}
+		gradientStops.push( `${ color } ${ cursor }% ${ cursor + amount }%` );
 		cursor += amount;
 	};
 	seg( passPct, 'var(--c-pass)' );
@@ -715,8 +727,8 @@ tr.status-flaky { background: color-mix(in srgb, var(--c-flaky) 6%, transparent)
 	<header class="top">
 		<h1>beehiiv E2E Results</h1>
 		<div class="meta">Run started ${ esc( runAt ) } · ${ fmtTotalDuration(
-		results.stats.duration
-	) } · ${ total } cases</div>
+			results.stats.duration
+		) } · ${ total } cases</div>
 	</header>
 
 	<nav class="jump">

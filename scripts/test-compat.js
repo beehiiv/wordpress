@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console -- CLI script, console is its output. */
 /**
  * Runs PHPUnit against a specific PHP / WordPress core combination and
  * writes an HTML dashboard scoped to that combination, for
@@ -44,7 +45,9 @@ function parseArgs( argv ) {
 const args = parseArgs( process.argv.slice( 2 ) );
 
 if ( ! args.php || ! args.wp ) {
-	console.error( 'Usage: npm run test:compat -- --php=<version> --wp=<version|latest|nightly>' );
+	console.error(
+		'Usage: npm run test:compat -- --php=<version> --wp=<version|latest|nightly>'
+	);
 	process.exit( 1 );
 }
 
@@ -56,7 +59,10 @@ const label = `PHP ${ args.php } / WP ${ args.wp }`;
 
 function run( command, commandArgs ) {
 	console.log( `$ ${ command } ${ commandArgs.join( ' ' ) }` );
-	execFileSync( command, commandArgs, { stdio: 'inherit', cwd: PLUGIN_ROOT } );
+	execFileSync( command, commandArgs, {
+		stdio: 'inherit',
+		cwd: PLUGIN_ROOT,
+	} );
 }
 
 run( 'node', [
@@ -78,7 +84,7 @@ try {
 		'-c',
 		`cd wp-content/plugins/beehiiv && mkdir -p ${ reportDir } && vendor/bin/phpunit -c phpunit.xml.dist --log-junit ${ junitPath }`,
 	] );
-} catch ( error ) {
+} catch {
 	exitCode = 1;
 }
 
@@ -89,14 +95,14 @@ try {
 		`--out=${ dashboardPath }`,
 		`--label=${ label }`,
 	] );
-} catch ( error ) {
+} catch {
 	console.error( 'Could not generate dashboard (no JUnit report to read).' );
 	exitCode = 1;
 }
 
 try {
 	run( 'npx', [ 'wp-env', 'stop' ] );
-} catch ( error ) {
+} catch {
 	// Ignore stop failures; the run's own exit code already reflects the test outcome.
 }
 

@@ -21,10 +21,8 @@ class EditorPostSettingsTest extends WP_UnitTestCase {
 	/**
 	 * AC-019: readonly fields cannot be modified via REST.
 	 *
-	 * authorize_meta() does not special-case readonly keys -- any key not in
-	 * $writable_keys defaults to an edit_posts check, so a readonly field is
-	 * authorized for write the same as any editable one. This mirrors the
-	 * live failure the E2E run found against the running REST API.
+	 * authorize_meta() must deny write for keys registered as readonly rather
+	 * than falling through to the edit_posts check.
 	 */
 	public function test_readonly_meta_key_must_not_be_writable_via_rest(): void {
 		$contributor_id = self::factory()->user->create( array( 'role' => 'contributor' ) );
@@ -41,7 +39,7 @@ class EditorPostSettingsTest extends WP_UnitTestCase {
 
 		$this->assertFalse(
 			$allowed,
-			'AC-019 gap: readonly meta keys must not be authorized for write, but authorize_meta() has no readonly branch and falls through to the edit_posts check.'
+			'AC-019: readonly meta keys must not be authorized for write.'
 		);
 	}
 

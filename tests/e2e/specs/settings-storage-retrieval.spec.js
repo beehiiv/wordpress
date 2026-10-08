@@ -46,10 +46,18 @@ const EXPECTED_KEYS = [
 
 let fixturePostId;
 
-/** Reads window.beehiivPostSettings after navigating to the post editor. */
+/**
+ * Reads window.beehiivPostSettings after navigating to the post editor.
+ * @param {import('@playwright/test').Page} page
+ * @param {number|string}                   postId
+ */
 async function readEditorConfig( page, postId ) {
 	await page.goto( `/wp-admin/post.php?post=${ postId }&action=edit` );
-	await page.waitForFunction( () => window.beehiivPostSettings !== undefined, null, { timeout: 15000 } );
+	await page.waitForFunction(
+		() => window.beehiivPostSettings !== undefined,
+		null,
+		{ timeout: 15000 }
+	);
 	return page.evaluate( () => window.beehiivPostSettings );
 }
 
@@ -68,14 +76,18 @@ test.beforeAll( () => {
 	// shared environment (same pattern as menu-registration.spec.js's fixture
 	// user), rather than creating a new post every run.
 	const existing = wpCliSafe(
-		`post list --post_type=post --title=${ JSON.stringify( FIXTURE_POST_TITLE ) } --field=ID`
+		`post list --post_type=post --title=${ JSON.stringify(
+			FIXTURE_POST_TITLE
+		) } --field=ID`
 	);
 	if ( existing ) {
 		fixturePostId = existing.split( '\n' )[ 0 ].trim();
 	} else {
 		fixturePostId = wpCli(
 			`post create --post_type=post --post_status=draft ` +
-				`--post_title=${ JSON.stringify( FIXTURE_POST_TITLE ) } --porcelain`
+				`--post_title=${ JSON.stringify(
+					FIXTURE_POST_TITLE
+				) } --porcelain`
 		).trim();
 	}
 } );
@@ -85,7 +97,9 @@ test.afterAll( () => {
 } );
 
 test.describe( 'Settings storage & retrieval', () => {
-	test( 'AC-001: publication ID and post template ID are retained when retrieved after being saved', async ( { page } ) => {
+	test( 'AC-001: publication ID and post template ID are retained when retrieved after being saved', async ( {
+		page,
+	} ) => {
 		wpCli(
 			`option update ${ OPTION_NAME } ` +
 				`'{"publication_id":"qa-ac1-pub","post_template_id":"qa-ac1-tmpl"}' --format=json`
@@ -98,7 +112,9 @@ test.describe( 'Settings storage & retrieval', () => {
 		expect( config.defaultPostTemplateId ).toBe( 'qa-ac1-tmpl' );
 	} );
 
-	test( 'AC-002: settings persist across page reloads and separate server requests', async ( { page } ) => {
+	test( 'AC-002: settings persist across page reloads and separate server requests', async ( {
+		page,
+	} ) => {
 		wpCli(
 			`option update ${ OPTION_NAME } ` +
 				`'{"publication_id":"qa-ac2-pub","post_template_id":"qa-ac2-tmpl"}' --format=json`
@@ -119,7 +135,9 @@ test.describe( 'Settings storage & retrieval', () => {
 		expect( secondLoad.defaultPostTemplateId ).toBe( 'qa-ac2-tmpl' );
 	} );
 
-	test( 'AC-003: settings are always retrieved in a consistent object structure', async ( { page } ) => {
+	test( 'AC-003: settings are always retrieved in a consistent object structure', async ( {
+		page,
+	} ) => {
 		// One pass with values saved, one pass with none -- the object's key
 		// set and value types must stay identical either way.
 		wpCli(
@@ -156,7 +174,9 @@ test.describe( 'Settings storage & retrieval', () => {
 		expect( typeof withoutValues.hasPostTemplate ).toBe( 'string' );
 	} );
 
-	test( 'AC-004: settings are returned as a complete object even on first retrieval before any save', async ( { page } ) => {
+	test( 'AC-004: settings are returned as a complete object even on first retrieval before any save', async ( {
+		page,
+	} ) => {
 		wpCliSafe( `option delete ${ OPTION_NAME }` );
 
 		await loginAsAdmin( page );
@@ -171,7 +191,9 @@ test.describe( 'Settings storage & retrieval', () => {
 		expect( config.hasPostTemplate ).toBe( '' );
 	} );
 
-	test( 'AC-005: missing or never-set configuration values default to empty strings', async ( { page } ) => {
+	test( 'AC-005: missing or never-set configuration values default to empty strings', async ( {
+		page,
+	} ) => {
 		// Explicitly save an empty settings object (no publication_id /
 		// post_template_id keys at all), rather than deleting the option --
 		// this exercises the default-merge path specifically, distinct from
@@ -185,17 +207,27 @@ test.describe( 'Settings storage & retrieval', () => {
 		expect( config.defaultPostTemplateId ).toBe( '' );
 	} );
 
-	test( 'AC-006: invalid or corrupted data in storage does not prevent settings from being retrieved', async ( { page } ) => {
+	test( 'AC-006: invalid or corrupted data in storage does not prevent settings from being retrieved', async ( {
+		page,
+	} ) => {
 		// Store a plain (non-array) scalar in place of the expected array --
 		// `wp option update` without --format=json stores the raw string,
 		// matching the Edge Cases table's "non-array or corrupted data".
-		wpCli( `option update ${ OPTION_NAME } "qa-ac6-corrupted-not-an-array"` );
+		wpCli(
+			`option update ${ OPTION_NAME } "qa-ac6-corrupted-not-an-array"`
+		);
 
 		await loginAsAdmin( page );
-		const response = await page.goto( `/wp-admin/post.php?post=${ fixturePostId }&action=edit` );
+		const response = await page.goto(
+			`/wp-admin/post.php?post=${ fixturePostId }&action=edit`
+		);
 		expect( response.status() ).toBe( 200 );
 
-		await page.waitForFunction( () => window.beehiivPostSettings !== undefined, null, { timeout: 15000 } );
+		await page.waitForFunction(
+			() => window.beehiivPostSettings !== undefined,
+			null,
+			{ timeout: 15000 }
+		);
 		const config = await page.evaluate( () => window.beehiivPostSettings );
 
 		expect( Object.keys( config ).sort() ).toEqual( EXPECTED_KEYS );
