@@ -54,7 +54,7 @@ jobs:
         run: npx wp-env start
 
       - name: Run PHPUnit
-        run: npx wp-env run tests-cli -- bash -c "cd wp-content/plugins/beehiiv && composer test"
+        run: npx wp-env run tests-cli -- bash -c "cd wp-content/plugins/$(basename "$GITHUB_WORKSPACE") && composer test"
 
       - name: Generate PHPUnit dashboard
         if: always()

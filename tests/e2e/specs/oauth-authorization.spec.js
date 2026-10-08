@@ -44,7 +44,6 @@ const { wpCli, wpCliSafe, ensurePluginActive } = require( '../utils/wp-cli' );
 
 const SETTINGS_PATH = '/wp-admin/admin.php?page=beehiiv';
 const SETTINGS_URL_RE = /\/wp-admin\/admin\.php\?page=beehiiv/;
-const OAUTH_OPTION = 'beehiiv_oauth';
 const CLIENT_ID = 'qa-e2e-oauth-authz-client';
 const STATE_PREFIX = 'beehiiv_oauth_state_';
 const VERIFIER_PREFIX = 'beehiiv_oauth_verifier_';
@@ -63,15 +62,24 @@ function clearConnection() {
  * this reproduces "already registered" state without a network call.
  */
 function seedClientId() {
-	wpCli( `eval '\\Beehiiv\\OAuth\\TokenStore::save_client_id( "${ CLIENT_ID }" );'` );
+	wpCli(
+		`eval '\\Beehiiv\\OAuth\\TokenStore::save_client_id( "${ CLIENT_ID }" );'`
+	);
 }
 
-/** Deletes the PKCE verifier and CSRF state transients for one user. */
+/**
+ * Deletes the PKCE verifier and CSRF state transients for one user.
+ * @param {number|string} userId
+ */
 function clearAuthTransients( userId ) {
 	wpCliSafe( `option delete _transient_${ VERIFIER_PREFIX }${ userId }` );
-	wpCliSafe( `option delete _transient_timeout_${ VERIFIER_PREFIX }${ userId }` );
+	wpCliSafe(
+		`option delete _transient_timeout_${ VERIFIER_PREFIX }${ userId }`
+	);
 	wpCliSafe( `option delete _transient_${ STATE_PREFIX }${ userId }` );
-	wpCliSafe( `option delete _transient_timeout_${ STATE_PREFIX }${ userId }` );
+	wpCliSafe(
+		`option delete _transient_timeout_${ STATE_PREFIX }${ userId }`
+	);
 }
 
 /**
@@ -86,7 +94,9 @@ async function clickConnectAndCaptureAuthorizeUrl( page ) {
 	await page.route( '**/oauth/authorize**', ( route ) => route.abort() );
 
 	const [ request ] = await Promise.all( [
-		page.waitForRequest( ( req ) => req.url().includes( '/oauth/authorize' ) ),
+		page.waitForRequest( ( req ) =>
+			req.url().includes( '/oauth/authorize' )
+		),
 		page.getByRole( 'link', { name: 'Connect to beehiiv' } ).click(),
 	] );
 
@@ -116,23 +126,35 @@ test.describe( 'OAuth Authorization Initiation', () => {
 		await loginAsAdmin( page );
 	} );
 
-	test( 'AC-001: admin can trigger an authorization flow that generates a beehiiv login URL', async ( { page } ) => {
+	test( 'AC-001: admin can trigger an authorization flow that generates a beehiiv login URL', async ( {
+		page,
+	} ) => {
 		clearConnection();
 		seedClientId();
 
 		await page.goto( SETTINGS_PATH );
 		const authorizeUrl = await clickConnectAndCaptureAuthorizeUrl( page );
 
-		expect( authorizeUrl.origin + authorizeUrl.pathname ).toBe( 'https://app.beehiiv.com/oauth/authorize' );
-		expect( authorizeUrl.searchParams.get( 'client_id' ) ).toBe( CLIENT_ID );
-		expect( authorizeUrl.searchParams.get( 'response_type' ) ).toBe( 'code' );
-		expect( authorizeUrl.searchParams.get( 'redirect_uri' ) ).toContain( 'page=beehiiv-oauth-callback' );
+		expect( authorizeUrl.origin + authorizeUrl.pathname ).toBe(
+			'https://app.beehiiv.com/oauth/authorize'
+		);
+		expect( authorizeUrl.searchParams.get( 'client_id' ) ).toBe(
+			CLIENT_ID
+		);
+		expect( authorizeUrl.searchParams.get( 'response_type' ) ).toBe(
+			'code'
+		);
+		expect( authorizeUrl.searchParams.get( 'redirect_uri' ) ).toContain(
+			'page=beehiiv-oauth-callback'
+		);
 
 		clearConnection();
 		clearAuthTransients( adminUserId );
 	} );
 
-	test( 'AC-002: the generated URL includes PKCE challenge and CSRF state token for security', async ( { page } ) => {
+	test( 'AC-002: the generated URL includes PKCE challenge and CSRF state token for security', async ( {
+		page,
+	} ) => {
 		clearConnection();
 		seedClientId();
 
@@ -160,14 +182,18 @@ test.describe( 'OAuth Authorization Initiation', () => {
 		// Cross-check the state param actually matches what Authorization
 		// persisted server-side (not just a client-visible value) -- this is
 		// the same value the callback handler will validate against later.
-		const storedState = wpCli( `option get _transient_${ STATE_PREFIX }${ adminUserId }` );
+		const storedState = wpCli(
+			`option get _transient_${ STATE_PREFIX }${ adminUserId }`
+		);
 		expect( storedState.trim() ).toBe( state );
 
 		clearConnection();
 		clearAuthTransients( adminUserId );
 	} );
 
-	test( 'AC-003: the system automatically registers the site as an OAuth client if one does not exist', async ( { page } ) => {
+	test( 'AC-003: the system automatically registers the site as an OAuth client if one does not exist', async ( {
+		page,
+	} ) => {
 		clearConnection(); // No client_id -> get_authorize_url() must attempt registration.
 
 		await page.goto( SETTINGS_PATH );
@@ -180,13 +206,19 @@ test.describe( 'OAuth Authorization Initiation', () => {
 		// automatic registration was attempted, not skipped. A real successful
 		// registration round-trip cannot be exercised here: this environment's
 		// BEEHIIV_REGISTRATION_TOKEN is an unreplaced build placeholder.
-		await expect( page.locator( '.notice-error' ) ).toContainText( /not configured for this plugin build/i );
+		await expect( page.locator( '.notice-error' ) ).toContainText(
+			/not configured for this plugin build/i
+		);
 
-		const clientIdAfter = wpCli( `eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_client_id();'` );
+		const clientIdAfter = wpCli(
+			`eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_client_id();'`
+		);
 		expect( clientIdAfter.trim() ).toBe( '' );
 	} );
 
-	test( 'AC-004: authorization session data expires after 10 minutes to prevent replay attacks', async ( { page } ) => {
+	test( 'AC-004: authorization session data expires after 10 minutes to prevent replay attacks', async ( {
+		page,
+	} ) => {
 		clearConnection();
 		seedClientId();
 
@@ -196,8 +228,12 @@ test.describe( 'OAuth Authorization Initiation', () => {
 
 		// BR-004 / Config::PKCE_TRANSIENT_TTL: session transients are created
 		// with a 600-second TTL.
-		const timeoutOption = wpCli( `option get _transient_timeout_${ STATE_PREFIX }${ adminUserId }` );
-		const secondsRemaining = parseInt( timeoutOption.trim(), 10 ) - Math.floor( Date.now() / 1000 );
+		const timeoutOption = wpCli(
+			`option get _transient_timeout_${ STATE_PREFIX }${ adminUserId }`
+		);
+		const secondsRemaining =
+			parseInt( timeoutOption.trim(), 10 ) -
+			Math.floor( Date.now() / 1000 );
 		expect( secondsRemaining ).toBeGreaterThan( 590 );
 		expect( secondsRemaining ).toBeLessThanOrEqual( 600 );
 
@@ -218,7 +254,9 @@ test.describe( 'OAuth Authorization Initiation', () => {
 		// sleeping in the test. WordPress transients (DB-backed here, no
 		// object-cache.php present) self-expire once now() passes this value.
 		wpCli(
-			`option update _transient_timeout_${ STATE_PREFIX }${ adminUserId } ${ Math.floor( Date.now() / 1000 ) - 5 }`
+			`option update _transient_timeout_${ STATE_PREFIX }${ adminUserId } ${
+				Math.floor( Date.now() / 1000 ) - 5
+			}`
 		);
 
 		const validAfterExpiry = wpCli(
@@ -250,7 +288,9 @@ test.describe( 'OAuth Authorization Initiation', () => {
 
 		// Unset (default/production) behavior, proving the override is
 		// opt-in rather than baked into the default resolution.
-		const defaultResult = wpCli( `eval 'echo \\Beehiiv\\OAuth\\Config::get_oauth_base_url();'` );
+		const defaultResult = wpCli(
+			`eval 'echo \\Beehiiv\\OAuth\\Config::get_oauth_base_url();'`
+		);
 		expect( defaultResult.trim() ).toBe( 'https://app.beehiiv.com' );
 	} );
 } );

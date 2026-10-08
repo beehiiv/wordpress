@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console -- CLI script, console is its output. */
 /**
  * Point wp-env at a specific PHP / WordPress core version, for backward-compatibility testing.
  *
@@ -62,17 +63,22 @@ function readOverride() {
 }
 
 function writeOverride( config ) {
-	fs.writeFileSync( overridePath, `${ JSON.stringify( config, null, '\t' ) }\n` );
+	fs.writeFileSync(
+		overridePath,
+		`${ JSON.stringify( config, null, '\t' ) }\n`
+	);
 }
 
 function destroyEnv() {
-	console.log( 'Destroying wp-env (database and content for this project will be lost)...' );
+	console.log(
+		'Destroying wp-env (database and content for this project will be lost)...'
+	);
 	try {
 		execFileSync( 'npx', [ 'wp-env', 'destroy', '--force' ], {
 			stdio: 'inherit',
 			cwd: PLUGIN_ROOT,
 		} );
-	} catch ( error ) {
+	} catch {
 		// Nothing to destroy on a first run; a later `wp-env start` still works fine.
 	}
 }
@@ -84,7 +90,9 @@ if ( args.clear ) {
 	delete override.phpVersion;
 	delete override.core;
 	writeOverride( override );
-	console.log( 'Cleared phpVersion/core overrides from .wp-env.override.json.' );
+	console.log(
+		'Cleared phpVersion/core overrides from .wp-env.override.json.'
+	);
 	if ( args.destroy ) {
 		destroyEnv();
 	}
@@ -124,4 +132,6 @@ if ( args.destroy ) {
 	destroyEnv();
 }
 
-console.log( 'Run `npm run env:start` to apply (wp-env rebuilds automatically).' );
+console.log(
+	'Run `npm run env:start` to apply (wp-env rebuilds automatically).'
+);
