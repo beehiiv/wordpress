@@ -63,25 +63,44 @@ const createdPostIds = [];
 
 const b64 = ( value ) => Buffer.from( value ).toString( 'base64' );
 
-/** Runs arbitrary PHP inside the tests environment and returns its output. */
+/**
+ * Runs arbitrary PHP inside the tests environment and returns its output.
+ *
+ * @param {string} code PHP source, without an opening tag.
+ * @return {string} Output of the eval.
+ */
 function php( code ) {
 	return wpCli( `eval 'eval( base64_decode( "${ b64( code ) }" ) );'` );
 }
 
-/** Runs PHP that echoes JSON and returns it parsed. */
+/**
+ * Runs PHP that echoes JSON and returns it parsed.
+ *
+ * @param {string} code PHP source that echoes JSON.
+ * @return {*} Parsed value.
+ */
 function phpJson( code ) {
 	const out = php( code );
 	const start = out.search( /[\[{"]|null|true|false|\d/ );
 	return JSON.parse( out.slice( start ) );
 }
 
-/** Passes a JS value into PHP as a decoded array expression. */
+/**
+ * Passes a JS value into PHP as a decoded array expression.
+ *
+ * @param {*} value Any JSON-serialisable value.
+ * @return {string} PHP expression that evaluates to the value.
+ */
 const phpArg = ( value ) =>
-	`json_decode( base64_decode( "${ b64( JSON.stringify( value ) ) }" ), true )`;
+	`json_decode( base64_decode( "${ b64(
+		JSON.stringify( value )
+	) }" ), true )`;
 
 /**
  * Connected, Send-API-enabled, publication + template configured, no mocks
  * beyond permissions, empty request log, no remembered reset time.
+ *
+ * @param {Object} overrides Plugin settings to merge over the defaults.
  */
 function seedReadyState( overrides = {} ) {
 	const settings = {
@@ -106,6 +125,11 @@ function seedReadyState( overrides = {} ) {
 /**
  * Registers beehiiv post endpoint mocks. Patterns are anchored so create,
  * test_sends, and delete (which share a URL prefix) never cross-match.
+ *
+ * @param {Object} root0          Mock responses, each `{ status, body }`.
+ * @param {Object} root0.testSend Response for POST …/test_sends.
+ * @param {Object} root0.create   Response for POST …/posts (temporary draft).
+ * @param {Object} root0.del      Response for DELETE …/posts/{id}.
  */
 function mockBeehiivPosts( {
 	testSend = {
@@ -149,7 +173,17 @@ function readHttpLog() {
 const beehiivPostCalls = ( log ) =>
 	log.filter( ( entry ) => entry.mock !== '/workspaces/permissions' );
 
-/** Creates a post directly in the DB (no REST, so no newsletter sync runs). */
+/**
+ * Creates a post directly in the DB (no REST, so no newsletter sync runs).
+ *
+ * @param {Object} root0         Post fields.
+ * @param {string} root0.title   Post title.
+ * @param {string} root0.content Post content (block markup).
+ * @param {string} root0.status  Post status.
+ * @param {number} root0.author  Author user ID.
+ * @param {Object} root0.meta    Post meta to set, keyed by meta key.
+ * @return {number} The new post ID.
+ */
 function createPost( {
 	title = 'Test send post',
 	content = CONTENT,
@@ -198,7 +232,12 @@ function readRememberedResetAt() {
 	);
 }
 
-/** wp_date() of a timestamp in the site timezone, without the zone abbreviation. */
+/**
+ * wp_date() of a timestamp in the site timezone, without the zone abbreviation.
+ *
+ * @param {number} timestamp Unix timestamp.
+ * @return {string} Formatted date and time.
+ */
 function siteDate( timestamp ) {
 	return php( `echo wp_date( "F j, g:i a", ${ timestamp } );` );
 }
@@ -234,7 +273,9 @@ async function openBeehiivPanel( page, postId ) {
 	if ( ! pressed ) {
 		await toggle.click();
 	}
-	await expect( page.locator( '.beehiiv-post-settings-content' ) ).toBeVisible();
+	await expect(
+		page.locator( '.beehiiv-post-settings-content' )
+	).toBeVisible();
 }
 
 const testEmailSection = ( page ) => page.locator( '.beehiiv-test-email' );
@@ -244,13 +285,17 @@ const sendButton = ( page ) =>
 
 async function expectSendEnabled( page ) {
 	await expect( sendButton( page ) ).toBeVisible();
-	await expect( sendButton( page ) ).not.toHaveAttribute( 'aria-disabled', 'true' );
+	await expect( sendButton( page ) ).not.toHaveAttribute(
+		'aria-disabled',
+		'true'
+	);
 	await expect( sendButton( page ) ).toBeEnabled();
 }
 
 async function expectSendDisabled( page ) {
 	await expect( sendButton( page ) ).toBeVisible();
-	const ariaDisabled = await sendButton( page ).getAttribute( 'aria-disabled' );
+	const ariaDisabled =
+		await sendButton( page ).getAttribute( 'aria-disabled' );
 	const disabled = await sendButton( page ).isDisabled();
 	expect( ariaDisabled === 'true' || disabled ).toBe( true );
 }
@@ -270,6 +315,11 @@ async function sendFromUi( page, recipients ) {
 /**
  * POSTs straight to the REST route with the logged-in user's REST nonce,
  * bypassing the editor UI entirely (AC-017). Call on any block editor page.
+ *
+ * @param {import('@playwright/test').Page} page       Page on a block editor screen.
+ * @param {number}                          postId     Post to send a test of.
+ * @param {string}                          recipients Raw recipients field value.
+ * @return {Promise<{status: number, body: *}>} HTTP status and parsed body.
  */
 async function restTestSend( page, postId, recipients = 'qa@example.com' ) {
 	return page.evaluate(
@@ -289,7 +339,7 @@ async function restTestSend( page, postId, recipients = 'qa@example.com' ) {
 			let body = null;
 			try {
 				body = await res.json();
-			} catch ( e ) {}
+			} catch {}
 			return { status: res.status, body };
 		},
 		{ id: postId, to: recipients }
@@ -347,13 +397,17 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 
 	// ----- US-001 -----------------------------------------------------------
 
-	test( 'AC-001: "Send test email" control is in the beehiiv editor panel and not on the posts list', async ( { page } ) => {
+	test( 'AC-001: "Send test email" control is in the beehiiv editor panel and not on the posts list', async ( {
+		page,
+	} ) => {
 		const postId = createPost( { title: 'AC-001 post' } );
 		await loginAsAdmin( page );
 
 		await openBeehiivPanel( page, postId );
 		await expect(
-			page.locator( '.beehiiv-post-settings-content' ).getByRole( 'button', { name: 'Test email', exact: true } )
+			page
+				.locator( '.beehiiv-post-settings-content' )
+				.getByRole( 'button', { name: 'Test email', exact: true } )
 		).toBeVisible();
 		await expect( recipientsField( page ) ).toBeVisible();
 		await expectSendEnabled( page );
@@ -361,11 +415,17 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		await page.goto( '/wp-admin/edit.php' );
 		await expect( page.locator( `#post-${ postId }` ) ).toBeVisible();
 		await page.locator( `#post-${ postId }` ).hover();
-		await expect( page.locator( '#wpbody' ) ).not.toContainText( /test email/i );
-		await expect( page.locator( '#wpbody' ) ).not.toContainText( /test send/i );
+		await expect( page.locator( '#wpbody' ) ).not.toContainText(
+			/test email/i
+		);
+		await expect( page.locator( '#wpbody' ) ).not.toContainText(
+			/test send/i
+		);
 	} );
 
-	test( 'AC-002: recipients field is empty on every open and never prefilled', async ( { page } ) => {
+	test( 'AC-002: recipients field is empty on every open and never prefilled', async ( {
+		page,
+	} ) => {
 		const postId = createPost( { title: 'AC-002 post' } );
 		await loginAsAdmin( page );
 
@@ -374,7 +434,9 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 
 		// A successful send, then reopening the editor: still empty.
 		await sendFromUi( page, 'first@example.com' );
-		await expect( testEmailSection( page ) ).toContainText( 'Test email sent.' );
+		await expect( testEmailSection( page ) ).toContainText(
+			'Test email sent.'
+		);
 
 		await openBeehiivPanel( page, postId );
 		await expect( recipientsField( page ) ).toHaveValue( '' );
@@ -384,8 +446,13 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		await expect( recipientsField( page ) ).not.toHaveValue( adminEmail );
 	} );
 
-	test( 'AC-003: commas/new lines split, whitespace trimmed, duplicates removed before sending', async ( { page } ) => {
-		const postId = createPost( { title: 'AC-003 post', meta: futureLinkedMeta() } );
+	test( 'AC-003: commas/new lines split, whitespace trimmed, duplicates removed before sending', async ( {
+		page,
+	} ) => {
+		const postId = createPost( {
+			title: 'AC-003 post',
+			meta: futureLinkedMeta(),
+		} );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
 
@@ -394,7 +461,9 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			'  one@example.com , two@example.com\n\nthree@example.com,one@example.com\n  TWO@example.com  '
 		);
 		expect( res.status() ).toBe( 200 );
-		await expect( testEmailSection( page ) ).toContainText( 'Test email sent.' );
+		await expect( testEmailSection( page ) ).toContainText(
+			'Test email sent.'
+		);
 
 		const sends = readHttpLog().filter( ( e ) => e.mock === 'test_sends' );
 		expect( sends ).toHaveLength( 1 );
@@ -405,21 +474,39 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		] );
 	} );
 
-	test( 'AC-004: invalid addresses block the send and are named; no recipient cap', async ( { page } ) => {
-		const postId = createPost( { title: 'AC-004 post', meta: futureLinkedMeta() } );
+	test( 'AC-004: invalid addresses block the send and are named; no recipient cap', async ( {
+		page,
+	} ) => {
+		const postId = createPost( {
+			title: 'AC-004 post',
+			meta: futureLinkedMeta(),
+		} );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
 
-		await recipientsField( page ).fill( 'good@example.com, not-an-email\nalso bad@x' );
+		await recipientsField( page ).fill(
+			'good@example.com, not-an-email\nalso bad@x'
+		);
 		await sendButton( page ).click();
-		await expect( testEmailSection( page ) ).toContainText( "These email addresses aren't valid" );
-		await expect( testEmailSection( page ) ).toContainText( 'not-an-email' );
+		await expect( testEmailSection( page ) ).toContainText(
+			"These email addresses aren't valid"
+		);
+		await expect( testEmailSection( page ) ).toContainText(
+			'not-an-email'
+		);
 		await expect( testEmailSection( page ) ).toContainText( 'also bad@x' );
-		await expect( testEmailSection( page ) ).not.toContainText( 'Test email sent.' );
-		expect( readHttpLog().filter( ( e ) => e.mock === 'test_sends' ) ).toHaveLength( 0 );
+		await expect( testEmailSection( page ) ).not.toContainText(
+			'Test email sent.'
+		);
+		expect(
+			readHttpLog().filter( ( e ) => e.mock === 'test_sends' )
+		).toHaveLength( 0 );
 
 		// 75 distinct addresses all go through in one send.
-		const many = Array.from( { length: 75 }, ( _, i ) => `bulk${ i }@example.com` );
+		const many = Array.from(
+			{ length: 75 },
+			( _, i ) => `bulk${ i }@example.com`
+		);
 		const res = await sendFromUi( page, many.join( ', ' ) );
 		expect( res.status() ).toBe( 200 );
 		const sends = readHttpLog().filter( ( e ) => e.mock === 'test_sends' );
@@ -427,7 +514,9 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		expect( sends[ 0 ].body.recipient_emails ).toEqual( many );
 	} );
 
-	test( 'AC-005: send is disabled with a save note while the post has unsaved changes; never auto-saves', async ( { page } ) => {
+	test( 'AC-005: send is disabled with a save note while the post has unsaved changes; never auto-saves', async ( {
+		page,
+	} ) => {
 		const postId = createPost( { title: 'AC-005 original title' } );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
@@ -436,7 +525,9 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		const postWrites = [];
 		page.on( 'request', ( req ) => {
 			if (
-				new RegExp( `/wp/v2/posts/${ postId }(\\?|$|/)` ).test( req.url() ) &&
+				new RegExp( `/wp/v2/posts/${ postId }(\\?|$|/)` ).test(
+					req.url()
+				) &&
 				req.method() !== 'GET'
 			) {
 				postWrites.push( req.url() );
@@ -460,15 +551,22 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		await sendButton( page ).click( { force: true } );
 		await page.waitForTimeout( 1500 );
 
-		expect( readHttpLog().filter( ( e ) => e.mock === 'test_sends' ) ).toHaveLength( 0 );
+		expect(
+			readHttpLog().filter( ( e ) => e.mock === 'test_sends' )
+		).toHaveLength( 0 );
 		expect( postWrites ).toHaveLength( 0 );
-		expect( php( `echo get_post_field( "post_title", ${ postId } );` ) ).toBe(
-			'AC-005 original title'
-		);
+		expect(
+			php( `echo get_post_field( "post_title", ${ postId } );` )
+		).toBe( 'AC-005 original title' );
 	} );
 
-	test( 'AC-006: send is disabled while the post is saving and while a test send is in progress', async ( { page } ) => {
-		const postId = createPost( { title: 'AC-006 post', meta: futureLinkedMeta() } );
+	test( 'AC-006: send is disabled while the post is saving and while a test send is in progress', async ( {
+		page,
+	} ) => {
+		const postId = createPost( {
+			title: 'AC-006 post',
+			meta: futureLinkedMeta(),
+		} );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
 		await expectSendEnabled( page );
@@ -482,13 +580,18 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			},
 		} );
 		await recipientsField( page ).fill( 'progress@example.com' );
-		const done = page.waitForResponse( ( r ) => r.url().includes( 'beehiiv/v1/test-send' ), {
-			timeout: 20000,
-		} );
+		const done = page.waitForResponse(
+			( r ) => r.url().includes( 'beehiiv/v1/test-send' ),
+			{
+				timeout: 20000,
+			}
+		);
 		await sendButton( page ).click();
 		await expectSendDisabled( page );
 		await done;
-		await expect( testEmailSection( page ) ).toContainText( 'Test email sent.' );
+		await expect( testEmailSection( page ) ).toContainText(
+			'Test email sent.'
+		);
 		await expectSendEnabled( page );
 
 		// Saving: hold the post save request for 4s and sample the editor's
@@ -507,53 +610,80 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			window.wp.data.dispatch( 'core/editor' ).savePost();
 		} );
 		await expect
-			.poll( () => page.evaluate( () => window.wp.data.select( 'core/editor' ).isSavingPost() ), {
-				timeout: 5000,
-			} )
+			.poll(
+				() =>
+					page.evaluate( () =>
+						window.wp.data.select( 'core/editor' ).isSavingPost()
+					),
+				{
+					timeout: 5000,
+				}
+			)
 			.toBe( true );
 		const sample = await page.evaluate( () => {
-			const btn = [ ...document.querySelectorAll( '.beehiiv-test-email button' ) ].find(
-				( b ) => b.textContent.trim() === 'Send test email'
-			);
+			const btn = [
+				...document.querySelectorAll( '.beehiiv-test-email button' ),
+			].find( ( b ) => b.textContent.trim() === 'Send test email' );
 			return {
 				saving: window.wp.data.select( 'core/editor' ).isSavingPost(),
-				dirty: window.wp.data.select( 'core/editor' ).isEditedPostDirty(),
-				disabled: !! btn && ( btn.disabled || btn.getAttribute( 'aria-disabled' ) === 'true' ),
+				dirty: window.wp.data
+					.select( 'core/editor' )
+					.isEditedPostDirty(),
+				disabled:
+					!! btn &&
+					( btn.disabled ||
+						btn.getAttribute( 'aria-disabled' ) === 'true' ),
 			};
 		} );
 		expect( sample.saving ).toBe( true );
 		expect( sample.disabled ).toBe( true );
 		await expect
 			.poll(
-				() => page.evaluate( () => window.wp.data.select( 'core/editor' ).isSavingPost() ),
+				() =>
+					page.evaluate( () =>
+						window.wp.data.select( 'core/editor' ).isSavingPost()
+					),
 				{ timeout: 15000 }
 			)
 			.toBe( false );
 		await expectSendEnabled( page );
 	} );
 
-	test( 'AC-007: a linked, not-yet-sent newsletter is tested directly (no temporary draft)', async ( { page } ) => {
-		const postId = createPost( { title: 'AC-007 post', meta: futureLinkedMeta() } );
+	test( 'AC-007: a linked, not-yet-sent newsletter is tested directly (no temporary draft)', async ( {
+		page,
+	} ) => {
+		const postId = createPost( {
+			title: 'AC-007 post',
+			meta: futureLinkedMeta(),
+		} );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
 
 		const res = await sendFromUi( page, 'linked@example.com' );
 		expect( res.status() ).toBe( 200 );
-		await expect( testEmailSection( page ) ).toContainText( 'Test email sent.' );
+		await expect( testEmailSection( page ) ).toContainText(
+			'Test email sent.'
+		);
 
 		const calls = beehiivPostCalls( readHttpLog() );
 		expect( calls.map( ( c ) => c.mock ) ).toEqual( [ 'test_sends' ] );
-		expect( calls[ 0 ].url ).toContain( `/publications/${ PUB }/posts/${ LINKED_ID }/test_sends` );
+		expect( calls[ 0 ].url ).toContain(
+			`/publications/${ PUB }/posts/${ LINKED_ID }/test_sends`
+		);
 	} );
 
-	test( 'AC-008: no linked newsletter -> temporary draft from saved content, tested, then deleted', async ( { page } ) => {
+	test( 'AC-008: no linked newsletter -> temporary draft from saved content, tested, then deleted', async ( {
+		page,
+	} ) => {
 		const postId = createPost( { title: 'AC-008 saved title' } );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
 
 		const res = await sendFromUi( page, 'temp@example.com' );
 		expect( res.status() ).toBe( 200 );
-		await expect( testEmailSection( page ) ).toContainText( 'Test email sent.' );
+		await expect( testEmailSection( page ) ).toContainText(
+			'Test email sent.'
+		);
 
 		const calls = beehiivPostCalls( readHttpLog() );
 		expect( calls.map( ( c ) => `${ c.method } ${ c.mock }` ) ).toEqual( [
@@ -562,7 +692,9 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			'DELETE delete_post',
 		] );
 		expect( calls[ 1 ].url ).toContain( `/posts/${ TMP_ID }/test_sends` );
-		expect( calls[ 2 ].url ).toMatch( new RegExp( `/posts/${ TMP_ID }(\\?|$)` ) );
+		expect( calls[ 2 ].url ).toMatch(
+			new RegExp( `/posts/${ TMP_ID }(\\?|$)` )
+		);
 
 		// Same conversion/settings as a real send: compare to the real-send builder output.
 		const created = calls[ 0 ].body;
@@ -577,7 +709,9 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		expect( created.web_settings ).toEqual( realSend.web_settings );
 	} );
 
-	test( 'AC-009: the temporary beehiiv post is always a draft with no send time, even if a filter says otherwise', async ( { page } ) => {
+	test( 'AC-009: the temporary beehiiv post is always a draft with no send time, even if a filter says otherwise', async ( {
+		page,
+	} ) => {
 		const postId = createPost( {
 			title: 'AC-009 post',
 			meta: {
@@ -592,23 +726,33 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 
 		// Plain run.
 		await sendFromUi( page, 'draft@example.com' );
-		await expect( testEmailSection( page ) ).toContainText( 'Test email sent.' );
+		await expect( testEmailSection( page ) ).toContainText(
+			'Test email sent.'
+		);
 		let create = readHttpLog().find( ( e ) => e.mock === 'create_post' );
 		expect( create.body.status ).toBe( 'draft' );
 		expect( create.body ).not.toHaveProperty( 'scheduled_at' );
 
 		// Third-party filter forces confirmed + scheduled_at (BR-005).
-		php( 'beehiiv_e2e_clear_http_log(); update_option( "beehiiv_e2e_force_settings_status", "confirmed" );' );
+		php(
+			'beehiiv_e2e_clear_http_log(); update_option( "beehiiv_e2e_force_settings_status", "confirmed" );'
+		);
 		await sendFromUi( page, 'draft@example.com' );
-		await expect( testEmailSection( page ) ).toContainText( 'Test email sent.' );
+		await expect( testEmailSection( page ) ).toContainText(
+			'Test email sent.'
+		);
 		create = readHttpLog().find( ( e ) => e.mock === 'create_post' );
 		expect( create.body.status ).toBe( 'draft' );
 		expect( create.body ).not.toHaveProperty( 'scheduled_at' );
 		php( 'delete_option( "beehiiv_e2e_force_settings_status" );' );
 	} );
 
-	test( 'AC-010: a test send never changes newsletter link, send toggle, send date, or error state', async ( { page } ) => {
-		const sendDate = php( 'echo wp_date( "Y-m-d\\\\TH:i:s", time() + 5 * DAY_IN_SECONDS );' );
+	test( 'AC-010: a test send never changes newsletter link, send toggle, send date, or error state', async ( {
+		page,
+	} ) => {
+		const sendDate = php(
+			'echo wp_date( "Y-m-d\\\\TH:i:s", time() + 5 * DAY_IN_SECONDS );'
+		);
 		const linkedId = createPost( {
 			title: 'AC-010 linked',
 			meta: { ...futureLinkedMeta(), _beehiiv_send_to_newsletter: '1' },
@@ -627,20 +771,28 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		for ( const id of [ linkedId, tempId ] ) {
 			await openBeehiivPanel( page, id );
 			await sendFromUi( page, 'meta@example.com' );
-			await expect( testEmailSection( page ) ).toContainText( 'Test email sent.' );
+			await expect( testEmailSection( page ) ).toContainText(
+				'Test email sent.'
+			);
 		}
 		// A failed send must not leave an error state either.
-		mockBeehiivPosts( { testSend: { status: 500, body: { message: 'boom' } } } );
+		mockBeehiivPosts( {
+			testSend: { status: 500, body: { message: 'boom' } },
+		} );
 		await sendFromUi( page, 'meta@example.com' );
 		await expect( testEmailSection( page ) ).toContainText( "wasn't sent" );
 
 		expect( readNewsletterMeta( linkedId ) ).toEqual( beforeLinked );
 		expect( readNewsletterMeta( tempId ) ).toEqual( beforeTemp );
 		// No PATCH/update of the real newsletter was attempted.
-		expect( readHttpLog().filter( ( e ) => e.method === 'PATCH' ) ).toHaveLength( 0 );
+		expect(
+			readHttpLog().filter( ( e ) => e.method === 'PATCH' )
+		).toHaveLength( 0 );
 	} );
 
-	test( 'AC-011: the temporary draft is still deleted when the test send fails', async ( { page } ) => {
+	test( 'AC-011: the temporary draft is still deleted when the test send fails', async ( {
+		page,
+	} ) => {
 		const postId = createPost( { title: 'AC-011 post' } );
 		mockBeehiivPosts( {
 			testSend: { status: 500, body: { message: 'Internal error' } },
@@ -657,12 +809,16 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			'POST test_sends',
 			'DELETE delete_post',
 		] );
-		expect( calls[ 2 ].url ).toMatch( new RegExp( `/posts/${ TMP_ID }(\\?|$)` ) );
+		expect( calls[ 2 ].url ).toMatch(
+			new RegExp( `/posts/${ TMP_ID }(\\?|$)` )
+		);
 	} );
 
 	// ----- US-002 -----------------------------------------------------------
 
-	test( 'AC-012: available for saved draft, pending, and scheduled posts, with or without "Send to newsletter"', async ( { page } ) => {
+	test( 'AC-012: available for saved draft, pending, and scheduled posts, with or without "Send to newsletter"', async ( {
+		page,
+	} ) => {
 		await loginAsAdmin( page );
 		for ( const status of [ 'draft', 'pending', 'future' ] ) {
 			for ( const toggle of [ '', '1' ] ) {
@@ -672,24 +828,48 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 					meta: { _beehiiv_send_to_newsletter: toggle },
 				} );
 				await openBeehiivPanel( page, postId );
-				await expect( testEmailSection( page ) ).not.toContainText( 'Test emails are available for' );
+				await expect( testEmailSection( page ) ).not.toContainText(
+					'Test emails are available for'
+				);
 				await expectSendEnabled( page );
 				const res = await sendFromUi( page, 'avail@example.com' );
-				expect( res.status(), `${ status } toggle=${ toggle }` ).toBe( 200 );
-				await expect( testEmailSection( page ) ).toContainText( 'Test email sent.' );
+				expect( res.status(), `${ status } toggle=${ toggle }` ).toBe(
+					200
+				);
+				await expect( testEmailSection( page ) ).toContainText(
+					'Test email sent.'
+				);
 			}
 		}
 	} );
 
-	test( 'AC-013: not available on published, private, or already-sent posts, with a short reason', async ( { page } ) => {
+	test( 'AC-013: not available on published, private, or already-sent posts, with a short reason', async ( {
+		page,
+	} ) => {
 		const cases = [
-			{ status: 'publish', meta: {}, reason: 'Test emails are available for drafts, pending posts, and scheduled posts.' },
-			{ status: 'private', meta: {}, reason: 'Test emails are available for drafts, pending posts, and scheduled posts.' },
-			{ status: 'draft', meta: sentLinkedMeta(), reason: "This post's newsletter was already sent, so it can't send a test email." },
+			{
+				status: 'publish',
+				meta: {},
+				reason: 'Test emails are available for drafts, pending posts, and scheduled posts.',
+			},
+			{
+				status: 'private',
+				meta: {},
+				reason: 'Test emails are available for drafts, pending posts, and scheduled posts.',
+			},
+			{
+				status: 'draft',
+				meta: sentLinkedMeta(),
+				reason: "This post's newsletter was already sent, so it can't send a test email.",
+			},
 		];
 		await loginAsAdmin( page );
 		for ( const c of cases ) {
-			const postId = createPost( { title: `AC-013 ${ c.status }`, status: c.status, meta: c.meta } );
+			const postId = createPost( {
+				title: `AC-013 ${ c.status }`,
+				status: c.status,
+				meta: c.meta,
+			} );
 			await openBeehiivPanel( page, postId );
 			await expect( testEmailSection( page ) ).toContainText( c.reason );
 			await expect( sendButton( page ) ).toHaveCount( 0 );
@@ -697,12 +877,25 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		}
 	} );
 
-	test( 'AC-014: only users with publish rights who can edit the post see the control', async ( { page, browser } ) => {
+	test( 'AC-014: only users with publish rights who can edit the post see the control', async ( {
+		page,
+		browser,
+	} ) => {
 		// Author (publish_posts) on their own draft: sees and can use it.
-		const authorId = Number( php( `echo get_user_by( "login", "${ AUTHOR.login }" )->ID;` ) );
-		const contribId = Number( php( `echo get_user_by( "login", "${ CONTRIB.login }" )->ID;` ) );
-		const authorPost = createPost( { title: 'AC-014 author post', author: authorId } );
-		const contribPost = createPost( { title: 'AC-014 contributor post', author: contribId } );
+		const authorId = Number(
+			php( `echo get_user_by( "login", "${ AUTHOR.login }" )->ID;` )
+		);
+		const contribId = Number(
+			php( `echo get_user_by( "login", "${ CONTRIB.login }" )->ID;` )
+		);
+		const authorPost = createPost( {
+			title: 'AC-014 author post',
+			author: authorId,
+		} );
+		const contribPost = createPost( {
+			title: 'AC-014 contributor post',
+			author: contribId,
+		} );
 
 		await loginAs( page, AUTHOR.login, TEST_USER_PASS );
 		await openBeehiivPanel( page, authorPost );
@@ -714,18 +907,40 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		await loginAs( cpage, CONTRIB.login, TEST_USER_PASS );
 		await openPostEditor( cpage, contribPost );
 		await cpage.waitForTimeout( 2000 );
-		await expect( cpage.getByRole( 'button', { name: 'beehiiv', exact: true } ) ).toHaveCount( 0 );
-		await expect( cpage.getByRole( 'button', { name: 'Send test email' } ) ).toHaveCount( 0 );
+		await expect(
+			cpage.getByRole( 'button', { name: 'beehiiv', exact: true } )
+		).toHaveCount( 0 );
+		await expect(
+			cpage.getByRole( 'button', { name: 'Send test email' } )
+		).toHaveCount( 0 );
 		await ctx.close();
 	} );
 
-	test( 'AC-015: unavailable when beehiiv is not ready, showing the same readiness message as the toggle', async ( { page } ) => {
+	test( 'AC-015: unavailable when beehiiv is not ready, showing the same readiness message as the toggle', async ( {
+		page,
+	} ) => {
 		const postId = createPost( { title: 'AC-015 post' } );
 		const cases = [
-			{ name: 'not connected', seed: { connected: false }, message: 'Connect your beehiiv account' },
-			{ name: 'no Send API', seed: { permissions: { posts: [ 'read' ] } }, message: "doesn't have access to send newsletters" },
-			{ name: 'no publication', seed: { settings: { publication_id: '' } }, message: 'Choose a publication in' },
-			{ name: 'no template', seed: { settings: { post_template_id: '' } }, message: 'Choose a default post template in' },
+			{
+				name: 'not connected',
+				seed: { connected: false },
+				message: 'Connect your beehiiv account',
+			},
+			{
+				name: 'no Send API',
+				seed: { permissions: { posts: [ 'read' ] } },
+				message: "doesn't have access to send newsletters",
+			},
+			{
+				name: 'no publication',
+				seed: { settings: { publication_id: '' } },
+				message: 'Choose a publication in',
+			},
+			{
+				name: 'no template',
+				seed: { settings: { post_template_id: '' } },
+				message: 'Choose a default post template in',
+			},
 		];
 		await loginAsAdmin( page );
 		for ( const c of cases ) {
@@ -734,38 +949,66 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			await openBeehiivPanel( page, postId );
 			const panel = page.locator( '.beehiiv-post-settings-content' );
 			await expect( panel, c.name ).toContainText( c.message );
-			await expect( panel.getByRole( 'button', { name: 'Test email', exact: true } ), c.name ).toHaveCount( 0 );
+			await expect(
+				panel.getByRole( 'button', {
+					name: 'Test email',
+					exact: true,
+				} ),
+				c.name
+			).toHaveCount( 0 );
 			await expect( sendButton( page ), c.name ).toHaveCount( 0 );
 		}
 	} );
 
-	test( 'AC-016: scheduled post whose last beehiiv sync failed shows the out-of-sync note', async ( { page } ) => {
+	test( 'AC-016: scheduled post whose last beehiiv sync failed shows the out-of-sync note', async ( {
+		page,
+	} ) => {
 		const postId = createPost( {
 			title: 'AC-016 post',
 			status: 'future',
 			meta: {
 				...futureLinkedMeta(),
 				_beehiiv_send_to_newsletter: '1',
-				_beehiiv_newsletter_error: 'beehiiv is temporarily unavailable. Try again later.',
+				_beehiiv_newsletter_error:
+					'beehiiv is temporarily unavailable. Try again later.',
 				_beehiiv_newsletter_error_type: 'save',
 			},
 		} );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
-		await expect( testEmailSection( page ) ).toContainText( "isn't in sync with beehiiv" );
-		await expect( testEmailSection( page ) ).toContainText( 'Save the post again' );
+		await expect( testEmailSection( page ) ).toContainText(
+			"isn't in sync with beehiiv"
+		);
+		await expect( testEmailSection( page ) ).toContainText(
+			'Save the post again'
+		);
 		await expect( sendButton( page ) ).toHaveCount( 0 );
 	} );
 
-	test( 'AC-017: server refuses ineligible posts and invalid input when the UI is bypassed', async ( { page } ) => {
+	test( 'AC-017: server refuses ineligible posts and invalid input when the UI is bypassed', async ( {
+		page,
+	} ) => {
 		const editable = createPost( { title: 'AC-017 host' } );
-		const published = createPost( { title: 'AC-017 published', status: 'publish' } );
-		const privatePost = createPost( { title: 'AC-017 private', status: 'private' } );
-		const sent = createPost( { title: 'AC-017 sent', meta: sentLinkedMeta() } );
+		const published = createPost( {
+			title: 'AC-017 published',
+			status: 'publish',
+		} );
+		const privatePost = createPost( {
+			title: 'AC-017 private',
+			status: 'private',
+		} );
+		const sent = createPost( {
+			title: 'AC-017 sent',
+			meta: sentLinkedMeta(),
+		} );
 		const outOfSync = createPost( {
 			title: 'AC-017 out of sync',
 			status: 'future',
-			meta: { ...futureLinkedMeta(), _beehiiv_newsletter_error: 'sync failed', _beehiiv_newsletter_error_type: 'save' },
+			meta: {
+				...futureLinkedMeta(),
+				_beehiiv_newsletter_error: 'sync failed',
+				_beehiiv_newsletter_error_type: 'save',
+			},
 		} );
 
 		await loginAsAdmin( page );
@@ -782,7 +1025,11 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			expect( r.body.code ).toBe( code );
 		}
 
-		const invalid = await restTestSend( page, editable, 'ok@example.com, nope' );
+		const invalid = await restTestSend(
+			page,
+			editable,
+			'ok@example.com, nope'
+		);
 		expect( invalid.status ).toBe( 400 );
 		expect( invalid.body.message ).toContain( 'nope' );
 
@@ -791,8 +1038,14 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 
 		for ( const [ seed, code ] of [
 			[ { connected: false }, 'beehiiv_not_connected' ],
-			[ { permissions: { posts: [ 'read' ] } }, 'beehiiv_send_api_unavailable' ],
-			[ { settings: { publication_id: '' } }, 'beehiiv_missing_publication' ],
+			[
+				{ permissions: { posts: [ 'read' ] } },
+				'beehiiv_send_api_unavailable',
+			],
+			[
+				{ settings: { publication_id: '' } },
+				'beehiiv_missing_publication',
+			],
 		] ) {
 			seedReadyState( seed );
 			mockBeehiivPosts();
@@ -801,15 +1054,32 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			expect( r.body.code ).toBe( code );
 		}
 
-		expect( readHttpLog().filter( ( e ) => e.mock === 'test_sends' ) ).toHaveLength( 0 );
+		expect(
+			readHttpLog().filter( ( e ) => e.mock === 'test_sends' )
+		).toHaveLength( 0 );
 	} );
 
-	test( 'AC-017: server refuses users without publish or edit rights when the UI is bypassed', async ( { browser } ) => {
-		const authorId = Number( php( `echo get_user_by( "login", "${ AUTHOR.login }" )->ID;` ) );
-		const contribId = Number( php( `echo get_user_by( "login", "${ CONTRIB.login }" )->ID;` ) );
-		const adminPost = createPost( { title: 'AC-017 admin post', author: 1 } );
-		const authorPost = createPost( { title: 'AC-017 author own', author: authorId } );
-		const contribPost = createPost( { title: 'AC-017 contrib own', author: contribId } );
+	test( 'AC-017: server refuses users without publish or edit rights when the UI is bypassed', async ( {
+		browser,
+	} ) => {
+		const authorId = Number(
+			php( `echo get_user_by( "login", "${ AUTHOR.login }" )->ID;` )
+		);
+		const contribId = Number(
+			php( `echo get_user_by( "login", "${ CONTRIB.login }" )->ID;` )
+		);
+		const adminPost = createPost( {
+			title: 'AC-017 admin post',
+			author: 1,
+		} );
+		const authorPost = createPost( {
+			title: 'AC-017 author own',
+			author: authorId,
+		} );
+		const contribPost = createPost( {
+			title: 'AC-017 contrib own',
+			author: contribId,
+		} );
 
 		// Contributor: can edit own draft but lacks publish_posts.
 		let ctx = await browser.newContext();
@@ -829,12 +1099,19 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		expect( r.status ).toBe( 403 );
 		await ctx.close();
 
-		expect( readHttpLog().filter( ( e ) => e.mock === 'test_sends' ) ).toHaveLength( 0 );
+		expect(
+			readHttpLog().filter( ( e ) => e.mock === 'test_sends' )
+		).toHaveLength( 0 );
 	} );
 
-	test( 'AC-017: server refuses when no post template is configured (same readiness rule as the toggle)', async ( { page } ) => {
+	test( 'AC-017: server refuses when no post template is configured (same readiness rule as the toggle)', async ( {
+		page,
+	} ) => {
 		const unlinked = createPost( { title: 'AC-017 no template unlinked' } );
-		const linked = createPost( { title: 'AC-017 no template linked', meta: futureLinkedMeta() } );
+		const linked = createPost( {
+			title: 'AC-017 no template linked',
+			meta: futureLinkedMeta(),
+		} );
 		await loginAsAdmin( page );
 		await openPostEditor( page, unlinked );
 
@@ -842,22 +1119,38 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		mockBeehiivPosts();
 
 		const r1 = await restTestSend( page, unlinked );
-		expect( r1.status, 'unlinked post, no template' ).toBeGreaterThanOrEqual( 400 );
+		expect(
+			r1.status,
+			'unlinked post, no template'
+		).toBeGreaterThanOrEqual( 400 );
 
 		const r2 = await restTestSend( page, linked );
-		expect( r2.status, 'linked unsent post, no template' ).toBeGreaterThanOrEqual( 400 );
+		expect(
+			r2.status,
+			'linked unsent post, no template'
+		).toBeGreaterThanOrEqual( 400 );
 
-		expect( readHttpLog().filter( ( e ) => e.mock === 'test_sends' ) ).toHaveLength( 0 );
+		expect(
+			readHttpLog().filter( ( e ) => e.mock === 'test_sends' )
+		).toHaveLength( 0 );
 	} );
 
 	// ----- US-003 -----------------------------------------------------------
 
-	test( 'AC-018: success shows confirmation, sends left today, and reset time in the site timezone', async ( { page } ) => {
+	test( 'AC-018: success shows confirmation, sends left today, and reset time in the site timezone', async ( {
+		page,
+	} ) => {
 		const resetAt = Math.floor( Date.now() / 1000 ) + 6 * 3600 + 17 * 60;
 		mockBeehiivPosts( {
-			testSend: { status: 200, body: { data: { remaining_test_sends: 7, reset_at: resetAt } } },
+			testSend: {
+				status: 200,
+				body: { data: { remaining_test_sends: 7, reset_at: resetAt } },
+			},
 		} );
-		const postId = createPost( { title: 'AC-018 post', meta: futureLinkedMeta() } );
+		const postId = createPost( {
+			title: 'AC-018 post',
+			meta: futureLinkedMeta(),
+		} );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
 
@@ -866,27 +1159,43 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		await expect( section ).toContainText( 'Test email sent.' );
 		await expect( section ).toContainText( '7 test sends left today.' );
 		const expectedLocal = siteDate( resetAt );
-		await expect( section ).toContainText( `Test sends reset on ${ expectedLocal }` );
+		await expect( section ).toContainText(
+			`Test sends reset on ${ expectedLocal }`
+		);
 
 		// Sanity: the site timezone rendering differs from a UTC rendering.
 		const utc = php( `echo gmdate( "F j, g:i a", ${ resetAt } );` );
 		expect( utc ).not.toBe( expectedLocal );
 	} );
 
-	test( 'AC-019: last reset time is remembered per publication from successful sends', async ( { page } ) => {
+	test( 'AC-019: last reset time is remembered per publication from successful sends', async ( {
+		page,
+	} ) => {
 		const resetOne = Math.floor( Date.now() / 1000 ) + 5 * 3600;
 		const resetTwo = resetOne + 3600;
-		const postId = createPost( { title: 'AC-019 post', meta: futureLinkedMeta() } );
+		const postId = createPost( {
+			title: 'AC-019 post',
+			meta: futureLinkedMeta(),
+		} );
 		await loginAsAdmin( page );
 
-		mockBeehiivPosts( { testSend: { status: 200, body: { data: { remaining_test_sends: 2, reset_at: resetOne } } } } );
+		mockBeehiivPosts( {
+			testSend: {
+				status: 200,
+				body: { data: { remaining_test_sends: 2, reset_at: resetOne } },
+			},
+		} );
 		await openBeehiivPanel( page, postId );
 		await sendFromUi( page, 'r1@example.com' );
-		await expect( testEmailSection( page ) ).toContainText( 'Test email sent.' );
+		await expect( testEmailSection( page ) ).toContainText(
+			'Test email sent.'
+		);
 		expect( readRememberedResetAt() ).toEqual( { [ PUB ]: resetOne } );
 
 		// Failed send must not overwrite it.
-		mockBeehiivPosts( { testSend: { status: 500, body: { message: 'x' } } } );
+		mockBeehiivPosts( {
+			testSend: { status: 500, body: { message: 'x' } },
+		} );
 		await sendFromUi( page, 'r1@example.com' );
 		await expect( testEmailSection( page ) ).toContainText( "wasn't sent" );
 		expect( readRememberedResetAt() ).toEqual( { [ PUB ]: resetOne } );
@@ -896,17 +1205,37 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			remove_all_filters( "sanitize_option_beehiiv_settings" );
 			update_option( "beehiiv_settings", [ "publication_id" => "${ PUB_TWO }", "post_template_id" => "${ TPL }" ] );
 		` );
-		mockBeehiivPosts( { testSend: { status: 200, body: { data: { remaining_test_sends: 1, reset_at: resetTwo } } } } );
+		mockBeehiivPosts( {
+			testSend: {
+				status: 200,
+				body: { data: { remaining_test_sends: 1, reset_at: resetTwo } },
+			},
+		} );
 		await openBeehiivPanel( page, postId );
 		await sendFromUi( page, 'r2@example.com' );
-		await expect( testEmailSection( page ) ).toContainText( 'Test email sent.' );
-		expect( readRememberedResetAt() ).toEqual( { [ PUB ]: resetOne, [ PUB_TWO ]: resetTwo } );
+		await expect( testEmailSection( page ) ).toContainText(
+			'Test email sent.'
+		);
+		expect( readRememberedResetAt() ).toEqual( {
+			[ PUB ]: resetOne,
+			[ PUB_TWO ]: resetTwo,
+		} );
 	} );
 
-	test( 'AC-020: daily limit shows all sends used, with the remembered reset time only when still in the future', async ( { page } ) => {
-		const postId = createPost( { title: 'AC-020 post', meta: futureLinkedMeta() } );
+	test( 'AC-020: daily limit shows all sends used, with the remembered reset time only when still in the future', async ( {
+		page,
+	} ) => {
+		const postId = createPost( {
+			title: 'AC-020 post',
+			meta: futureLinkedMeta(),
+		} );
 		mockBeehiivPosts( {
-			testSend: { status: 422, body: { errors: [ { message: 'Daily test send limit reached' } ] } },
+			testSend: {
+				status: 422,
+				body: {
+					errors: [ { message: 'Daily test send limit reached' } ],
+				},
+			},
 		} );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
@@ -914,40 +1243,69 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 
 		// Remembered and in the future.
 		const future = Math.floor( Date.now() / 1000 ) + 4 * 3600;
-		php( `update_option( "beehiiv_test_send_reset_at", [ "${ PUB }" => ${ future } ] );` );
+		php(
+			`update_option( "beehiiv_test_send_reset_at", [ "${ PUB }" => ${ future } ] );`
+		);
 		await sendFromUi( page, 'limit@example.com' );
-		await expect( section ).toContainText( "You've used all test sends for today." );
-		await expect( section ).toContainText( `They reset on ${ siteDate( future ) }` );
+		await expect( section ).toContainText(
+			"You've used all test sends for today."
+		);
+		await expect( section ).toContainText(
+			`They reset on ${ siteDate( future ) }`
+		);
 
 		// Remembered but already past: no time.
 		const past = Math.floor( Date.now() / 1000 ) - 3600;
-		php( `update_option( "beehiiv_test_send_reset_at", [ "${ PUB }" => ${ past } ] );` );
+		php(
+			`update_option( "beehiiv_test_send_reset_at", [ "${ PUB }" => ${ past } ] );`
+		);
 		await sendFromUi( page, 'limit@example.com' );
-		await expect( section ).toContainText( "You've used all test sends for today." );
+		await expect( section ).toContainText(
+			"You've used all test sends for today."
+		);
 		await expect( section ).not.toContainText( 'They reset on' );
 
 		// Nothing remembered: no time.
 		php( 'delete_option( "beehiiv_test_send_reset_at" );' );
 		await sendFromUi( page, 'limit@example.com' );
-		await expect( section ).toContainText( "You've used all test sends for today." );
+		await expect( section ).toContainText(
+			"You've used all test sends for today."
+		);
 		await expect( section ).not.toContainText( 'They reset on' );
 	} );
 
-	test( 'AC-021: rate limiting shows "too many requests, try again in a moment"', async ( { page } ) => {
-		const postId = createPost( { title: 'AC-021 post', meta: futureLinkedMeta() } );
-		mockBeehiivPosts( { testSend: { status: 429, body: { message: 'Rate limited' } } } );
+	test( 'AC-021: rate limiting shows "too many requests, try again in a moment"', async ( {
+		page,
+	} ) => {
+		const postId = createPost( {
+			title: 'AC-021 post',
+			meta: futureLinkedMeta(),
+		} );
+		mockBeehiivPosts( {
+			testSend: { status: 429, body: { message: 'Rate limited' } },
+		} );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
 
 		await sendFromUi( page, 'rate@example.com' );
-		await expect( testEmailSection( page ) ).toContainText( /too many requests\. try again in a moment\./i );
+		await expect( testEmailSection( page ) ).toContainText(
+			/too many requests\. try again in a moment\./i
+		);
 	} );
 
-	test( "AC-022: other failures show a generic error including beehiiv's message", async ( { page } ) => {
-		const postId = createPost( { title: 'AC-022 api post', meta: futureLinkedMeta() } );
+	test( "AC-022: other failures show a generic error including beehiiv's message", async ( {
+		page,
+	} ) => {
+		const postId = createPost( {
+			title: 'AC-022 api post',
+			meta: futureLinkedMeta(),
+		} );
 		const beehiivMessage = 'Recipient list rejected by beehiiv';
 		mockBeehiivPosts( {
-			testSend: { status: 400, body: { errors: [ { message: beehiivMessage } ] } },
+			testSend: {
+				status: 400,
+				body: { errors: [ { message: beehiivMessage } ] },
+			},
 		} );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
@@ -958,8 +1316,13 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		await expect( section ).toContainText( beehiivMessage );
 	} );
 
-	test( 'AC-022: content problems show the same message a real newsletter send would show', async ( { page } ) => {
-		const postId = createPost( { title: 'AC-022 empty content', content: '' } );
+	test( 'AC-022: content problems show the same message a real newsletter send would show', async ( {
+		page,
+	} ) => {
+		const postId = createPost( {
+			title: 'AC-022 empty content',
+			content: '',
+		} );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
 
@@ -967,15 +1330,24 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			$settings = \\Beehiiv\\Newsletter\\PostSettingsBuilder::get_post_settings( ${ postId } );
 			echo is_wp_error( $settings ) ? \\Beehiiv\\Newsletter\\Sender::format_save_error_message( $settings ) : "NO_ERROR";
 		` );
-		expect( realSendMessage ).toBe( 'Add a title and body content before sending this newsletter.' );
+		expect( realSendMessage ).toBe(
+			'Add a title and body content before sending this newsletter.'
+		);
 
 		await sendFromUi( page, 'content@example.com' );
-		await expect( testEmailSection( page ) ).toContainText( realSendMessage );
+		await expect( testEmailSection( page ) ).toContainText(
+			realSendMessage
+		);
 		expect( beehiivPostCalls( readHttpLog() ) ).toHaveLength( 0 );
 	} );
 
-	test( 'AC-023: typed addresses stay in the field after a failure', async ( { page } ) => {
-		const postId = createPost( { title: 'AC-023 post', meta: futureLinkedMeta() } );
+	test( 'AC-023: typed addresses stay in the field after a failure', async ( {
+		page,
+	} ) => {
+		const postId = createPost( {
+			title: 'AC-023 post',
+			meta: futureLinkedMeta(),
+		} );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
 		const typed = 'keep-one@example.com,\nkeep-two@example.com';
@@ -987,19 +1359,27 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		] ) {
 			mockBeehiivPosts( { testSend } );
 			await sendFromUi( page, typed );
-			await expect( testEmailSection( page ) ).not.toContainText( 'Test email sent.' );
-			await expect( testEmailSection( page ).locator( '.components-notice' ) ).toBeVisible();
+			await expect( testEmailSection( page ) ).not.toContainText(
+				'Test email sent.'
+			);
+			await expect(
+				testEmailSection( page ).locator( '.components-notice' )
+			).toBeVisible();
 			await expect( recipientsField( page ) ).toHaveValue( typed );
 		}
 
 		// Client-side invalid-address failure too.
 		await recipientsField( page ).fill( 'bad-address' );
 		await sendButton( page ).click();
-		await expect( testEmailSection( page ) ).toContainText( "aren't valid" );
+		await expect( testEmailSection( page ) ).toContainText(
+			"aren't valid"
+		);
 		await expect( recipientsField( page ) ).toHaveValue( 'bad-address' );
 	} );
 
-	test( 'AC-024: temporary draft delete failure or "still processing" still counts as sent, with a leftover-draft note', async ( { page } ) => {
+	test( 'AC-024: temporary draft delete failure or "still processing" still counts as sent, with a leftover-draft note', async ( {
+		page,
+	} ) => {
 		const postId = createPost( { title: 'AC-024 post' } );
 		await loginAsAdmin( page );
 		await openBeehiivPanel( page, postId );
@@ -1009,7 +1389,10 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			{ status: 500, body: { message: 'delete failed' } },
 		] ) {
 			mockBeehiivPosts( {
-				testSend: { status: 200, body: { data: { remaining_test_sends: 3, reset_at: null } } },
+				testSend: {
+					status: 200,
+					body: { data: { remaining_test_sends: 3, reset_at: null } },
+				},
 				del,
 			} );
 			php( 'beehiiv_e2e_clear_http_log();' );
@@ -1017,8 +1400,12 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			expect( res.status(), `delete HTTP ${ del.status }` ).toBe( 200 );
 			const section = testEmailSection( page );
 			await expect( section ).toContainText( 'Test email sent.' );
-			await expect( section ).toContainText( 'leftover test draft may still be in beehiiv' );
-			expect( readHttpLog().some( ( e ) => e.mock === 'delete_post' ) ).toBe( true );
+			await expect( section ).toContainText(
+				'leftover test draft may still be in beehiiv'
+			);
+			expect(
+				readHttpLog().some( ( e ) => e.mock === 'delete_post' )
+			).toBe( true );
 		}
 	} );
 } );
