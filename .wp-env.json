@@ -7,5 +7,14 @@
 		"WP_DEBUG": true,
 		"SCRIPT_DEBUG": true
 	},
-	"testsEnvironment": false
+	"port": 8890,
+	"testsEnvironment": true,
+	"env": {
+		"tests": {
+			"port": 8891,
+			"mappings": {
+				"wp-content/mu-plugins": "./tests/e2e/plugins"
+			}
+		}
+	}
 }
