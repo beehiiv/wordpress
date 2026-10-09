@@ -1,0 +1,18 @@
+/* stylelint-disable selector-class-pattern -- BEM + @wordpress/components */
+.beehiiv-test-email {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+
+	&__note,
+	&__reason {
+		color: #757575;
+		font-size: 12px;
+		margin: 0;
+	}
+
+	.components-button {
+		align-self: flex-start;
+	}
+}
+/* stylelint-enable selector-class-pattern */

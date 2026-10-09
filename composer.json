@@ -8,6 +8,9 @@
 			"Beehiiv\\": "includes/"
 		}
 	},
+	"scripts": {
+		"test": "phpunit -c phpunit.xml.dist"
+	},
 	"minimum-stability": "stable",
 	"require": {
 		"php": ">=7.4"
