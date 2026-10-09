@@ -104,6 +104,9 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Build plugin assets
+        run: npm run build
+
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
