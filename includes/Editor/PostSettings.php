@@ -110,6 +110,7 @@ final class PostSettings {
 	 */
 	public static function register_meta(): void {
 		add_filter( 'rest_prepare_post', [ self::class, 'prepare_rest_post' ], 10, 3 );
+		add_filter( 'rest_request_before_callbacks', [ self::class, 'drop_readonly_meta_from_request' ], 10, 3 );
 
 		foreach ( self::META_KEYS as $key => $config ) {
 			$show_in_rest = true;
@@ -275,6 +276,47 @@ final class PostSettings {
 			[ 'dashicons' ],
 			$version
 		);
+	}
+
+	/**
+	 * Drop readonly beehiiv meta from a post REST request before it is applied.
+	 *
+	 * The block editor sends the whole meta object on save, readonly keys included.
+	 * Core only skips the meta capability check when a value is unchanged, so a
+	 * stale readonly value (for example an empty beehiiv post ID while the server
+	 * already holds one) would fail the entire save. Readonly keys are never
+	 * written from REST, so they are removed and the rest of the save proceeds.
+	 *
+	 * @param \WP_REST_Response|\WP_HTTP_Response|\WP_Error|mixed $response Result to send to the client.
+	 * @param array                                               $handler  Route handler.
+	 * @param \WP_REST_Request                                    $request  Request object.
+	 * @return \WP_REST_Response|\WP_HTTP_Response|\WP_Error|mixed
+	 * @since x.x.x
+	 */
+	public static function drop_readonly_meta_from_request( $response, $handler, $request ) {
+		if ( ! $request instanceof \WP_REST_Request ) {
+			return $response;
+		}
+
+		if ( ! preg_match( '#^/wp/v2/posts(?:/\d+(?:/autosaves)?)?$#', $request->get_route() ) ) {
+			return $response;
+		}
+
+		$meta = $request->get_param( 'meta' );
+
+		if ( ! is_array( $meta ) ) {
+			return $response;
+		}
+
+		foreach ( self::META_KEYS as $key => $config ) {
+			if ( ! empty( $config['readonly'] ) ) {
+				unset( $meta[ $key ] );
+			}
+		}
+
+		$request->set_param( 'meta', $meta );
+
+		return $response;
 	}
 
 	/**
