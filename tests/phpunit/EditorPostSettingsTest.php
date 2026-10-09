@@ -44,6 +44,49 @@ class EditorPostSettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * PRD-07.1.01 AC-013: a REST save carrying readonly beehiiv meta (as the block
+	 * editor does) succeeds, ignores the readonly values, and keeps the stored
+	 * beehiiv post ID, while writable meta in the same save still applies.
+	 */
+	public function test_rest_save_with_readonly_meta_keeps_stored_values(): void {
+		PostSettings::register_meta();
+
+		$author_id = self::factory()->user->create( array( 'role' => 'author' ) );
+		$post_id   = self::factory()->post->create(
+			array(
+				'post_author' => $author_id,
+				'post_status' => 'draft',
+			)
+		);
+
+		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, 'post_linked' );
+		wp_set_current_user( $author_id );
+		do_action( 'rest_api_init' );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/posts/' . $post_id );
+		$request->set_header( 'content-type', 'application/json' );
+		$request->set_body(
+			wp_json_encode(
+				array(
+					'meta' => array(
+						Meta::BEEHIIV_POST_ID      => '',
+						Meta::BEEHIIV_SCHEDULED_AT => '',
+						Meta::NEWSLETTER_TITLE     => 'Edited subject',
+						Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL => true,
+					),
+				)
+			)
+		);
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status(), 'A save carrying readonly meta must not be rejected.' );
+		$this->assertSame( 'post_linked', get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true ) );
+		$this->assertSame( 'Edited subject', get_post_meta( $post_id, Meta::NEWSLETTER_TITLE, true ) );
+		$this->assertTrue( (bool) get_post_meta( $post_id, Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL, true ) );
+	}
+
+	/**
 	 * AC-020: writes to send-scheduling/snippet fields respect publish_posts,
 	 * not just edit_posts.
 	 */
