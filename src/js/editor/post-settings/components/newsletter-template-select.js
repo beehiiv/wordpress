@@ -16,15 +16,30 @@ import { useBeehiivEditorConfig } from '../hooks/use-beehiiv-editor-config';
 
 /**
  * @param {Object}                  props
- * @param {string}                  props.value    Saved template ID, or empty for plugin default.
- * @param {(value: string) => void} props.onChange Called when the user picks a template.
+ * @param {string}                  props.value                Saved template ID, or empty for the default.
+ * @param {(value: string) => void} props.onChange             Called when the user picks a template.
+ * @param {string}                  props.publicationId        Publication whose templates are listed.
+ * @param {boolean}                 props.isDefaultPublication Whether that is the site-wide default publication.
+ * @param {boolean}                 [props.disabled]           Whether the choice is locked.
  */
-export default function NewsletterTemplateSelect( { value, onChange } ) {
-	const { publicationId, defaultPostTemplateId } = useBeehiivEditorConfig();
+export default function NewsletterTemplateSelect( {
+	value,
+	onChange,
+	publicationId,
+	isDefaultPublication,
+	disabled = false,
+} ) {
+	const { defaultPostTemplateId: siteDefaultPostTemplateId } =
+		useBeehiivEditorConfig();
+	// Only the site-wide default publication has a default template.
+	const defaultPostTemplateId = isDefaultPublication
+		? siteDefaultPostTemplateId
+		: '';
 	const [ templates, setTemplates ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( false );
 	const [ justRefreshed, setJustRefreshed ] = useState( false );
 	const noticeTimer = useRef( null );
+	const requestId = useRef( 0 );
 
 	useEffect( () => {
 		return () => {
@@ -36,8 +51,12 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 
 	const loadTemplates = useCallback(
 		( { refresh = false } = {} ) => {
+			// Ignore responses for a publication the editor has since switched away from.
+			const currentRequest = ++requestId.current;
+
 			if ( ! publicationId ) {
 				setTemplates( [] );
+				setIsLoading( false );
 				return Promise.resolve();
 			}
 
@@ -49,19 +68,26 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 				) }${ refresh ? '&refresh=1' : '' }`,
 			} )
 				.then( ( items ) => {
-					setTemplates( Array.isArray( items ) ? items : [] );
+					if ( currentRequest === requestId.current ) {
+						setTemplates( Array.isArray( items ) ? items : [] );
+					}
 				} )
 				.catch( () => {
-					setTemplates( [] );
+					if ( currentRequest === requestId.current ) {
+						setTemplates( [] );
+					}
 				} )
 				.finally( () => {
-					setIsLoading( false );
+					if ( currentRequest === requestId.current ) {
+						setIsLoading( false );
+					}
 				} );
 		},
 		[ publicationId ]
 	);
 
 	useEffect( () => {
+		setTemplates( [] );
 		loadTemplates();
 	}, [ loadTemplates ] );
 
@@ -81,19 +107,41 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 		} );
 	}, [ loadTemplates ] );
 
+	// The default template shows as selected when the post has no template of its own.
+	const selectedValue = value || defaultPostTemplateId;
+
 	const options = useMemo( () => {
-		const opts = [
-			{
-				value: '',
-				label: __( 'Default (from beehiiv settings)', 'beehiiv' ),
-			},
-			...templates
-				.filter( ( item ) => item?.id )
-				.map( ( item ) => ( {
-					value: item.id,
-					label: item.name || item.id,
-				} ) ),
-		];
+		const opts = templates
+			.filter( ( item ) => item?.id )
+			.map( ( item ) => ( {
+				value: item.id,
+				label:
+					item.id === defaultPostTemplateId
+						? sprintf(
+								/* translators: %s: post template name */
+								__( '%s (default)', 'beehiiv' ),
+								item.name || item.id
+						  )
+						: item.name || item.id,
+			} ) );
+
+		if ( opts.length === 0 && ! selectedValue ) {
+			return opts;
+		}
+
+		if (
+			defaultPostTemplateId &&
+			! opts.some( ( option ) => option.value === defaultPostTemplateId )
+		) {
+			opts.unshift( {
+				value: defaultPostTemplateId,
+				label: sprintf(
+					/* translators: %s: post template ID */
+					__( '%s (default)', 'beehiiv' ),
+					defaultPostTemplateId
+				),
+			} );
+		}
 
 		if ( value && ! opts.some( ( option ) => option.value === value ) ) {
 			opts.push( {
@@ -102,46 +150,15 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 			} );
 		}
 
+		if ( ! selectedValue ) {
+			opts.unshift( {
+				value: '',
+				label: __( 'Select a template', 'beehiiv' ),
+			} );
+		}
+
 		return opts;
-	}, [ templates, value ] );
-
-	const defaultTemplateName = useMemo( () => {
-		if ( ! defaultPostTemplateId ) {
-			return '';
-		}
-
-		const match = templates.find(
-			( item ) => item?.id === defaultPostTemplateId
-		);
-
-		return match?.name || defaultPostTemplateId;
-	}, [ templates, defaultPostTemplateId ] );
-
-	const helpText = useMemo( () => {
-		if ( value ) {
-			return undefined;
-		}
-
-		if ( defaultTemplateName ) {
-			return sprintf(
-				/* translators: %s: post template name from beehiiv settings */
-				__( 'Uses %s from beehiiv settings.', 'beehiiv' ),
-				defaultTemplateName
-			);
-		}
-
-		if ( defaultPostTemplateId ) {
-			return __(
-				'Uses the template configured in beehiiv settings.',
-				'beehiiv'
-			);
-		}
-
-		return __(
-			'No site default is set. Choose a template or configure one in beehiiv settings.',
-			'beehiiv'
-		);
-	}, [ value, defaultTemplateName, defaultPostTemplateId ] );
+	}, [ templates, value, selectedValue, defaultPostTemplateId ] );
 
 	if ( isLoading && options.length === 0 ) {
 		return (
@@ -159,17 +176,24 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 		<div className="beehiiv-newsletter-template">
 			<SelectControl
 				label={ __( 'Post template', 'beehiiv' ) }
-				value={ value }
+				value={ selectedValue }
 				options={ options }
 				onChange={ onChange }
-				help={ helpText }
-				disabled={ isLoading }
+				help={
+					disabled
+						? __(
+								'The newsletter has been sent, so its template can no longer change.',
+								'beehiiv'
+						  )
+						: undefined
+				}
+				disabled={ disabled || isLoading }
 				__nextHasNoMarginBottom
 			/>
 			<Button
 				variant="secondary"
 				onClick={ handleRefresh }
-				disabled={ isLoading }
+				disabled={ disabled || isLoading }
 				isBusy={ isLoading }
 			>
 				{ isLoading

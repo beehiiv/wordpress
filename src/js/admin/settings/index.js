@@ -12,12 +12,24 @@ const refreshTemplatesButton = document.getElementById(
 	'beehiiv_refresh_post_templates'
 );
 
+const refreshPublicationsButton = document.getElementById(
+	'beehiiv_refresh_publications'
+);
+
 const refreshDefaultLabel =
 	refreshTemplatesButton?.textContent.trim() ||
 	__( 'Refresh templates', 'beehiiv' );
 
-let refreshNotice = null;
-let refreshNoticeTimer = null;
+const refreshPublicationsDefaultLabel =
+	refreshPublicationsButton?.textContent.trim() ||
+	__( 'Refresh publications', 'beehiiv' );
+
+/**
+ * Confirmation notice element and its dismiss timer, per refresh button.
+ *
+ * @type {Map<HTMLElement, {element: HTMLElement, timer: number|null}>}
+ */
+const refreshNotices = new Map();
 
 /**
  * Show or hide the "no templates available" notice for the current publication.
@@ -55,38 +67,54 @@ function updateNoTemplatesNotice( hasTemplates ) {
 }
 
 /**
- * Show an auto-dismissing confirmation after a manual refresh.
+ * Show an auto-dismissing confirmation next to a refresh button.
+ *
+ * @param {HTMLElement|null} button  Refresh button the notice follows.
+ * @param {string}           message Confirmation text.
  *
  * @return {void}
  */
-function showRefreshNotice() {
-	if ( ! refreshTemplatesButton ) {
+function showRefreshNotice( button, message ) {
+	if ( ! button ) {
 		return;
 	}
 
-	if ( ! refreshNotice ) {
-		refreshNotice = document.createElement( 'span' );
-		refreshNotice.className = 'beehiiv-refresh-notice';
-		refreshNotice.setAttribute( 'role', 'status' );
-		refreshTemplatesButton.insertAdjacentElement(
-			'afterend',
-			refreshNotice
-		);
+	let state = refreshNotices.get( button );
+
+	if ( ! state ) {
+		const element = document.createElement( 'span' );
+		element.className = 'beehiiv-refresh-notice';
+		element.setAttribute( 'role', 'status' );
+		button.insertAdjacentElement( 'afterend', element );
+		state = { element, timer: null };
+		refreshNotices.set( button, state );
 	}
 
-	refreshNotice.textContent = __(
-		'Templates updated from beehiiv.',
-		'beehiiv'
-	);
-	refreshNotice.hidden = false;
+	state.element.textContent = message;
+	state.element.hidden = false;
 
-	if ( refreshNoticeTimer ) {
-		clearTimeout( refreshNoticeTimer );
+	if ( state.timer ) {
+		clearTimeout( state.timer );
 	}
 
-	refreshNoticeTimer = setTimeout( () => {
-		refreshNotice.hidden = true;
+	state.timer = setTimeout( () => {
+		state.element.hidden = true;
 	}, 4000 );
+}
+
+/**
+ * Hide a refresh button's confirmation notice, if shown.
+ *
+ * @param {HTMLElement|null} button Refresh button.
+ *
+ * @return {void}
+ */
+function hideRefreshNotice( button ) {
+	const state = button ? refreshNotices.get( button ) : null;
+
+	if ( state ) {
+		state.element.hidden = true;
+	}
 }
 
 /**
@@ -157,9 +185,7 @@ async function loadTemplates( publicationId, refresh = false ) {
 		if ( refresh ) {
 			refreshTemplatesButton.textContent = __( 'Refreshing…', 'beehiiv' );
 
-			if ( refreshNotice ) {
-				refreshNotice.hidden = true;
-			}
+			hideRefreshNotice( refreshTemplatesButton );
 		}
 	}
 
@@ -182,7 +208,10 @@ async function loadTemplates( publicationId, refresh = false ) {
 		}
 
 		if ( refresh ) {
-			showRefreshNotice();
+			showRefreshNotice(
+				refreshTemplatesButton,
+				__( 'Templates updated from beehiiv.', 'beehiiv' )
+			);
 		}
 	} catch {
 		populateTemplateOptions( [] );
@@ -207,4 +236,94 @@ if ( refreshTemplatesButton ) {
 	refreshTemplatesButton.addEventListener( 'click', () => {
 		loadTemplates( publicationSelect?.value, true );
 	} );
+}
+
+/**
+ * Rebuild the publication dropdown, keeping the selected publication.
+ *
+ * A selected publication that beehiiv no longer returns stays listed by ID,
+ * as it is when the page first renders.
+ *
+ * @param {Array<{id: string, name: string}>} items    Publication items.
+ * @param {string}                            selected Publication ID to keep selected.
+ *
+ * @return {void}
+ */
+function populatePublicationOptions( items, selected ) {
+	while ( publicationSelect.options.length > 0 ) {
+		publicationSelect.remove( 0 );
+	}
+
+	const emptyOption = document.createElement( 'option' );
+	emptyOption.value = '';
+	emptyOption.textContent = __( 'Select a publication', 'beehiiv' );
+	publicationSelect.appendChild( emptyOption );
+
+	items.forEach( ( item ) => {
+		if ( ! item?.id ) {
+			return;
+		}
+
+		const option = document.createElement( 'option' );
+		option.value = item.id;
+		option.textContent = item.name || item.id;
+		publicationSelect.appendChild( option );
+	} );
+
+	if (
+		selected &&
+		! [ ...publicationSelect.options ].some(
+			( option ) => option.value === selected
+		)
+	) {
+		const option = document.createElement( 'option' );
+		option.value = selected;
+		option.textContent = selected;
+		publicationSelect.appendChild( option );
+	}
+
+	publicationSelect.value = selected;
+}
+
+/**
+ * Pull a fresh publication list from beehiiv, bypassing the server cache.
+ *
+ * @return {Promise<void>}
+ */
+async function refreshPublications() {
+	if ( ! publicationSelect || ! refreshPublicationsButton ) {
+		return;
+	}
+
+	const previousValue = publicationSelect.value;
+
+	publicationSelect.disabled = true;
+	refreshPublicationsButton.disabled = true;
+	refreshPublicationsButton.textContent = __( 'Refreshing…', 'beehiiv' );
+	hideRefreshNotice( refreshPublicationsButton );
+
+	try {
+		const items = await apiFetch( {
+			path: '/beehiiv/v1/publications?refresh=1',
+		} );
+
+		populatePublicationOptions(
+			Array.isArray( items ) ? items : [],
+			previousValue
+		);
+		showRefreshNotice(
+			refreshPublicationsButton,
+			__( 'Publications updated from beehiiv.', 'beehiiv' )
+		);
+	} catch {
+		// Keep the current list when beehiiv cannot be reached.
+	} finally {
+		publicationSelect.disabled = false;
+		refreshPublicationsButton.disabled = false;
+		refreshPublicationsButton.textContent = refreshPublicationsDefaultLabel;
+	}
+}
+
+if ( refreshPublicationsButton ) {
+	refreshPublicationsButton.addEventListener( 'click', refreshPublications );
 }
