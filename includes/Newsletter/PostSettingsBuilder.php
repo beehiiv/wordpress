@@ -96,7 +96,7 @@ final class PostSettingsBuilder {
 			'status'              => 'confirmed',
 			'thumbnail_image_url' => '' !== $thumbnail_image_url ? $thumbnail_image_url : '',
 			'email_settings'      => [
-				'email_subject_line'        => $post_title,
+				'email_subject_line'        => self::get_newsletter_title( $post_id, $post_title ),
 				'display_title_in_email'    => true,
 				'display_byline_in_email'   => false,
 				'display_subtitle_in_email' => false,
@@ -107,6 +107,12 @@ final class PostSettingsBuilder {
 			],
 			'social_share'        => 'none',
 		];
+
+		$subtitle = self::get_newsletter_subtitle( $post_id );
+
+		if ( '' !== $subtitle ) {
+			$settings['subtitle'] = $subtitle;
+		}
 
 		if ( ! $for_update ) {
 			$scheduled_at = self::convert_send_date_to_scheduled_at_utc( $post_object );
@@ -170,6 +176,10 @@ final class PostSettingsBuilder {
 			'web_settings'        => $settings['web_settings'],
 			'social_share'        => $settings['social_share'],
 		];
+
+		if ( isset( $settings['subtitle'] ) ) {
+			$payload['subtitle'] = $settings['subtitle'];
+		}
 
 		$schedule = self::resolve_update_scheduled_at( $post_object );
 
@@ -362,6 +372,40 @@ final class PostSettingsBuilder {
 		}
 
 		return self::get_site_post_template_id();
+	}
+
+	/**
+	 * Email subject line for the post: its newsletter title, or the post title when empty.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $post_id    Post ID.
+	 * @param string $post_title Decoded WordPress post title.
+	 *
+	 * @return string
+	 */
+	private static function get_newsletter_title( int $post_id, string $post_title ): string {
+
+		$newsletter_title = get_post_meta( $post_id, Meta::NEWSLETTER_TITLE, true );
+		$newsletter_title = is_string( $newsletter_title ) ? trim( $newsletter_title ) : '';
+
+		return '' !== $newsletter_title ? html_entity_decode( $newsletter_title ) : $post_title;
+	}
+
+	/**
+	 * Subtitle for the beehiiv post: its newsletter subtitle, or empty for none.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id Post ID.
+	 *
+	 * @return string
+	 */
+	private static function get_newsletter_subtitle( int $post_id ): string {
+
+		$subtitle = get_post_meta( $post_id, Meta::NEWSLETTER_SUBTITLE, true );
+
+		return is_string( $subtitle ) ? html_entity_decode( trim( $subtitle ) ) : '';
 	}
 
 	/**
