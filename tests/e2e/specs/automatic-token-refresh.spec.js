@@ -28,8 +28,19 @@ const { wpCli, wpCliSafe, ensurePluginActive } = require( '../utils/wp-cli' );
 const OAUTH_OPTION = 'beehiiv_oauth';
 const CLIENT_ID = 'qa-e2e-refresh-client';
 
-/** Seeds a connection with a controllable remaining lifetime. */
-function seedToken( accessToken, refreshToken, expiresIn, clientId = CLIENT_ID ) {
+/**
+ * Seeds a connection with a controllable remaining lifetime.
+ * @param {string} accessToken
+ * @param {string} refreshToken
+ * @param {number} expiresIn
+ * @param {string} clientId
+ */
+function seedToken(
+	accessToken,
+	refreshToken,
+	expiresIn,
+	clientId = CLIENT_ID
+) {
 	wpCli(
 		`eval '\\Beehiiv\\OAuth\\TokenStore::save_tokens( "${ clientId }", [ "access_token" => "${ accessToken }", "refresh_token" => "${ refreshToken }", "expires_in" => ${ expiresIn } ] );'`
 	);
@@ -42,7 +53,9 @@ function mockTokenEndpointSuccess( newAccessToken, newRefreshToken ) {
 }
 
 function mockTokenEndpointFailure() {
-	wpCli( 'eval \'beehiiv_e2e_mock_http( "/oauth/token", [ "status" => 400, "body" => [ "error" => "invalid_grant" ] ] );\'' );
+	wpCli(
+		'eval \'beehiiv_e2e_mock_http( "/oauth/token", [ "status" => 400, "body" => [ "error" => "invalid_grant" ] ] );\''
+	);
 }
 
 test.beforeAll( () => {
@@ -72,31 +85,48 @@ test.describe( 'Automatic Token Refresh', () => {
 
 	test( 'AC-001: a method exists to retrieve a valid access token, automatically refreshing it if approaching expiration', async () => {
 		seedToken( 'qa-e2e-ac1-old-access', 'qa-e2e-ac1-refresh', 100 ); // 100s remaining < 300s buffer.
-		mockTokenEndpointSuccess( 'qa-e2e-ac1-new-access', 'qa-e2e-ac1-new-refresh' );
+		mockTokenEndpointSuccess(
+			'qa-e2e-ac1-new-access',
+			'qa-e2e-ac1-new-refresh'
+		);
 
-		const token = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'" );
+		const token = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'"
+		);
 		expect( token.trim() ).toBe( 'qa-e2e-ac1-new-access' );
 	} );
 
 	test( 'AC-002: the refresh buffer time is configurable and prevents unnecessary refreshes of tokens still valid for a reasonable period', async () => {
 		seedToken( 'qa-e2e-ac2-original-access', 'qa-e2e-ac2-refresh', 3600 ); // Well beyond the 300s buffer.
-		mockTokenEndpointSuccess( 'qa-e2e-ac2-should-not-appear', 'qa-e2e-ac2-should-not-appear' );
+		mockTokenEndpointSuccess(
+			'qa-e2e-ac2-should-not-appear',
+			'qa-e2e-ac2-should-not-appear'
+		);
 
-		const token = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'" );
+		const token = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'"
+		);
 
 		// If refresh incorrectly triggered despite being outside the buffer,
 		// this would return the mocked NEW token instead of the original.
 		expect( token.trim() ).toBe( 'qa-e2e-ac2-original-access' );
 
-		const stillStored = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'" );
+		const stillStored = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'"
+		);
 		expect( stillStored.trim() ).toBe( 'qa-e2e-ac2-original-access' );
 	} );
 
 	test( 'AC-003: when refresh is triggered, the OAuth provider is contacted using the stored refresh token', async () => {
 		seedToken( 'qa-e2e-ac3-old-access', 'qa-e2e-ac3-refresh', 100 );
-		mockTokenEndpointSuccess( 'qa-e2e-ac3-new-access', 'qa-e2e-ac3-new-refresh' );
+		mockTokenEndpointSuccess(
+			'qa-e2e-ac3-new-access',
+			'qa-e2e-ac3-new-refresh'
+		);
 
-		const result = wpCli( "eval 'var_dump( \\Beehiiv\\OAuth\\TokenRefresher::refresh() );'" );
+		const result = wpCli(
+			"eval 'var_dump( \\Beehiiv\\OAuth\\TokenRefresher::refresh() );'"
+		);
 		expect( result.trim() ).toBe( 'bool(true)' );
 
 		// The refresh only succeeds (mocked 200) if the request reached the
@@ -104,7 +134,9 @@ test.describe( 'Automatic Token Refresh', () => {
 		// building the request if client_id/refresh_token were missing (see
 		// AC-008), so a real `true` here proves it read and sent the stored
 		// credentials to build that request.
-		const newAccess = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'" );
+		const newAccess = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'"
+		);
 		expect( newAccess.trim() ).toBe( 'qa-e2e-ac3-new-access' );
 	} );
 
@@ -118,7 +150,7 @@ test.describe( 'Automatic Token Refresh', () => {
 		seedToken( 'qa-e2e-ac4-access', 'qa-e2e-ac4-refresh', 100 );
 
 		const result = wpCli(
-			'eval \'' +
+			"eval '" +
 				'$ref = new ReflectionClass( "\\Beehiiv\\OAuth\\TokenRefresher" );' +
 				'$prop = $ref->getProperty( "refreshing" );' +
 				'$prop->setAccessible( true );' +
@@ -133,35 +165,53 @@ test.describe( 'Automatic Token Refresh', () => {
 
 		// The original token must be untouched -- the blocked call never
 		// reached the token endpoint or storage layer.
-		const unchanged = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'" );
+		const unchanged = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'"
+		);
 		expect( unchanged.trim() ).toBe( 'qa-e2e-ac4-access' );
 	} );
 
 	test( 'AC-005: token refresh happens without requiring the caller to implement refresh logic', async () => {
 		seedToken( 'qa-e2e-ac5-old-access', 'qa-e2e-ac5-refresh', 100 );
-		mockTokenEndpointSuccess( 'qa-e2e-ac5-new-access', 'qa-e2e-ac5-new-refresh' );
+		mockTokenEndpointSuccess(
+			'qa-e2e-ac5-new-access',
+			'qa-e2e-ac5-new-refresh'
+		);
 
 		// A single call to the read-only accessor -- no separate refresh()
 		// call, no error handling -- is sufficient for the caller to receive
 		// a fresh token transparently.
-		const token = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'" );
+		const token = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'"
+		);
 		expect( token.trim() ).toBe( 'qa-e2e-ac5-new-access' );
 
 		// A second call immediately after (now well within the fresh 3600s
 		// window) returns the same token again without erroring or needing
 		// any special handling -- confirms the caller never has to know a
 		// refresh happened at all.
-		const secondCall = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'" );
+		const secondCall = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'"
+		);
 		expect( secondCall.trim() ).toBe( 'qa-e2e-ac5-new-access' );
 	} );
 
 	test( 'AC-006: after a successful refresh, the new access token is stored and returned to the caller', async () => {
 		seedToken( 'qa-e2e-ac6-old-access', 'qa-e2e-ac6-refresh', 100 );
-		mockTokenEndpointSuccess( 'qa-e2e-ac6-new-access', 'qa-e2e-ac6-new-refresh' );
+		mockTokenEndpointSuccess(
+			'qa-e2e-ac6-new-access',
+			'qa-e2e-ac6-new-refresh'
+		);
 
-		const returned = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'" );
-		const stored = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'" );
-		const storedRefresh = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_refresh_token();'" );
+		const returned = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'"
+		);
+		const stored = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'"
+		);
+		const storedRefresh = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_refresh_token();'"
+		);
 
 		expect( returned.trim() ).toBe( 'qa-e2e-ac6-new-access' );
 		expect( stored.trim() ).toBe( 'qa-e2e-ac6-new-access' );
@@ -172,11 +222,15 @@ test.describe( 'Automatic Token Refresh', () => {
 		seedToken( 'qa-e2e-ac7-original-access', 'qa-e2e-ac7-refresh', 100 );
 		mockTokenEndpointFailure(); // 400 response.
 
-		const token = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'" );
+		const token = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'"
+		);
 		expect( token.trim() ).toBe( 'qa-e2e-ac7-original-access' );
 
 		// Storage must be untouched by the failed attempt.
-		const stillStored = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'" );
+		const stillStored = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenStore::get_access_token();'"
+		);
 		expect( stillStored.trim() ).toBe( 'qa-e2e-ac7-original-access' );
 	} );
 
@@ -207,7 +261,9 @@ test.describe( 'Automatic Token Refresh', () => {
 			'eval \'$d = get_option( "beehiiv_oauth", [] ); $d["client_id"] = ""; update_option( "beehiiv_oauth", $d, false );\''
 		);
 
-		const token = wpCli( "eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'" );
+		const token = wpCli(
+			"eval 'echo \\Beehiiv\\OAuth\\TokenRefresher::get_valid_access_token();'"
+		);
 		expect( token.trim() ).toBe( '' );
 	} );
 } );

@@ -21,10 +21,8 @@ class EditorPostSettingsTest extends WP_UnitTestCase {
 	/**
 	 * AC-019: readonly fields cannot be modified via REST.
 	 *
-	 * authorize_meta() does not special-case readonly keys -- any key not in
-	 * $writable_keys defaults to an edit_posts check, so a readonly field is
-	 * authorized for write the same as any editable one. This mirrors the
-	 * live failure the E2E run found against the running REST API.
+	 * authorize_meta() must deny write for keys registered as readonly rather
+	 * than falling through to the edit_posts check.
 	 */
 	public function test_readonly_meta_key_must_not_be_writable_via_rest(): void {
 		$contributor_id = self::factory()->user->create( array( 'role' => 'contributor' ) );
@@ -41,7 +39,7 @@ class EditorPostSettingsTest extends WP_UnitTestCase {
 
 		$this->assertFalse(
 			$allowed,
-			'AC-019 gap: readonly meta keys must not be authorized for write, but authorize_meta() has no readonly branch and falls through to the edit_posts check.'
+			'AC-019: readonly meta keys must not be authorized for write.'
 		);
 	}
 
@@ -73,6 +71,10 @@ class EditorPostSettingsTest extends WP_UnitTestCase {
 	 * deliberately looser than the publish_posts-gated fields (BR-003).
 	 */
 	public function test_newsletter_wording_field_is_allowed_for_contributor(): void {
+		if ( ! defined( Meta::class . '::NEWSLETTER_TITLE' ) ) {
+			$this->markTestSkipped( 'Meta::NEWSLETTER_TITLE is not defined on this branch (title/subtitle feature not merged).' );
+		}
+
 		$contributor_id = self::factory()->user->create( array( 'role' => 'contributor' ) );
 		$post_id        = self::factory()->post->create(
 			array(
@@ -129,5 +131,44 @@ class EditorPostSettingsTest extends WP_UnitTestCase {
 			PostSettings::authorize_meta( false, Meta::BEEHIIV_PUBLICATION_ID, $post_id ),
 			'AC-006: an author (publish_posts) must be authorized to change the post\'s publication.'
 		);
+	}
+
+	/**
+	 * An editor save that carries readonly keys (as the block editor always does)
+	 * succeeds, and the readonly values sent are ignored rather than written.
+	 */
+	public function test_editor_save_with_readonly_meta_is_not_rejected(): void {
+		// Earlier tests' teardown clears registered meta; register it as the plugin does on init.
+		PostSettings::register_meta();
+
+		$author_id = self::factory()->user->create( array( 'role' => 'author' ) );
+		$post_id   = self::factory()->post->create(
+			array(
+				'post_author' => $author_id,
+				'post_status' => 'draft',
+			)
+		);
+
+		wp_set_current_user( $author_id );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/posts/' . $post_id );
+		$request->set_header( 'content-type', 'application/json' );
+		$request->set_body(
+			wp_json_encode(
+				array(
+					'meta' => array(
+						Meta::BEEHIIV_PUBLICATION_ID => 'pub_qa',
+						Meta::BEEHIIV_POST_ID        => 'forged-id',
+						Meta::NEWSLETTER_ERROR       => '',
+					),
+				)
+			)
+		);
+
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'pub_qa', get_post_meta( $post_id, Meta::BEEHIIV_PUBLICATION_ID, true ) );
+		$this->assertSame( '', get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true ) );
 	}
 }

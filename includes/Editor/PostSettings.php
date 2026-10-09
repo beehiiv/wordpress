@@ -101,6 +101,7 @@ final class PostSettings {
 	 */
 	public static function register_meta(): void {
 		add_filter( 'rest_prepare_post', [ self::class, 'prepare_rest_post' ], 10, 3 );
+		add_filter( 'rest_request_before_callbacks', [ self::class, 'strip_readonly_meta' ], 10, 3 );
 
 		foreach ( self::META_KEYS as $key => $config ) {
 			$show_in_rest = true;
@@ -132,8 +133,8 @@ final class PostSettings {
 	/**
 	 * Whether the current user may read or write a beehiiv post meta key.
 	 *
-	 * Newsletter send settings and the post's publication require `publish_posts`;
-	 * other keys allow `edit_posts`.
+	 * Readonly keys are never writable via REST. Newsletter send settings and
+	 * the post's publication require `publish_posts`; other keys allow `edit_posts`.
 	 *
 	 * @param bool   $allowed   Whether the user can add or edit the meta key.
 	 * @param string $meta_key  Meta key.
@@ -142,6 +143,10 @@ final class PostSettings {
 	 * @since 1.0.0
 	 */
 	public static function authorize_meta( $allowed, $meta_key, $post_id ) {
+		if ( ! empty( self::META_KEYS[ $meta_key ]['readonly'] ) ) {
+			return false;
+		}
+
 		$writable_keys = [
 			Meta::SEND_TO_NEWSLETTER,
 			Meta::SEND_TO_NEWSLETTER_DATE,
@@ -154,6 +159,48 @@ final class PostSettings {
 		}
 
 		return current_user_can( 'edit_posts', (int) $post_id );
+	}
+
+	/**
+	 * Drop readonly beehiiv meta from post REST writes before WordPress applies them.
+	 *
+	 * The block editor sends every registered meta key on save, including the
+	 * readonly ones the server owns. {@see authorize_meta()} refuses those keys,
+	 * so passing them through would fail the whole save with a 403 whenever the
+	 * sent value differs from the stored one (for example an empty string for a
+	 * key that has no row yet). Ignoring them keeps them unwritable via REST
+	 * without breaking the save.
+	 *
+	 * @param mixed            $response Response to replace the requested version with, or null.
+	 * @param array            $handler  Route handler.
+	 * @param \WP_REST_Request $request  Request.
+	 * @return mixed
+	 * @since x.x.x
+	 */
+	public static function strip_readonly_meta( $response, $handler, $request ) {
+		if ( ! $request instanceof \WP_REST_Request ) {
+			return $response;
+		}
+
+		if ( 'GET' === $request->get_method() || 0 !== strpos( $request->get_route(), '/wp/v2/posts' ) ) {
+			return $response;
+		}
+
+		$meta = $request->get_param( 'meta' );
+
+		if ( ! is_array( $meta ) ) {
+			return $response;
+		}
+
+		foreach ( self::META_KEYS as $meta_key => $config ) {
+			if ( ! empty( $config['readonly'] ) ) {
+				unset( $meta[ $meta_key ] );
+			}
+		}
+
+		$request->set_param( 'meta', $meta );
+
+		return $response;
 	}
 
 	/**

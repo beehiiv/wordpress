@@ -26,26 +26,36 @@ test.beforeAll( () => {
 } );
 
 test.describe( 'Admin menu registration', () => {
-	test( 'AC-001: the beehiiv menu item appears in the admin sidebar for an administrator', async ( { page } ) => {
+	test( 'AC-001: the beehiiv menu item appears in the admin sidebar for an administrator', async ( {
+		page,
+	} ) => {
 		await loginAsAdmin( page );
 		await page.goto( '/wp-admin/' );
 
 		const menuItem = page.locator( '#toplevel_page_beehiiv' );
 		await expect( menuItem ).toBeVisible();
-		await expect( menuItem.locator( '.wp-menu-name' ) ).toHaveText( 'beehiiv' );
+		await expect( menuItem.locator( '.wp-menu-name' ) ).toHaveText(
+			'beehiiv'
+		);
 	} );
 
-	test( 'AC-002: clicking the menu item navigates to the beehiiv Settings page', async ( { page } ) => {
+	test( 'AC-002: clicking the menu item navigates to the beehiiv Settings page', async ( {
+		page,
+	} ) => {
 		await loginAsAdmin( page );
 		await page.goto( '/wp-admin/' );
 
 		await page.locator( '#toplevel_page_beehiiv > a.menu-top' ).click();
 
-		await expect( page ).toHaveURL( /\/wp-admin\/admin\.php\?page=beehiiv/ );
+		await expect( page ).toHaveURL(
+			/\/wp-admin\/admin\.php\?page=beehiiv/
+		);
 		await expect( page.locator( 'h1' ) ).toHaveText( 'beehiiv Settings' );
 	} );
 
-	test( 'AC-003: the menu item displays an icon alongside the label', async ( { page } ) => {
+	test( 'AC-003: the menu item displays an icon alongside the label', async ( {
+		page,
+	} ) => {
 		await loginAsAdmin( page );
 		await page.goto( '/wp-admin/' );
 
@@ -74,10 +84,14 @@ test.describe( 'Admin menu registration', () => {
 		await loginAs( page, NON_ADMIN_USERNAME, NON_ADMIN_PASSWORD );
 		await page.goto( '/wp-admin/' );
 
-		await expect( page.locator( '#toplevel_page_beehiiv' ) ).toHaveCount( 0 );
+		await expect( page.locator( '#toplevel_page_beehiiv' ) ).toHaveCount(
+			0
+		);
 
 		const response = await page.goto( '/wp-admin/admin.php?page=beehiiv' );
 		expect( response.status() ).toBe( 403 );
-		await expect( page.locator( 'body' ) ).toContainText( /not allowed to access this page/i );
+		await expect( page.locator( 'body' ) ).toContainText(
+			/not allowed to access this page/i
+		);
 	} );
 } );
