@@ -10,7 +10,7 @@ import {
 	PluginPrePublishPanel,
 	store as editorStore,
 } from '@wordpress/editor';
-import { PanelBody, ToggleControl } from '@wordpress/components';
+import { PanelBody, TextControl, ToggleControl } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
 import { store as coreStore } from '@wordpress/core-data';
 
@@ -59,15 +59,54 @@ function BeehiivPostSettingsPanel() {
 		sendToNewsletterSnippet,
 		beehiivPostTemplateId,
 		newsletterAlreadySent,
+		newsletterTitle,
+		newsletterSubtitle,
+		newsletterPublished,
 		setSendToNewsletter,
 		setSendToNewsletterDate,
 		setSendToNewsletterSnippet,
 		setBeehiivPostTemplateId,
+		setNewsletterTitle,
+		setNewsletterSubtitle,
 	} = beehiivMeta;
 
 	const isNewsletterReady =
 		isConnected && canWritePosts && hasPublication && hasPostTemplate;
 	const showSendToggle = ! isConnected || canWritePosts;
+
+	// Newsletter wording stays editable while a linked newsletter is still
+	// scheduled, so it also renders for linked posts, where the other send
+	// settings are hidden.
+	const newsletterWording = (
+		<div className="beehiiv-newsletter-wording">
+			<TextControl
+				__nextHasNoMarginBottom
+				__next40pxDefaultSize
+				className="beehiiv-newsletter-wording__title"
+				label={ __( 'Newsletter title', 'beehiiv' ) }
+				help={ __(
+					'Used as the email subject line. Leave empty to use the post title.',
+					'beehiiv'
+				) }
+				value={ newsletterTitle }
+				onChange={ setNewsletterTitle }
+				disabled={ newsletterPublished }
+			/>
+			<TextControl
+				__nextHasNoMarginBottom
+				__next40pxDefaultSize
+				className="beehiiv-newsletter-wording__subtitle"
+				label={ __( 'Newsletter subtitle', 'beehiiv' ) }
+				help={ __(
+					'Shown as the beehiiv post subtitle. Leave empty for no subtitle.',
+					'beehiiv'
+				) }
+				value={ newsletterSubtitle }
+				onChange={ setNewsletterSubtitle }
+				disabled={ newsletterPublished }
+			/>
+		</div>
+	);
 
 	return (
 		<div className="beehiiv-post-settings-content">
@@ -114,6 +153,8 @@ function BeehiivPostSettingsPanel() {
 								onChange={ setBeehiivPostTemplateId }
 							/>
 
+							{ newsletterWording }
+
 							<ToggleControl
 								className="beehiiv-post-settings-snippet"
 								label={ __( 'Snippet newsletter', 'beehiiv' ) }
@@ -140,6 +181,11 @@ function BeehiivPostSettingsPanel() {
 							/>
 						</>
 					) }
+
+				{ sendToNewsletter &&
+					newsletterAlreadySent &&
+					isNewsletterReady &&
+					newsletterWording }
 			</PanelBody>
 		</div>
 	);

@@ -47,7 +47,7 @@ final class PostSettings {
 	/**
 	 * Post meta keys registered for the block editor (REST-visible).
 	 *
-	 * @var array<string, array{type: string, default: bool|string}>
+	 * @var array<string, array{type: string, default: bool|string, readonly?: bool, sanitize?: callable-string}>
 	 */
 	private const META_KEYS = [
 		Meta::SEND_TO_NEWSLETTER         => [
@@ -86,6 +86,16 @@ final class PostSettings {
 			'default'  => '',
 			'readonly' => true,
 		],
+		Meta::NEWSLETTER_TITLE           => [
+			'type'     => 'string',
+			'default'  => '',
+			'sanitize' => 'sanitize_text_field',
+		],
+		Meta::NEWSLETTER_SUBTITLE        => [
+			'type'     => 'string',
+			'default'  => '',
+			'sanitize' => 'sanitize_text_field',
+		],
 	];
 
 	/**
@@ -110,24 +120,27 @@ final class PostSettings {
 				];
 			}
 
-			register_post_meta(
-				self::POST_TYPE,
-				$key,
-				[
-					'show_in_rest'  => $show_in_rest,
-					'single'        => true,
-					'type'          => $config['type'],
-					'default'       => $config['default'],
-					'auth_callback' => [ self::class, 'authorize_meta' ],
-				]
-			);
+			$args = [
+				'show_in_rest'  => $show_in_rest,
+				'single'        => true,
+				'type'          => $config['type'],
+				'default'       => $config['default'],
+				'auth_callback' => [ self::class, 'authorize_meta' ],
+			];
+
+			if ( ! empty( $config['sanitize'] ) ) {
+				$args['sanitize_callback'] = $config['sanitize'];
+			}
+
+			register_post_meta( self::POST_TYPE, $key, $args );
 		}
 	}
 
 	/**
 	 * Whether the current user may read or write a beehiiv post meta key.
 	 *
-	 * Newsletter send settings require `publish_posts`; other keys allow `edit_posts`.
+	 * Readonly keys are never writable via REST. Newsletter send settings and
+	 * newsletter wording require `publish_posts`; other keys allow `edit_posts`.
 	 *
 	 * @param bool   $allowed   Whether the user can add or edit the meta key.
 	 * @param string $meta_key  Meta key.
@@ -136,10 +149,16 @@ final class PostSettings {
 	 * @since 1.0.0
 	 */
 	public static function authorize_meta( $allowed, $meta_key, $post_id ) {
+		if ( ! empty( self::META_KEYS[ $meta_key ]['readonly'] ) ) {
+			return false;
+		}
+
 		$writable_keys = [
 			Meta::SEND_TO_NEWSLETTER,
 			Meta::SEND_TO_NEWSLETTER_DATE,
 			Meta::SEND_TO_NEWSLETTER_SNIPPET,
+			Meta::NEWSLETTER_TITLE,
+			Meta::NEWSLETTER_SUBTITLE,
 		];
 
 		if ( in_array( $meta_key, $writable_keys, true ) ) {

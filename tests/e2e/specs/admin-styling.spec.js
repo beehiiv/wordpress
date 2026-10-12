@@ -35,7 +35,10 @@ const { ensurePluginActive } = require( '../utils/wp-cli' );
 
 const PLUGIN_ROOT = path.resolve( __dirname, '../../..' );
 const ADMIN_SETTINGS_CSS = path.join( PLUGIN_ROOT, 'build/admin-settings.css' );
-const ADMIN_SETTINGS_CSS_BAK = path.join( PLUGIN_ROOT, 'build/admin-settings.css.qa-bak' );
+const ADMIN_SETTINGS_CSS_BAK = path.join(
+	PLUGIN_ROOT,
+	'build/admin-settings.css.qa-bak'
+);
 const ADMIN_ASSET_PHP = path.join( PLUGIN_ROOT, 'build/admin.asset.php' );
 
 /**
@@ -50,7 +53,9 @@ function readAssetVersion( assetPhpPath ) {
 	const contents = fs.readFileSync( assetPhpPath, 'utf8' );
 	const match = contents.match( /'version'\s*=>\s*'([^']+)'/ );
 	if ( ! match ) {
-		throw new Error( `Could not find a version string in ${ assetPhpPath }` );
+		throw new Error(
+			`Could not find a version string in ${ assetPhpPath }`
+		);
 	}
 	return match[ 1 ];
 }
@@ -61,44 +66,47 @@ test.beforeAll( () => {
 	// Defensive: if a previous run crashed mid-test and left the backup file
 	// in place without restoring the original, restore it now before this
 	// run starts, so we always begin from a clean/complete build directory.
-	if ( fs.existsSync( ADMIN_SETTINGS_CSS_BAK ) && ! fs.existsSync( ADMIN_SETTINGS_CSS ) ) {
+	if (
+		fs.existsSync( ADMIN_SETTINGS_CSS_BAK ) &&
+		! fs.existsSync( ADMIN_SETTINGS_CSS )
+	) {
 		fs.renameSync( ADMIN_SETTINGS_CSS_BAK, ADMIN_SETTINGS_CSS );
 	}
 } );
 
 test.afterAll( () => {
 	// Final safety net matching the above.
-	if ( fs.existsSync( ADMIN_SETTINGS_CSS_BAK ) && ! fs.existsSync( ADMIN_SETTINGS_CSS ) ) {
+	if (
+		fs.existsSync( ADMIN_SETTINGS_CSS_BAK ) &&
+		! fs.existsSync( ADMIN_SETTINGS_CSS )
+	) {
 		fs.renameSync( ADMIN_SETTINGS_CSS_BAK, ADMIN_SETTINGS_CSS );
 	}
 } );
 
 test.describe( 'Admin styling', () => {
-	test( 'AC-001: global admin styles load on every wp-admin page, not just the plugin\'s own page', async ( {
+	test( "AC-001: global admin styles load on every wp-admin page, not just the plugin's own page", async ( {
 		page,
 	} ) => {
 		await loginAsAdmin( page );
 
 		// A core WP admin screen with no relation to beehiiv at all.
 		await page.goto( '/wp-admin/edit.php' );
-		await expect( page.locator( 'link#beehiiv-admin-css' ) ).toHaveAttribute(
-			'href',
-			/build\/admin\.css/
-		);
+		await expect(
+			page.locator( 'link#beehiiv-admin-css' )
+		).toHaveAttribute( 'href', /build\/admin\.css/ );
 
 		// The WP dashboard.
 		await page.goto( '/wp-admin/' );
-		await expect( page.locator( 'link#beehiiv-admin-css' ) ).toHaveAttribute(
-			'href',
-			/build\/admin\.css/
-		);
+		await expect(
+			page.locator( 'link#beehiiv-admin-css' )
+		).toHaveAttribute( 'href', /build\/admin\.css/ );
 
 		// The plugin's own settings page.
 		await page.goto( '/wp-admin/admin.php?page=beehiiv' );
-		await expect( page.locator( 'link#beehiiv-admin-css' ) ).toHaveAttribute(
-			'href',
-			/build\/admin\.css/
-		);
+		await expect(
+			page.locator( 'link#beehiiv-admin-css' )
+		).toHaveAttribute( 'href', /build\/admin\.css/ );
 	} );
 
 	test( 'AC-002: the global stylesheet URL carries the build version as a cache-busting query arg', async ( {
@@ -109,7 +117,9 @@ test.describe( 'Admin styling', () => {
 		await loginAsAdmin( page );
 		await page.goto( '/wp-admin/' );
 
-		const href = await page.locator( 'link#beehiiv-admin-css' ).getAttribute( 'href' );
+		const href = await page
+			.locator( 'link#beehiiv-admin-css' )
+			.getAttribute( 'href' );
 		expect( href ).toContain( `ver=${ expectedVersion }` );
 	} );
 
@@ -134,14 +144,24 @@ test.describe( 'Admin styling', () => {
 
 			expect( response.status() ).toBe( 200 );
 			// Page still renders normally.
-			await expect( page.locator( 'h1' ) ).toHaveText( 'beehiiv Settings' );
+			await expect( page.locator( 'h1' ) ).toHaveText(
+				'beehiiv Settings'
+			);
 			// The style tag for the missing bundle was never emitted -- proves
 			// the PHP-side file_exists() guard actually skipped enqueuing
 			// rather than emitting a link to a 404ing asset.
-			await expect( page.locator( 'link#beehiiv-admin-settings-css' ) ).toHaveCount( 0 );
+			await expect(
+				page.locator( 'link#beehiiv-admin-settings-css' )
+			).toHaveCount( 0 );
 
-			expect( consoleIssues, `Console issues: ${ consoleIssues.join( '; ' ) }` ).toHaveLength( 0 );
-			expect( pageErrors, `Page errors: ${ pageErrors.join( '; ' ) }` ).toHaveLength( 0 );
+			expect(
+				consoleIssues,
+				`Console issues: ${ consoleIssues.join( '; ' ) }`
+			).toHaveLength( 0 );
+			expect(
+				pageErrors,
+				`Page errors: ${ pageErrors.join( '; ' ) }`
+			).toHaveLength( 0 );
 		} finally {
 			fs.renameSync( ADMIN_SETTINGS_CSS_BAK, ADMIN_SETTINGS_CSS );
 		}
