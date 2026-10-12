@@ -668,7 +668,7 @@ final class Sender {
 	/**
 	 * Whether a beehiiv post (from the Get Post endpoint) has already been sent.
 	 *
-	 * beehiiv has no sent-at field; a confirmed post whose publish date has passed has gone out.
+	 * The API has no sent-at field; a confirmed post whose publish date has passed has gone out.
 	 *
 	 * @param array<string, mixed> $beehiiv_post Post data from beehiiv.
 	 * @return bool

@@ -119,6 +119,21 @@ class NewsletterPostSettingsBuilderTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * AC-031: clearing the newsletter subtitle sends an empty subtitle on sync so beehiiv removes it.
+	 */
+	public function test_update_payload_clears_subtitle(): void {
+		$post_id = $this->create_sendable_post();
+		update_post_meta( $post_id, Meta::NEWSLETTER_SUBTITLE, 'A short subtitle' );
+
+		update_post_meta( $post_id, Meta::NEWSLETTER_SUBTITLE, '' );
+		$update = PostSettingsBuilder::build_update( $post_id );
+
+		$this->assertIsArray( $update );
+		$this->assertArrayHasKey( 'subtitle', $update['payload'] );
+		$this->assertSame( '', $update['payload']['subtitle'] );
+	}
+
+	/**
 	 * AC-032: preview text is never set from either field.
 	 */
 	public function test_preview_text_is_not_set(): void {

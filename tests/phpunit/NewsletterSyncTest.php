@@ -14,6 +14,8 @@ use Beehiiv\Newsletter\Sender;
 use Beehiiv\OAuth\TokenStore;
 
 /**
+ * Save-time sync of SEO metadata and tags, and sent-newsletter protection.
+ *
  * @covers \Beehiiv\Newsletter\PostSettingsBuilder::build_update
  * @covers \Beehiiv\Newsletter\SeoMetadata::resolve
  * @covers \Beehiiv\Newsletter\Sender::maybe_update_post_newsletter
@@ -38,6 +40,9 @@ class NewsletterSyncTest extends WP_UnitTestCase {
 		'data' => array(),
 	);
 
+	/**
+	 * Connect the site, configure a publication and template, and mock beehiiv HTTP.
+	 */
 	public function set_up(): void {
 		parent::set_up();
 

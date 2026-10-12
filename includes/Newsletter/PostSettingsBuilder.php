@@ -188,9 +188,9 @@ final class PostSettingsBuilder {
 			'content_tags'        => $settings['content_tags'],
 		];
 
-		if ( isset( $settings['subtitle'] ) ) {
-			$payload['subtitle'] = $settings['subtitle'];
-		}
+		// Always send the current subtitle so clearing it in WordPress removes it in beehiiv;
+		// the update API leaves omitted fields unchanged.
+		$payload['subtitle'] = $settings['subtitle'] ?? '';
 
 		if ( isset( $settings['seo_settings'] ) ) {
 			$payload['seo_settings'] = $settings['seo_settings'];
