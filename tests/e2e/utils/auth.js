@@ -27,10 +27,13 @@ async function loginAs( page, username, password ) {
 	const user = page.locator( '#user_login' );
 	const pass = page.locator( '#user_pass' );
 
-	// wp-login.php focuses and selects the username field ~200ms after load.
-	// Wait for that first so it can't steal focus mid-fill and type the
-	// password into the username field.
-	await expect( user ).toBeFocused();
+	// wp-login.php focuses a field ~200ms after load: the username field, or
+	// the password field (clearing it) when the username is pre-filled from an
+	// earlier login. Wait for that first so it can't steal focus or clear a
+	// value mid-fill.
+	await expect(
+		page.locator( '#user_login:focus, #user_pass:focus' )
+	).toHaveCount( 1 );
 
 	await user.fill( username );
 	await pass.fill( password );
