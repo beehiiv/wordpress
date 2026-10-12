@@ -19,14 +19,14 @@ defined( 'ABSPATH' ) || exit;
  * otherwise from the post title and excerpt. Social titles and descriptions fall
  * back to the search title and description when the SEO plugin leaves them empty.
  *
- * @since 1.1.0
+ * @since x.x.x
  */
 final class SeoMetadata {
 
 	/**
 	 * Resolve beehiiv `seo_settings` for a post.
 	 *
-	 * Never throws: an SEO plugin error falls back to the post title and excerpt.
+	 * Never throws: an SEO plugin or filter error falls back to the post title and excerpt.
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return array{
@@ -37,28 +37,31 @@ final class SeoMetadata {
 	 *     twitter_title: string,
 	 *     twitter_description: string
 	 * }
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public static function resolve( WP_Post $post ): array {
-		$fallback = [
-			'title'       => self::clean( get_the_title( $post ) ),
-			'description' => self::clean( get_the_excerpt( $post ) ),
-		];
-
-		$values = [];
-
 		try {
-			$values = self::from_seo_plugin( $post );
+			return self::filter( self::build( self::from_seo_plugin( $post ), $post ), $post );
 		} catch ( Throwable $e ) {
-			$values = [];
+			return self::build( [], $post );
 		}
+	}
 
-		$title       = self::first_filled( $values['title'] ?? '', $fallback['title'] );
-		$description = self::first_filled( $values['description'] ?? '', $fallback['description'] );
+	/**
+	 * Fill the six `seo_settings` values, falling back to the post title and excerpt only when needed.
+	 *
+	 * @param array<string, string> $values SEO plugin values.
+	 * @param WP_Post               $post   Post object.
+	 * @return array<string, string>
+	 * @since x.x.x
+	 */
+	private static function build( array $values, WP_Post $post ): array {
+		$title       = '' !== ( $values['title'] ?? '' ) ? $values['title'] : self::clean( get_the_title( $post ) );
+		$description = '' !== ( $values['description'] ?? '' ) ? $values['description'] : self::excerpt( $post );
 		$og_title    = self::first_filled( $values['og_title'] ?? '', $title );
 		$og_desc     = self::first_filled( $values['og_description'] ?? '', $description );
 
-		$settings = [
+		return [
 			'default_title'       => $title,
 			'default_description' => $description,
 			'og_title'            => $og_title,
@@ -66,13 +69,23 @@ final class SeoMetadata {
 			'twitter_title'       => self::first_filled( $values['twitter_title'] ?? '', $og_title ),
 			'twitter_description' => self::first_filled( $values['twitter_description'] ?? '', $og_desc ),
 		];
+	}
 
+	/**
+	 * Apply the `beehiiv_newsletter_seo_settings` filter, keeping only known scalar values.
+	 *
+	 * @param array<string, string> $settings Resolved values.
+	 * @param WP_Post               $post     Post object.
+	 * @return array<string, string>
+	 * @since x.x.x
+	 */
+	private static function filter( array $settings, WP_Post $post ): array {
 		/**
 		 * Filters the beehiiv `seo_settings` for a post.
 		 *
 		 * Use this to supply values from an SEO plugin the beehiiv plugin does not read natively.
 		 *
-		 * @since 1.1.0
+		 * @since x.x.x
 		 *
 		 * @param array   $settings Resolved `seo_settings` values.
 		 * @param WP_Post $post     WordPress post object.
@@ -93,11 +106,30 @@ final class SeoMetadata {
 	}
 
 	/**
+	 * Plain-text description: the manual excerpt, or the opening words of the content.
+	 *
+	 * Avoids get_the_excerpt(), which renders the full content and appends the "read more" suffix.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return string
+	 * @since x.x.x
+	 */
+	private static function excerpt( WP_Post $post ): string {
+		if ( '' !== trim( $post->post_excerpt ) ) {
+			return self::clean( $post->post_excerpt );
+		}
+
+		$content = strip_shortcodes( excerpt_remove_blocks( $post->post_content ) );
+
+		return self::clean( wp_trim_words( wp_strip_all_tags( $content ), 55, '' ) );
+	}
+
+	/**
 	 * Raw values from the active SEO plugin, keyed by title, description, and the og and twitter fields.
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return array<string, string>
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private static function from_seo_plugin( WP_Post $post ): array {
 		if ( function_exists( 'YoastSEO' ) ) {
@@ -116,7 +148,7 @@ final class SeoMetadata {
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return array<string, string>
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private static function from_yoast( WP_Post $post ): array {
 		$meta = YoastSEO()->meta->for_post( $post->ID );
@@ -140,7 +172,7 @@ final class SeoMetadata {
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return array<string, string>
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private static function from_rank_math( WP_Post $post ): array {
 		$keys = [
@@ -175,7 +207,7 @@ final class SeoMetadata {
 	 * @param string $value    Preferred value.
 	 * @param string $fallback Fallback value.
 	 * @return string
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private static function first_filled( string $value, string $fallback ): string {
 		return '' !== $value ? $value : $fallback;
@@ -186,7 +218,7 @@ final class SeoMetadata {
 	 *
 	 * @param string $value Raw value.
 	 * @return string
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private static function clean( string $value ): string {
 		return trim( html_entity_decode( wp_strip_all_tags( $value ), ENT_QUOTES, 'UTF-8' ) );

@@ -87,7 +87,7 @@ final class Posts {
 	 * @param string $publication_id Publication ID.
 	 * @param string $post_id        beehiiv post ID.
 	 * @return array{success: bool, post: array<string, mixed>, error: string}
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public static function get( string $publication_id, string $post_id ): array {
 		$publication_id = trim( $publication_id );

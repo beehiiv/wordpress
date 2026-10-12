@@ -15,7 +15,6 @@ use Beehiiv\Editor\Meta;
 use DateTimeImmutable;
 use DateTimeZone;
 use Exception;
-use Throwable;
 use WP_Error;
 use WP_Post;
 
@@ -116,15 +115,15 @@ final class PostSettingsBuilder {
 			$settings['subtitle'] = $subtitle;
 		}
 
-		$seo_settings = self::get_seo_settings( $post_object );
-
-		if ( null !== $seo_settings ) {
-			$settings['seo_settings'] = $seo_settings;
-		}
-
+		$settings['seo_settings'] = SeoMetadata::resolve( $post_object );
 		$settings['content_tags'] = self::get_content_tags( $post_object );
 
 		if ( ! $for_update ) {
+			// Nothing to clear on a first send, so an empty tag list is left out.
+			if ( empty( $settings['content_tags'] ) ) {
+				unset( $settings['content_tags'] );
+			}
+
 			$scheduled_at = self::convert_send_date_to_scheduled_at_utc( $post_object );
 
 			if ( is_wp_error( $scheduled_at ) ) {
@@ -186,14 +185,15 @@ final class PostSettingsBuilder {
 			'web_settings'        => $settings['web_settings'],
 			'social_share'        => $settings['social_share'],
 			'content_tags'        => $settings['content_tags'],
+			'seo_settings'        => $settings['seo_settings'],
 		];
 
-		// Always send the current subtitle so clearing it in WordPress removes it in beehiiv;
-		// the update API leaves omitted fields unchanged.
-		$payload['subtitle'] = $settings['subtitle'] ?? '';
-
-		if ( isset( $settings['seo_settings'] ) ) {
-			$payload['seo_settings'] = $settings['seo_settings'];
+		if ( isset( $settings['subtitle'] ) ) {
+			$payload['subtitle'] = $settings['subtitle'];
+		} elseif ( self::has_synced_subtitle( $post_id ) ) {
+			// The update API leaves omitted fields unchanged, so a subtitle cleared in
+			// WordPress is removed in beehiiv by sending it empty.
+			$payload['subtitle'] = '';
 		}
 
 		$schedule = self::resolve_update_scheduled_at( $post_object );
@@ -245,20 +245,16 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Search and social-sharing metadata for the beehiiv `seo_settings` field.
+	 * Whether a non-empty subtitle was last synced to the linked beehiiv post.
 	 *
-	 * Returns null when it cannot be resolved so the field is omitted and never blocks a send.
-	 *
-	 * @param WP_Post $post Post object.
-	 * @return array<string, string>|null
-	 * @since 1.1.0
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since x.x.x
 	 */
-	private static function get_seo_settings( WP_Post $post ): ?array {
-		try {
-			return SeoMetadata::resolve( $post );
-		} catch ( Throwable $e ) {
-			return null;
-		}
+	private static function has_synced_subtitle( int $post_id ): bool {
+		$synced = get_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE, true );
+
+		return is_string( $synced ) && '' !== $synced;
 	}
 
 	/**
@@ -269,7 +265,7 @@ final class PostSettingsBuilder {
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return array<int, string>
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private static function get_content_tags( WP_Post $post ): array {
 		$names = wp_get_post_tags( $post->ID, [ 'fields' => 'names' ] );
@@ -854,7 +850,7 @@ final class PostSettingsBuilder {
 	 * @return int|null Timestamp, or null when empty or invalid.
 	 * @since 1.0.0
 	 */
-	private static function utc_scheduled_at_to_timestamp( string $scheduled_at ): ?int {
+	public static function utc_scheduled_at_to_timestamp( string $scheduled_at ): ?int {
 		if ( '' === $scheduled_at ) {
 			return null;
 		}

@@ -217,9 +217,9 @@ class NewsletterSyncTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-023: a failure resolving SEO metadata never blocks the sync.
+	 * AC-023: a failure resolving SEO metadata never blocks the sync; it falls back to the post title and excerpt.
 	 */
-	public function test_seo_failure_omits_field_and_does_not_block(): void {
+	public function test_seo_failure_falls_back_and_does_not_block(): void {
 		$post_id = $this->create_linked_post();
 
 		add_filter(
@@ -232,8 +232,28 @@ class NewsletterSyncTest extends WP_UnitTestCase {
 		$update = PostSettingsBuilder::build_update( $post_id );
 
 		$this->assertIsArray( $update );
-		$this->assertArrayNotHasKey( 'seo_settings', $update['payload'] );
+		$this->assertSame( 'Weekly roundup', $update['payload']['seo_settings']['default_title'] );
 		$this->assertArrayHasKey( 'content_tags', $update['payload'] );
+	}
+
+	/**
+	 * AC-021: without a manual excerpt, the description is the opening text with no "read more" suffix.
+	 */
+	public function test_seo_description_from_content_has_no_more_suffix(): void {
+		$post_id = $this->create_linked_post( array( 'post_excerpt' => '' ) );
+
+		$update = PostSettingsBuilder::build_update( $post_id );
+
+		$this->assertSame( 'Hello subscribers.', $update['payload']['seo_settings']['default_description'] );
+	}
+
+	/**
+	 * AC-022: a first send leaves out an empty tag list.
+	 */
+	public function test_create_payload_omits_empty_tags(): void {
+		$post_id = $this->create_linked_post();
+
+		$this->assertArrayNotHasKey( 'content_tags', PostSettingsBuilder::get_post_settings( $post_id ) );
 	}
 
 	/**
@@ -254,6 +274,46 @@ class NewsletterSyncTest extends WP_UnitTestCase {
 		$this->assertCount( 1, $this->requests_with( 'GET' ) );
 		$this->assertCount( 0, $this->requests_with( 'PATCH' ) );
 		$this->assertCount( 0, $this->requests_with( 'DELETE' ) );
+		$this->assertTrue( Sender::is_newsletter_sent( $post_id ) );
+		$this->assertSame( '', get_post_meta( $post_id, Meta::NEWSLETTER_ERROR, true ) );
+	}
+
+	/**
+	 * AC-024: a sent newsletter whose send time moved later is never archived and recreated.
+	 */
+	public function test_sent_newsletter_is_not_rescheduled(): void {
+		$post_id = $this->create_linked_post();
+		update_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT, gmdate( 'Y-m-d\TH:i:s\Z', time() - HOUR_IN_SECONDS ) );
+		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER_DATE, gmdate( 'Y-m-d\TH:i:s', time() + DAY_IN_SECONDS ) );
+		$this->get_response = array(
+			'code' => 200,
+			'data' => array(
+				'status'       => 'confirmed',
+				'publish_date' => time() - HOUR_IN_SECONDS,
+			),
+		);
+
+		Sender::maybe_update_post_newsletter( get_post( $post_id ) );
+
+		$this->assertCount( 0, $this->requests_with( 'DELETE' ) );
+		$this->assertCount( 0, $this->requests_with( 'POST' ) );
+		$this->assertCount( 0, $this->requests_with( 'PATCH' ) );
+		$this->assertTrue( Sender::is_newsletter_sent( $post_id ) );
+	}
+
+	/**
+	 * A newsletter archived in beehiiv is no longer updated, and later saves leave beehiiv alone.
+	 */
+	public function test_archived_newsletter_is_not_updated(): void {
+		$post_id            = $this->create_linked_post();
+		$this->get_response = array(
+			'code' => 200,
+			'data' => array( 'status' => 'archived' ),
+		);
+
+		Sender::maybe_update_post_newsletter( get_post( $post_id ) );
+
+		$this->assertCount( 0, $this->requests_with( 'PATCH' ) );
 		$this->assertTrue( Sender::is_newsletter_sent( $post_id ) );
 		$this->assertSame( '', get_post_meta( $post_id, Meta::NEWSLETTER_ERROR, true ) );
 	}

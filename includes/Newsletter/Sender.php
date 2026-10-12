@@ -230,6 +230,7 @@ final class Sender {
 		delete_post_meta( $post_id, Meta::BEEHIIV_POST_ID );
 		delete_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT );
 		delete_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT );
+		delete_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
 		self::clear_error( $post_id );
 	}
@@ -382,6 +383,7 @@ final class Sender {
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, false );
 		delete_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT );
+		self::persist_synced_subtitle( $post_id, $beehiiv_post_data );
 		self::persist_scheduled_at_meta( $post_id, $beehiiv_post_data['scheduled_at'] ?? null );
 		self::clear_error( $post_id );
 	}
@@ -494,6 +496,7 @@ final class Sender {
 			return;
 		}
 
+		self::persist_synced_subtitle( $post_id, $update['payload'] );
 		self::apply_update_meta( $post_id, $update['meta'] );
 		self::clear_error( $post_id );
 	}
@@ -551,6 +554,7 @@ final class Sender {
 			delete_post_meta( $post_id, Meta::BEEHIIV_POST_ID );
 			delete_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT );
 			delete_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT );
+			delete_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE );
 			update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
 
 			self::fail(
@@ -563,8 +567,32 @@ final class Sender {
 		}
 
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
+		self::persist_synced_subtitle( $post_id, $create_payload );
 		self::apply_update_meta( $post_id, $meta );
 		self::clear_error( $post_id );
+	}
+
+	/**
+	 * Record the subtitle a successful create or update sent to beehiiv.
+	 *
+	 * @param int                  $post_id Post ID.
+	 * @param array<string, mixed> $payload Payload that was sent.
+	 * @return void
+	 * @since x.x.x
+	 */
+	private static function persist_synced_subtitle( int $post_id, array $payload ): void {
+		if ( ! array_key_exists( 'subtitle', $payload ) ) {
+			return;
+		}
+
+		$subtitle = is_string( $payload['subtitle'] ) ? $payload['subtitle'] : '';
+
+		if ( '' === $subtitle ) {
+			delete_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE );
+			return;
+		}
+
+		update_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE, $subtitle );
 	}
 
 	/**
@@ -636,7 +664,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	public static function is_newsletter_sent( int $post_id ): bool {
 		return rest_sanitize_boolean( get_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT, true ) );
@@ -650,7 +678,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private static function should_confirm_sent_state( int $post_id ): bool {
 		$scheduled_at = get_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT, true );
@@ -660,21 +688,26 @@ final class Sender {
 			return true;
 		}
 
-		$timestamp = strtotime( $scheduled_at );
+		$timestamp = PostSettingsBuilder::utc_scheduled_at_to_timestamp( $scheduled_at );
 
-		return false === $timestamp || $timestamp <= time();
+		return null === $timestamp || $timestamp <= time();
 	}
 
 	/**
-	 * Whether a beehiiv post (from the Get Post endpoint) has already been sent.
+	 * Whether a beehiiv post (from the Get Post endpoint) can no longer be updated.
 	 *
-	 * The API has no sent-at field; a confirmed post whose publish date has passed has gone out.
+	 * True once it has been sent (the API has no sent-at field; a confirmed post whose
+	 * publish date has passed has gone out) or archived in beehiiv.
 	 *
 	 * @param array<string, mixed> $beehiiv_post Post data from beehiiv.
 	 * @return bool
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	private static function is_sent_beehiiv_post( array $beehiiv_post ): bool {
+		if ( isset( $beehiiv_post['status'] ) && 'archived' === $beehiiv_post['status'] ) {
+			return true;
+		}
+
 		if ( ! isset( $beehiiv_post['status'] ) || 'confirmed' !== $beehiiv_post['status'] ) {
 			return false;
 		}

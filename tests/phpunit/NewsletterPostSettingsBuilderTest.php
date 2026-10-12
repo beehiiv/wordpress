@@ -123,7 +123,7 @@ class NewsletterPostSettingsBuilderTest extends WP_UnitTestCase {
 	 */
 	public function test_update_payload_clears_subtitle(): void {
 		$post_id = $this->create_sendable_post();
-		update_post_meta( $post_id, Meta::NEWSLETTER_SUBTITLE, 'A short subtitle' );
+		update_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE, 'A short subtitle' );
 
 		update_post_meta( $post_id, Meta::NEWSLETTER_SUBTITLE, '' );
 		$update = PostSettingsBuilder::build_update( $post_id );
@@ -131,6 +131,16 @@ class NewsletterPostSettingsBuilderTest extends WP_UnitTestCase {
 		$this->assertIsArray( $update );
 		$this->assertArrayHasKey( 'subtitle', $update['payload'] );
 		$this->assertSame( '', $update['payload']['subtitle'] );
+	}
+
+	/**
+	 * AC-029: a post that never synced a subtitle never sends an empty one.
+	 */
+	public function test_update_payload_omits_subtitle_never_synced(): void {
+		$update = PostSettingsBuilder::build_update( $this->create_sendable_post() );
+
+		$this->assertIsArray( $update );
+		$this->assertArrayNotHasKey( 'subtitle', $update['payload'] );
 	}
 
 	/**
