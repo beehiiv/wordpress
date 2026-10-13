@@ -61,6 +61,7 @@ function BeehiivPostSettingsPanel() {
 		newsletterAlreadySent,
 		newsletterTitle,
 		newsletterSubtitle,
+		newsletterShowTitleInEmail,
 		newsletterPublished,
 		setSendToNewsletter,
 		setSendToNewsletterDate,
@@ -68,6 +69,7 @@ function BeehiivPostSettingsPanel() {
 		setBeehiivPostTemplateId,
 		setNewsletterTitle,
 		setNewsletterSubtitle,
+		setShowTitleInEmail,
 	} = beehiivMeta;
 
 	const isNewsletterReady =
@@ -76,7 +78,8 @@ function BeehiivPostSettingsPanel() {
 
 	// Newsletter wording stays editable while a linked newsletter is still
 	// scheduled, so it also renders for linked posts, where the other send
-	// settings are hidden.
+	// settings are hidden. A send turns "Send to newsletter" back off, so the
+	// linked case checks the link alone.
 	const newsletterWording = (
 		<div className="beehiiv-newsletter-wording">
 			<TextControl
@@ -103,6 +106,18 @@ function BeehiivPostSettingsPanel() {
 				) }
 				value={ newsletterSubtitle }
 				onChange={ setNewsletterSubtitle }
+				disabled={ newsletterPublished }
+			/>
+			<ToggleControl
+				__nextHasNoMarginBottom
+				className="beehiiv-newsletter-wording__show-title"
+				label={ __( 'Show title and subtitle in email', 'beehiiv' ) }
+				help={ __(
+					'Shows the newsletter title and subtitle in the beehiiv email. Off by default.',
+					'beehiiv'
+				) }
+				checked={ newsletterShowTitleInEmail }
+				onChange={ setShowTitleInEmail }
 				disabled={ newsletterPublished }
 			/>
 		</div>
@@ -182,8 +197,7 @@ function BeehiivPostSettingsPanel() {
 						</>
 					) }
 
-				{ sendToNewsletter &&
-					newsletterAlreadySent &&
+				{ newsletterAlreadySent &&
 					isNewsletterReady &&
 					newsletterWording }
 			</PanelBody>

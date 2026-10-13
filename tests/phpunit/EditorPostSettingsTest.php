@@ -44,6 +44,49 @@ class EditorPostSettingsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * PRD-07.1.01 AC-013: a REST save carrying readonly beehiiv meta (as the block
+	 * editor does) succeeds, ignores the readonly values, and keeps the stored
+	 * beehiiv post ID, while writable meta in the same save still applies.
+	 */
+	public function test_rest_save_with_readonly_meta_keeps_stored_values(): void {
+		PostSettings::register_meta();
+
+		$author_id = self::factory()->user->create( array( 'role' => 'author' ) );
+		$post_id   = self::factory()->post->create(
+			array(
+				'post_author' => $author_id,
+				'post_status' => 'draft',
+			)
+		);
+
+		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, 'post_linked' );
+		wp_set_current_user( $author_id );
+		do_action( 'rest_api_init' );
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/posts/' . $post_id );
+		$request->set_header( 'content-type', 'application/json' );
+		$request->set_body(
+			wp_json_encode(
+				array(
+					'meta' => array(
+						Meta::BEEHIIV_POST_ID      => '',
+						Meta::BEEHIIV_SCHEDULED_AT => '',
+						Meta::NEWSLETTER_TITLE     => 'Edited subject',
+						Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL => true,
+					),
+				)
+			)
+		);
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertSame( 200, $response->get_status(), 'A save carrying readonly meta must not be rejected.' );
+		$this->assertSame( 'post_linked', get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true ) );
+		$this->assertSame( 'Edited subject', get_post_meta( $post_id, Meta::NEWSLETTER_TITLE, true ) );
+		$this->assertTrue( (bool) get_post_meta( $post_id, Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL, true ) );
+	}
+
+	/**
 	 * AC-020: writes to send-scheduling/snippet fields respect publish_posts,
 	 * not just edit_posts.
 	 */
@@ -135,5 +178,69 @@ class EditorPostSettingsTest extends WP_UnitTestCase {
 				sprintf( '%s must be stored as plain single-line text.', $meta_key )
 			);
 		}
+	}
+
+	/**
+	 * PRD-06.8.01 AC-024 / BR-008: users without publish rights cannot write
+	 * the email title/subtitle display choice.
+	 */
+	public function test_show_title_in_email_is_denied_for_contributor(): void {
+		$contributor_id = self::factory()->user->create( array( 'role' => 'contributor' ) );
+		$post_id        = self::factory()->post->create(
+			array(
+				'post_author' => $contributor_id,
+				'post_status' => 'draft',
+			)
+		);
+
+		wp_set_current_user( $contributor_id );
+
+		$this->assertFalse(
+			PostSettings::authorize_meta( false, Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL, $post_id ),
+			'PRD-06.8.01 AC-024: a contributor must not be authorized to write the email display choice.'
+		);
+	}
+
+	/**
+	 * PRD-06.8.01 AC-024: users with publish rights can write the email
+	 * title/subtitle display choice.
+	 */
+	public function test_show_title_in_email_is_allowed_for_author(): void {
+		$author_id = self::factory()->user->create( array( 'role' => 'author' ) );
+		$post_id   = self::factory()->post->create( array( 'post_author' => $author_id ) );
+
+		wp_set_current_user( $author_id );
+
+		$this->assertTrue(
+			PostSettings::authorize_meta( false, Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL, $post_id ),
+			'PRD-06.8.01 AC-024: an author must be authorized to write the email display choice.'
+		);
+	}
+
+	/**
+	 * PRD-06.8.01 AC-021, AC-022, AC-026: the email display choice is a
+	 * REST-visible single boolean that reads as hidden when never set.
+	 */
+	public function test_show_title_in_email_is_registered_and_hidden_by_default(): void {
+		PostSettings::register_meta();
+
+		$registered = get_registered_meta_keys( 'post', 'post' );
+		$post_id    = self::factory()->post->create();
+		$meta_key   = Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL;
+
+		$this->assertArrayHasKey( $meta_key, $registered );
+		$this->assertSame( 'boolean', $registered[ $meta_key ]['type'] );
+		$this->assertTrue( $registered[ $meta_key ]['single'] );
+		$this->assertNotEmpty( $registered[ $meta_key ]['show_in_rest'] );
+		$this->assertFalse(
+			(bool) get_post_meta( $post_id, $meta_key, true ),
+			'PRD-06.8.01 AC-021: a post that never set the choice must read as hidden.'
+		);
+
+		update_post_meta( $post_id, $meta_key, true );
+		$this->assertTrue(
+			(bool) get_post_meta( $post_id, $meta_key, true ),
+			'PRD-06.8.01 AC-022: the saved choice must persist on the post.'
+		);
 	}
 }

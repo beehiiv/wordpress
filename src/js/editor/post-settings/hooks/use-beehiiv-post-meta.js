@@ -21,6 +21,7 @@ import {
 	META_SEND_TO_NEWSLETTER_SNIPPET,
 	META_NEWSLETTER_TITLE,
 	META_NEWSLETTER_SUBTITLE,
+	META_NEWSLETTER_SHOW_TITLE_IN_EMAIL,
 } from '../../../shared/meta';
 
 /**
@@ -36,9 +37,11 @@ import {
  * @property {string|null}                  newsletterErrorType        `save` or `send` when {@link newsletterError} is set.
  * @property {string}                       newsletterTitle            Newsletter title (email subject line), or empty to use the post title.
  * @property {string}                       newsletterSubtitle         Newsletter subtitle (beehiiv post subtitle), or empty for none.
+ * @property {boolean}                      newsletterShowTitleInEmail Whether the email shows the title and subtitle. False when never set.
  * @property {boolean}                      newsletterPublished        Whether beehiiv has published the linked newsletter (sent immediately, or its scheduled time has passed).
  * @property {(title: string) => void}      setNewsletterTitle         Set the newsletter title. No-op once published.
  * @property {(subtitle: string) => void}   setNewsletterSubtitle      Set the newsletter subtitle. No-op once published.
+ * @property {(show: boolean) => void}      setShowTitleInEmail        Show or hide the title and subtitle in the email. No-op once published.
  * @property {(enabled: boolean) => void}   setSendToNewsletter        Enable or disable newsletter delivery.
  * @property {(date: string|null) => void}  setSendToNewsletterDate    Set scheduled send time.
  * @property {(enabled: boolean) => void}   setSendToNewsletterSnippet Enable or disable snippet delivery.
@@ -233,6 +236,8 @@ export function useBeehiivPostMeta() {
 	const rawNewsletterSubtitle = meta?.[ META_NEWSLETTER_SUBTITLE ];
 	const newsletterSubtitle =
 		typeof rawNewsletterSubtitle === 'string' ? rawNewsletterSubtitle : '';
+	const newsletterShowTitleInEmail =
+		!! meta?.[ META_NEWSLETTER_SHOW_TITLE_IN_EMAIL ];
 
 	// Linked is not the same as published: a linked newsletter stays unsent until
 	// its scheduled time. No scheduled time on a linked post means it was sent
@@ -262,6 +267,7 @@ export function useBeehiivPostMeta() {
 		newsletterErrorType,
 		newsletterTitle,
 		newsletterSubtitle,
+		newsletterShowTitleInEmail,
 		newsletterPublished,
 		setNewsletterTitle( title ) {
 			if ( newsletterPublished ) {
@@ -279,6 +285,15 @@ export function useBeehiivPostMeta() {
 
 			patchMeta( {
 				[ META_NEWSLETTER_SUBTITLE ]: subtitle ?? '',
+			} );
+		},
+		setShowTitleInEmail( show ) {
+			if ( newsletterPublished ) {
+				return;
+			}
+
+			patchMeta( {
+				[ META_NEWSLETTER_SHOW_TITLE_IN_EMAIL ]: !! show,
 			} );
 		},
 		setSendToNewsletter( enabled ) {
