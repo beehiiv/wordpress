@@ -60,10 +60,25 @@ add_filter(
 				usleep( (int) $mock['delay_ms'] * 1000 );
 			}
 
+			// Optional `sequence`: one response per call, repeating the last one --
+			// e.g. beehiiv answering 202 while a post is still being created, then 200.
+			if ( ! empty( $mock['sequence'] ) && is_array( $mock['sequence'] ) ) {
+				$sequence = array_values( $mock['sequence'] );
+				$step     = is_array( $sequence[0] ) ? $sequence[0] : [];
+
+				if ( count( $sequence ) > 1 ) {
+					array_shift( $sequence );
+					$mocks[ $needle ]['sequence'] = $sequence;
+					update_option( 'beehiiv_e2e_http_mocks', $mocks, false );
+				}
+
+				$mock = array_merge( $mock, $step );
+			}
+
 			$body = $mock['body'] ?? [];
 
 			return [
-				'headers'  => [],
+				'headers'  => isset( $mock['headers'] ) && is_array( $mock['headers'] ) ? $mock['headers'] : [],
 				'body'     => is_string( $body ) ? $body : wp_json_encode( $body ),
 				'response' => [
 					'code'    => $mock['status'] ?? 200,
@@ -193,6 +208,7 @@ function beehiiv_e2e_reset_all(): void {
 	beehiiv_e2e_clear_http_mocks();
 	beehiiv_e2e_clear_http_log();
 	delete_option( 'beehiiv_e2e_force_settings_status' );
+	delete_option( 'beehiiv_e2e_test_send_wait_seconds' );
 	beehiiv_e2e_clear_connection();
 	\Beehiiv\API\Cache::flush_all();
 }
@@ -248,4 +264,19 @@ add_filter(
 		return $settings;
 	},
 	999
+);
+
+/**
+ * Shortens how long a test send waits for beehiiv to create its temporary
+ * draft, so specs can reach the "still preparing" outcome without waiting the
+ * full 20 seconds. Opt-in: only applies while the
+ * `beehiiv_e2e_test_send_wait_seconds` option is set.
+ */
+add_filter(
+	'beehiiv_test_send_creation_wait_seconds',
+	static function ( $seconds ) {
+		$override = get_option( 'beehiiv_e2e_test_send_wait_seconds', '' );
+
+		return is_numeric( $override ) ? (float) $override : $seconds;
+	}
 );

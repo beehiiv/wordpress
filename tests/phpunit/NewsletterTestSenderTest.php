@@ -42,6 +42,25 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 	 */
 	private $responses = [];
 
+	/**
+	 * Seconds each pause asked for, before the test's zero override.
+	 *
+	 * @var array<int, float>
+	 */
+	private $polls = [];
+
+	/**
+	 * Record a requested pause and skip the wait (clamped to the 0.1 s minimum).
+	 *
+	 * @param float $seconds Requested pause.
+	 * @return int
+	 */
+	public function record_poll( $seconds ) {
+		$this->polls[] = (float) $seconds;
+
+		return 0;
+	}
+
 	public function set_up(): void {
 		parent::set_up();
 
@@ -84,7 +103,14 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 		];
 
 		add_filter( 'pre_http_request', [ $this, 'stub_http' ], 10, 3 );
-		add_filter( 'beehiiv_test_send_poll_seconds', '__return_zero' );
+		$this->polls = [];
+		add_filter( 'beehiiv_test_send_poll_seconds', [ $this, 'record_poll' ] );
+		add_filter(
+			'beehiiv_test_send_cleanup_wait_seconds',
+			static function () {
+				return 0.3;
+			}
+		);
 
 		TokenStore::save_tokens(
 			'qa-client',
@@ -110,6 +136,7 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 		remove_filter( 'pre_http_request', [ $this, 'stub_http' ], 10 );
 		remove_all_filters( 'beehiiv_test_send_poll_seconds' );
 		remove_all_filters( 'beehiiv_test_send_creation_wait_seconds' );
+		remove_all_filters( 'beehiiv_test_send_cleanup_wait_seconds' );
 		remove_all_filters( 'beehiiv_newsletter_post_settings' );
 		TokenStore::delete_all();
 		delete_option( Config::OPTION_NAME );
@@ -493,8 +520,25 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-024: a 202 "still processing" delete leaves a draft behind; the test still
-	 * counts as sent and the leftover is flagged.
+	 * Count recorded requests matching "METHOD path-suffix".
+	 *
+	 * @param string $entry Request log entry.
+	 * @return int
+	 */
+	private function count_requests( string $entry ): int {
+		return count(
+			array_filter(
+				$this->request_log(),
+				static function ( $logged ) use ( $entry ) {
+					return $logged === $entry;
+				}
+			)
+		);
+	}
+
+	/**
+	 * AC-024: a delete beehiiv keeps answering 202 "still processing" leaves a draft
+	 * behind; the test still counts as sent and the leftover is flagged.
 	 */
 	public function test_still_processing_delete_flags_leftover_draft(): void {
 		$post_id = $this->create_post( 'draft' );
@@ -508,11 +552,38 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 
 		$this->assertIsArray( $result );
 		$this->assertTrue( $result['leftover_draft'] );
+		$this->assertGreaterThan( 1, $this->count_requests( 'DELETE /posts/' . self::TEMP_POST_ID ), 'A 202 delete is retried.' );
 	}
 
 	/**
-	 * beehiiv creates Send API posts in the background: the test send waits until
-	 * the temporary draft reports ready instead of failing with "Couldn't find post".
+	 * A delete that answers 202 once and then 204 is retried and leaves nothing behind.
+	 */
+	public function test_still_processing_delete_is_retried_until_gone(): void {
+		$post_id = $this->create_post( 'draft' );
+
+		$this->responses[ 'DELETE /posts/' . self::TEMP_POST_ID ] = [
+			'sequence' => [
+				[
+					'status' => 202,
+					'body'   => [],
+				],
+				[
+					'status' => 204,
+					'body'   => [],
+				],
+			],
+		];
+
+		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
+
+		$this->assertIsArray( $result );
+		$this->assertFalse( $result['leftover_draft'] );
+		$this->assertSame( 2, $this->count_requests( 'DELETE /posts/' . self::TEMP_POST_ID ) );
+	}
+
+	/**
+	 * AC-025: the test send waits until the temporary draft reports ready, honoring
+	 * beehiiv's Retry-After, instead of failing with "Couldn't find post".
 	 */
 	public function test_waits_for_temporary_draft_to_finish_creating(): void {
 		$post_id = $this->create_post( 'draft' );
@@ -521,7 +592,7 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 			'sequence' => [
 				[
 					'status'  => 202,
-					'headers' => [ 'retry-after' => '1' ],
+					'headers' => [ 'retry-after' => '3' ],
 					'body'    => [ 'data' => [ 'state' => 'pending' ] ],
 				],
 				[
@@ -538,6 +609,7 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
 
 		$this->assertIsArray( $result );
+		$this->assertSame( [ 3.0, 1.0 ], $this->polls, 'Retry-After is honored; the default applies without it.' );
 		$this->assertSame(
 			[
 				'GET /workspaces/permissions',
@@ -553,48 +625,115 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * When beehiiv reports the temporary draft's creation failed, nothing is sent,
-	 * the editor gets a clear message, and the draft is still cleaned up.
+	 * A Retry-After given as an HTTP date is honored too.
+	 */
+	public function test_retry_after_http_date_is_honored(): void {
+		$post_id = $this->create_post( 'draft' );
+
+		$this->responses[ 'GET /posts/' . self::TEMP_POST_ID ] = [
+			'sequence' => [
+				[
+					'status'  => 202,
+					'headers' => [ 'retry-after' => gmdate( 'D, d M Y H:i:s', time() + 4 ) . ' GMT' ],
+					'body'    => [],
+				],
+				[
+					'status' => 200,
+					'body'   => [ 'data' => [ 'id' => self::TEMP_POST_ID ] ],
+				],
+			],
+		];
+
+		$this->assertIsArray( TestSender::send( $post_id, [ 'a@example.com' ] ) );
+		$this->assertCount( 1, $this->polls );
+		$this->assertGreaterThanOrEqual( 3.0, $this->polls[0] );
+		$this->assertLessThanOrEqual( 4.0, $this->polls[0] );
+	}
+
+	/**
+	 * Rate limiting on the creation check keeps waiting instead of sending early.
+	 */
+	public function test_rate_limited_creation_check_keeps_waiting(): void {
+		$post_id = $this->create_post( 'draft' );
+
+		$this->responses[ 'GET /posts/' . self::TEMP_POST_ID ] = [
+			'sequence' => [
+				[
+					'status' => 429,
+					'body'   => [ 'errors' => [ [ 'message' => 'Rate limited' ] ] ],
+				],
+				[
+					'status' => 200,
+					'body'   => [ 'data' => [ 'id' => self::TEMP_POST_ID ] ],
+				],
+			],
+		];
+
+		$this->assertIsArray( TestSender::send( $post_id, [ 'a@example.com' ] ) );
+		$this->assertSame( 2, $this->count_requests( 'GET /posts/' . self::TEMP_POST_ID ) );
+	}
+
+	/**
+	 * When beehiiv reports the temporary draft's creation failed, nothing is sent, the
+	 * editor gets a clear message, and a 404 on cleanup counts as already gone.
 	 */
 	public function test_failed_draft_creation_is_reported(): void {
 		$post_id = $this->create_post( 'draft' );
 
-		$this->responses[ 'GET /posts/' . self::TEMP_POST_ID ] = [
+		$this->responses[ 'GET /posts/' . self::TEMP_POST_ID ]    = [
 			'status' => 404,
 			'body'   => [ 'errors' => [ [ 'code' => 'POST_CREATION_FAILED' ] ] ],
+		];
+		$this->responses[ 'DELETE /posts/' . self::TEMP_POST_ID ] = [
+			'status' => 404,
+			'body'   => [ 'errors' => [ [ 'message' => 'Not found' ] ] ],
 		];
 
 		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'beehiiv_test_send_draft_failed', $result->get_error_code() );
-		$this->assertNotContains( 'POST /posts/' . self::TEMP_POST_ID . '/test_sends', $this->request_log() );
-		$this->assertContains( 'DELETE /posts/' . self::TEMP_POST_ID, $this->request_log() );
+		$this->assertSame( 0, $this->count_requests( 'POST /posts/' . self::TEMP_POST_ID . '/test_sends' ) );
+		$this->assertSame( 1, $this->count_requests( 'DELETE /posts/' . self::TEMP_POST_ID ) );
+		$this->assertEmpty( $result->get_error_data(), 'A draft that was never created is not a leftover.' );
 	}
 
 	/**
-	 * A draft still being created after the wait limit gives a "try again" message
-	 * rather than a send against a post beehiiv can't find yet.
+	 * AC-025: a draft still being created when the (real, non-zero) wait runs out gives
+	 * a "try again" message, never a send; a draft beehiiv is still processing can't be
+	 * deleted yet, so the error carries the leftover flag.
 	 */
 	public function test_draft_still_pending_after_wait_limit(): void {
 		$post_id = $this->create_post( 'draft' );
 
-		add_filter( 'beehiiv_test_send_creation_wait_seconds', '__return_zero' );
-		$this->responses[ 'GET /posts/' . self::TEMP_POST_ID ] = [
+		add_filter(
+			'beehiiv_test_send_creation_wait_seconds',
+			static function () {
+				return 0.35;
+			}
+		);
+		$this->responses[ 'GET /posts/' . self::TEMP_POST_ID ]    = [
 			'status' => 202,
 			'body'   => [ 'data' => [ 'state' => 'pending' ] ],
 		];
+		$this->responses[ 'DELETE /posts/' . self::TEMP_POST_ID ] = [
+			'status' => 202,
+			'body'   => [],
+		];
 
-		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
+		$started = microtime( true );
+		$result  = TestSender::send( $post_id, [ 'a@example.com' ] );
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'beehiiv_test_send_draft_pending', $result->get_error_code() );
-		$this->assertNotContains( 'POST /posts/' . self::TEMP_POST_ID . '/test_sends', $this->request_log() );
-		$this->assertContains( 'DELETE /posts/' . self::TEMP_POST_ID, $this->request_log() );
+		$this->assertGreaterThanOrEqual( 3, $this->count_requests( 'GET /posts/' . self::TEMP_POST_ID ) );
+		$this->assertSame( 0, $this->count_requests( 'POST /posts/' . self::TEMP_POST_ID . '/test_sends' ) );
+		$this->assertSame( [ 'leftover_draft' => true ], $result->get_error_data() );
+		$this->assertLessThan( 2.0, microtime( true ) - $started, 'The wait budget bounds the request.' );
 	}
 
 	/**
-	 * A test send that still can't find a just-created draft is retried once.
+	 * A test send that still can't find a just-created draft is retried exactly once.
 	 */
 	public function test_not_found_test_send_is_retried_once(): void {
 		$post_id = $this->create_post( 'draft' );
@@ -616,6 +755,52 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 
 		$this->assertIsArray( $result );
 		$this->assertSame( 8, $result['remaining_test_sends'] );
+		$this->assertSame( 2, $this->count_requests( 'POST /posts/' . self::TEMP_POST_ID . '/test_sends' ) );
+	}
+
+	/**
+	 * AC-018: when beehiiv leaves out the reset time, the remembered one is shown.
+	 */
+	public function test_missing_reset_time_falls_back_to_remembered(): void {
+		$post_id    = $this->create_post( 'draft' );
+		$remembered = time() + 5400;
+		update_option( TestSender::RESET_AT_OPTION, [ self::PUBLICATION_ID => $remembered ] );
+
+		$this->responses[ 'POST /posts/' . self::TEMP_POST_ID . '/test_sends' ] = [
+			'status' => 200,
+			'body'   => [ 'data' => [ 'remaining_test_sends' => 6 ] ],
+		];
+
+		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
+
+		$this->assertSame( $remembered, $result['reset_at'] );
+	}
+
+	/**
+	 * R-003: a failed test send that also leaves a draft behind tells the editor so.
+	 */
+	public function test_leftover_draft_is_reported_on_failure(): void {
+		do_action( 'rest_api_init' );
+		wp_set_current_user( self::factory()->user->create( [ 'role' => 'editor' ] ) );
+
+		$post_id = $this->create_post( 'draft' );
+
+		$this->responses[ 'POST /posts/' . self::TEMP_POST_ID . '/test_sends' ] = [
+			'status' => 500,
+			'body'   => [ 'errors' => [ [ 'message' => 'Internal error' ] ] ],
+		];
+		$this->responses[ 'DELETE /posts/' . self::TEMP_POST_ID ]               = [
+			'status' => 202,
+			'body'   => [],
+		];
+
+		$request = new WP_REST_Request( 'POST', '/beehiiv/v1/test-send' );
+		$request->set_param( 'post_id', $post_id );
+		$request->set_param( 'recipients', 'a@example.com' );
+		$response = rest_do_request( $request );
+
+		$this->assertSame( 400, $response->get_status() );
+		$this->assertTrue( $response->get_data()['leftover_draft'] );
 	}
 
 	/**

@@ -58,6 +58,14 @@ export function parseRecipients( value ) {
 function getUnavailableReason( { savedStatus, meta } ) {
 	const isLinked = meta.newsletterAlreadySent;
 
+	// Same order as the server's eligibility check: status, then sent, then sync.
+	if ( ! ELIGIBLE_STATUSES.includes( savedStatus ) ) {
+		return __(
+			'Test emails are available for drafts, pending posts, and scheduled posts.',
+			'beehiiv'
+		);
+	}
+
 	if (
 		isLinked &&
 		! getFutureNewsletterSendDateString(
@@ -67,13 +75,6 @@ function getUnavailableReason( { savedStatus, meta } ) {
 	) {
 		return __(
 			"This post's newsletter was already sent, so it can't send a test email.",
-			'beehiiv'
-		);
-	}
-
-	if ( ! ELIGIBLE_STATUSES.includes( savedStatus ) ) {
-		return __(
-			'Test emails are available for drafts, pending posts, and scheduled posts.',
 			'beehiiv'
 		);
 	}
@@ -225,6 +226,7 @@ export default function TestEmailSend( { beehiivMeta } ) {
 							"Something went wrong and the test email wasn't sent. Try again.",
 							'beehiiv'
 						),
+					leftoverDraft: !! error?.leftover_draft,
 				} );
 			} )
 			.finally( () => {

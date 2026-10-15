@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-15T16:59:46+00:00\n"
+"POT-Creation-Date: 2026-10-15T17:25:58+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: beehiiv\n"
@@ -213,7 +213,7 @@ msgstr ""
 #: includes/Newsletter/Sender.php:340
 #: includes/Newsletter/Sender.php:427
 #: includes/Newsletter/Sender.php:690
-#: includes/Newsletter/TestSender.php:90
+#: includes/Newsletter/TestSender.php:125
 msgid "This post no longer exists. Save or reload the editor and try again."
 msgstr ""
 
@@ -243,7 +243,7 @@ msgid "Connect your beehiiv account in <a>beehiiv settings</a> to send this news
 msgstr ""
 
 #: includes/Newsletter/Sender.php:734
-#: includes/Newsletter/TestSender.php:131
+#: includes/Newsletter/TestSender.php:166
 msgid "Choose a publication in <a>beehiiv settings</a>, then try again."
 msgstr ""
 
@@ -263,7 +263,7 @@ msgid "beehiiv rejected this newsletter: %s"
 msgstr ""
 
 #: includes/Newsletter/Sender.php:773
-#: includes/Newsletter/TestSender.php:458
+#: includes/Newsletter/TestSender.php:626
 msgid "Too many requests. Try again in a moment."
 msgstr ""
 
@@ -292,59 +292,59 @@ msgstr ""
 msgid "Something went wrong and the newsletter couldn't be updated. Try saving the post again."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:97
-#: src/js/editor/post-settings/components/test-email-send.js:75
+#: includes/Newsletter/TestSender.php:132
+#: src/js/editor/post-settings/components/test-email-send.js:63
 msgid "Test emails are available for drafts, pending posts, and scheduled posts."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:105
-#: src/js/editor/post-settings/components/test-email-send.js:68
+#: includes/Newsletter/TestSender.php:140
+#: src/js/editor/post-settings/components/test-email-send.js:76
 msgid "This post's newsletter was already sent, so it can't send a test email."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:112
-#: src/js/editor/post-settings/components/test-email-send.js:82
+#: includes/Newsletter/TestSender.php:147
+#: src/js/editor/post-settings/components/test-email-send.js:83
 msgid "This post's newsletter isn't in sync with beehiiv. Save the post again, then send a test email."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:124
+#: includes/Newsletter/TestSender.php:159
 msgid "Connect your beehiiv account in <a>beehiiv settings</a> to send a test email."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:138
+#: includes/Newsletter/TestSender.php:173
 msgid "Choose a default post template in <a>beehiiv settings</a> to send a test email."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:145
+#: includes/Newsletter/TestSender.php:180
 msgid "Test emails need beehiiv Send API access, available on the Max and Enterprise plans."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:278
+#: includes/Newsletter/TestSender.php:308
 msgid "beehiiv couldn't prepare the test email. Try again."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:292
+#: includes/Newsletter/TestSender.php:321
 msgid "beehiiv is still preparing the test email. Try again in a moment."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:342
-#: includes/Newsletter/TestSender.php:485
-#: src/js/editor/post-settings/components/test-email-send.js:224
+#: includes/Newsletter/TestSender.php:491
+#: includes/Newsletter/TestSender.php:653
+#: src/js/editor/post-settings/components/test-email-send.js:225
 msgid "Something went wrong and the test email wasn't sent. Try again."
 msgstr ""
 
 #. translators: %s: date, time, and timezone when test sends reset.
-#: includes/Newsletter/TestSender.php:443
+#: includes/Newsletter/TestSender.php:611
 #, php-format
 msgid "You've used all test sends for today. They reset on %s."
 msgstr ""
 
-#: includes/Newsletter/TestSender.php:451
+#: includes/Newsletter/TestSender.php:619
 msgid "You've used all test sends for today."
 msgstr ""
 
 #. translators: %s: error message from beehiiv.
-#: includes/Newsletter/TestSender.php:493
+#: includes/Newsletter/TestSender.php:661
 #, php-format
 msgid "The test email wasn't sent: %s"
 msgstr ""
@@ -449,14 +449,14 @@ msgstr ""
 msgid "Publication ID is required."
 msgstr ""
 
-#: includes/REST/TestSendController.php:96
-#: src/js/editor/post-settings/components/test-email-send.js:180
+#: includes/REST/TestSendController.php:97
+#: src/js/editor/post-settings/components/test-email-send.js:181
 msgid "Enter at least one email address."
 msgstr ""
 
 #. translators: %s: comma-separated list of invalid email addresses.
-#: includes/REST/TestSendController.php:114
-#: src/js/editor/post-settings/components/test-email-send.js:194
+#: includes/REST/TestSendController.php:115
+#: src/js/editor/post-settings/components/test-email-send.js:195
 #, php-format,js-format
 msgid "These email addresses aren't valid: %s"
 msgstr ""
@@ -668,12 +668,12 @@ msgstr ""
 msgid "Queue this post for delivery via beehiiv when published."
 msgstr ""
 
-#: src/js/editor/post-settings/components/test-email-send.js:98
+#: src/js/editor/post-settings/components/test-email-send.js:99
 msgid "Test email sent."
 msgstr ""
 
 #. translators: %d: number of test sends left today.
-#: src/js/editor/post-settings/components/test-email-send.js:104
+#: src/js/editor/post-settings/components/test-email-send.js:105
 #, js-format
 msgid "%d test send left today."
 msgid_plural "%d test sends left today."
@@ -681,28 +681,28 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: date, time, and timezone when test sends reset.
-#: src/js/editor/post-settings/components/test-email-send.js:124
+#: src/js/editor/post-settings/components/test-email-send.js:125
 #, js-format
 msgid "Test sends reset on %s."
 msgstr ""
 
-#: src/js/editor/post-settings/components/test-email-send.js:239
+#: src/js/editor/post-settings/components/test-email-send.js:241
 msgid "Send test email to"
 msgstr ""
 
-#: src/js/editor/post-settings/components/test-email-send.js:240
+#: src/js/editor/post-settings/components/test-email-send.js:242
 msgid "Separate addresses with commas or new lines."
 msgstr ""
 
-#: src/js/editor/post-settings/components/test-email-send.js:251
+#: src/js/editor/post-settings/components/test-email-send.js:253
 msgid "Save the post to include your latest edits."
 msgstr ""
 
-#: src/js/editor/post-settings/components/test-email-send.js:265
+#: src/js/editor/post-settings/components/test-email-send.js:267
 msgid "Send test email"
 msgstr ""
 
-#: src/js/editor/post-settings/components/test-email-send.js:278
+#: src/js/editor/post-settings/components/test-email-send.js:280
 msgid "A leftover test draft may still be in beehiiv. You can delete it there."
 msgstr ""
 

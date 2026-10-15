@@ -51,8 +51,9 @@ final class TestSendController {
 						'sanitize_callback' => 'absint',
 					],
 					'recipients' => [
-						'required' => true,
-						'type'     => 'string',
+						'required'          => true,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_textarea_field',
 					],
 				],
 			]
@@ -120,7 +121,13 @@ final class TestSendController {
 		$result = TestSender::send( absint( $request->get_param( 'post_id' ) ), $recipients );
 
 		if ( is_wp_error( $result ) ) {
-			return self::error_response( $result->get_error_code(), $result->get_error_message() );
+			$data = $result->get_error_data();
+
+			return self::error_response(
+				$result->get_error_code(),
+				$result->get_error_message(),
+				is_array( $data ) && ! empty( $data['leftover_draft'] )
+			);
 		}
 
 		return new WP_REST_Response( $result, 200 );
@@ -164,18 +171,26 @@ final class TestSendController {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param string $code    Error code.
-	 * @param string $message Editor-facing message.
+	 * @param string $code           Error code.
+	 * @param string $message        Editor-facing message.
+	 * @param bool   $leftover_draft Whether a temporary beehiiv draft may be left behind.
 	 * @return WP_REST_Response
 	 */
-	private static function error_response( string $code, string $message ): WP_REST_Response {
+	private static function error_response(
+		string $code,
+		string $message,
+		bool $leftover_draft = false
+	): WP_REST_Response {
 
-		return new WP_REST_Response(
-			[
-				'code'    => $code,
-				'message' => $message,
-			],
-			400
-		);
+		$body = [
+			'code'    => $code,
+			'message' => $message,
+		];
+
+		if ( $leftover_draft ) {
+			$body['leftover_draft'] = true;
+		}
+
+		return new WP_REST_Response( $body, 400 );
 	}
 }

@@ -1418,4 +1418,108 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			).toBe( true );
 		}
 	} );
+
+	// ----- AC-025: beehiiv creates the temporary draft in the background ------
+
+	test( 'AC-025: waits while beehiiv is still creating the temporary draft, then sends', async ( {
+		page,
+	} ) => {
+		const postId = createPost( { title: 'AC-025 ready post' } );
+		mockBeehiivPosts( {
+			get: {
+				sequence: [
+					{
+						status: 202,
+						headers: { 'retry-after': '1' },
+						body: { data: { state: 'pending' } },
+					},
+					{ status: 200, body: { data: { id: TMP_ID } } },
+				],
+			},
+		} );
+		await loginAsAdmin( page );
+		await openBeehiivPanel( page, postId );
+
+		const res = await sendFromUi( page, 'ready@example.com' );
+		expect( res.status() ).toBe( 200 );
+		await expect( testEmailSection( page ) ).toContainText(
+			'Test email sent.'
+		);
+
+		const calls = beehiivPostCalls( readHttpLog() );
+		expect( calls.map( ( c ) => `${ c.method } ${ c.mock }` ) ).toEqual( [
+			'POST create_post',
+			'GET get_post',
+			'GET get_post',
+			'POST test_sends',
+			'DELETE delete_post',
+		] );
+	} );
+
+	test( 'AC-025: when beehiiv fails to create the temporary draft, nothing is sent and the draft is cleaned up', async ( {
+		page,
+	} ) => {
+		const postId = createPost( { title: 'AC-025 failed post' } );
+		mockBeehiivPosts( {
+			get: {
+				status: 404,
+				body: { errors: [ { code: 'POST_CREATION_FAILED' } ] },
+			},
+		} );
+		await loginAsAdmin( page );
+		await openBeehiivPanel( page, postId );
+
+		const res = await sendFromUi( page, 'failed@example.com' );
+		expect( res.status() ).toBe( 400 );
+		await expect( testEmailSection( page ) ).toContainText(
+			"beehiiv couldn't prepare the test email. Try again."
+		);
+
+		const calls = beehiivPostCalls( readHttpLog() );
+		expect( calls.some( ( c ) => c.mock === 'test_sends' ) ).toBe( false );
+		expect( calls.some( ( c ) => c.mock === 'delete_post' ) ).toBe( true );
+	} );
+
+	test( 'AC-025: when the temporary draft is still being created after the wait, the editor is asked to try again', async ( {
+		page,
+	} ) => {
+		const postId = createPost( { title: 'AC-025 pending post' } );
+		php( 'update_option( "beehiiv_e2e_test_send_wait_seconds", 2 );' );
+		mockBeehiivPosts( {
+			get: { status: 202, body: { data: { state: 'pending' } } },
+		} );
+		await loginAsAdmin( page );
+		await openBeehiivPanel( page, postId );
+
+		const res = await sendFromUi( page, 'pending@example.com' );
+		expect( res.status() ).toBe( 400 );
+		await expect( testEmailSection( page ) ).toContainText(
+			'beehiiv is still preparing the test email. Try again in a moment.'
+		);
+		expect(
+			beehiivPostCalls( readHttpLog() ).some(
+				( c ) => c.mock === 'test_sends'
+			)
+		).toBe( false );
+	} );
+
+	test( 'R-003: a failed test send that leaves a draft behind shows the leftover-draft note', async ( {
+		page,
+	} ) => {
+		const postId = createPost( { title: 'R-003 post' } );
+		mockBeehiivPosts( {
+			testSend: { status: 500, body: { message: 'Internal error' } },
+			del: { status: 202, body: '' },
+		} );
+		await loginAsAdmin( page );
+		await openBeehiivPanel( page, postId );
+
+		const res = await sendFromUi( page, 'leftover-fail@example.com' );
+		expect( res.status() ).toBe( 400 );
+		const section = testEmailSection( page );
+		await expect( section ).toContainText( "wasn't sent" );
+		await expect( section ).toContainText(
+			'leftover test draft may still be in beehiiv'
+		);
+	} );
 } );

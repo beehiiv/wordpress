@@ -89,7 +89,7 @@ final class Posts {
 	 *
 	 * @param string $publication_id Publication ID.
 	 * @param string $post_id        beehiiv post ID.
-	 * @return array{success: bool, error: string, status_code: int|null}
+	 * @return array{success: bool, error: string, status_code: int|null, retry_after: int|null}
 	 * @since 1.0.0
 	 */
 	public static function delete( string $publication_id, string $post_id ): array {
@@ -101,6 +101,7 @@ final class Posts {
 				'success'     => false,
 				'error'       => 'Publication ID or post ID is empty.',
 				'status_code' => null,
+				'retry_after' => null,
 			];
 		}
 
@@ -118,16 +119,19 @@ final class Posts {
 				'success'     => false,
 				'error'       => $wp_error,
 				'status_code' => null,
+				'retry_after' => null,
 			];
 		}
 
 		$status_code = Client::get_last_status_code();
+		$retry_after = Client::get_last_retry_after();
 
 		if ( null !== $status_code && 204 === $status_code ) {
 			return [
 				'success'     => true,
 				'error'       => '',
 				'status_code' => $status_code,
+				'retry_after' => $retry_after,
 			];
 		}
 
@@ -136,6 +140,7 @@ final class Posts {
 				'success'     => false,
 				'error'       => self::format_error_message( $response, $status_code ),
 				'status_code' => $status_code,
+				'retry_after' => $retry_after,
 			];
 		}
 
@@ -143,6 +148,7 @@ final class Posts {
 			'success'     => true,
 			'error'       => '',
 			'status_code' => $status_code,
+			'retry_after' => $retry_after,
 		];
 	}
 
@@ -151,17 +157,20 @@ final class Posts {
 	 *
 	 * The beehiiv API creates posts in the background: the create call returns
 	 * the id right away, and fetching the post answers 202 until creation
-	 * finishes, then 200. A 404 means creation failed.
+	 * finishes, then 200. A 404 means creation failed. Rate limiting, server
+	 * errors and transport errors also count as pending, so callers keep waiting
+	 * rather than testing a post that may not exist yet.
 	 *
 	 * @link https://developers.beehiiv.com/api-reference/posts/get
 	 *
 	 * @param string $publication_id Publication ID.
 	 * @param string $post_id        beehiiv post ID.
+	 * @param int    $timeout        HTTP timeout in seconds; 0 uses the client default.
 	 * @return array{state: string, retry_after: int|null, status_code: int|null, error: string}
 	 *     The state is one of `ready`, `pending`, `failed`, or `unknown`.
 	 * @since 1.0.0
 	 */
-	public static function get_creation_state( string $publication_id, string $post_id ): array {
+	public static function get_creation_state( string $publication_id, string $post_id, int $timeout = 0 ): array {
 		$publication_id = trim( $publication_id );
 		$post_id        = trim( $post_id );
 		$result         = [
@@ -181,11 +190,12 @@ final class Posts {
 			rawurlencode( $publication_id ),
 			rawurlencode( $post_id )
 		);
-		$response = Client::request( $path );
+		$response = Client::request( $path, [], $timeout );
 
 		$wp_error = Client::get_last_wp_error();
 
 		if ( null !== $wp_error ) {
+			$result['state'] = 'pending';
 			$result['error'] = $wp_error;
 			return $result;
 		}
@@ -196,8 +206,9 @@ final class Posts {
 
 		if ( 200 === $status_code ) {
 			$result['state'] = 'ready';
-		} elseif ( 202 === $status_code ) {
+		} elseif ( 202 === $status_code || 429 === $status_code || ( null !== $status_code && $status_code >= 500 ) ) {
 			$result['state'] = 'pending';
+			$result['error'] = 202 === $status_code ? '' : self::format_error_message( $response, $status_code );
 		} elseif ( 404 === $status_code ) {
 			$result['state'] = 'failed';
 			$result['error'] = self::format_error_message( $response, $status_code );
