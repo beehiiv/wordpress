@@ -197,9 +197,17 @@ function BeehiivPostSettingsPanel() {
 						</>
 					) }
 
-				{ newsletterAlreadySent &&
-					isNewsletterReady &&
-					newsletterWording }
+				{ newsletterAlreadySent && isNewsletterReady && (
+					<>
+						{ /* Sync never changes a newsletter's template, so it is shown locked. */ }
+						<NewsletterTemplateSelect
+							value={ beehiivPostTemplateId }
+							onChange={ setBeehiivPostTemplateId }
+							disabled
+						/>
+						{ newsletterWording }
+					</>
+				) }
 			</PanelBody>
 		</div>
 	);

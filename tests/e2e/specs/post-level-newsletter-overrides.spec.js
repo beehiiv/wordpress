@@ -528,6 +528,33 @@ test.describe( 'US-005: edits reach an unsent beehiiv newsletter', () => {
 		expect( getMeta( id, META_SHOW ) ).toBe( '1' );
 	} );
 
+	test( 'Newsletter Send AC-049: the post template picker is shown locked once the newsletter is in beehiiv', async ( {
+		page,
+	} ) => {
+		const id = createPost( 'QA E2E template locked once linked', {
+			send: false,
+			meta: {
+				[ META_POST_ID ]: 'post_qa_linked_template',
+				[ META_SCHEDULED_AT ]: isoFromNow( 7 * 24 * 60 * 60 * 1000 ),
+			},
+		} );
+		await loginAsAdmin( page );
+		const sidebar = await openSidebarFor( page, id );
+
+		// Sync never changes a newsletter's template, so it is visible but locked.
+		const template = sidebar.getByLabel( 'Post template' );
+		await expect( template ).toBeVisible();
+		await expect( template ).toBeDisabled();
+		await expect(
+			sidebar.getByRole( 'button', { name: 'Refresh templates' } )
+		).toBeDisabled();
+		await expect(
+			sidebar.getByText(
+				"The template can't be changed once the newsletter is in beehiiv."
+			)
+		).toBeVisible();
+	} );
+
 	test( 'AC-018 / AC-019 / AC-025: title, subtitle and display toggle lock once beehiiv has published the newsletter', async ( {
 		page,
 	} ) => {
