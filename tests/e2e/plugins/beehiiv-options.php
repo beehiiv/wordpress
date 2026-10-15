@@ -9,6 +9,31 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
+ * Fails WordPress.org requests instantly in the tests environment.
+ *
+ * WordPress core checks api.wordpress.org for core, plugin and theme updates
+ * on the first wp-admin load after its 12-hour cache expires, and loads
+ * dashboard news. Those calls run synchronously and can stall an admin page
+ * load past a test's timeout (seen as a login that never reaches /wp-admin/).
+ * No spec needs WordPress.org, so they fail fast here instead. beehiiv
+ * requests are untouched.
+ */
+add_filter(
+	'pre_http_request',
+	static function ( $preempt, $parsed_args, $url ) {
+		$host = (string) wp_parse_url( $url, PHP_URL_HOST );
+
+		if ( preg_match( '/(^|\.)(wordpress\.org|w\.org)$/i', $host ) ) {
+			return new WP_Error( 'beehiiv_e2e_blocked', 'WordPress.org requests are blocked in the E2E tests environment.' );
+		}
+
+		return $preempt;
+	},
+	1,
+	3
+);
+
+/**
  * Short-circuits any outbound wp_remote_request() whose URL contains a
  * registered substring, so specs can exercise code gated behind a live
  * beehiiv API/OAuth call (permissions checks, token exchange, user
@@ -210,8 +235,59 @@ function beehiiv_e2e_seed_post_templates( string $publication_id, array $templat
  * qa-e2e-author run against this shared environment.
  */
 function beehiiv_e2e_reset_all(): void {
+	beehiiv_e2e_stop_http_log();
 	beehiiv_e2e_clear_http_mocks();
 	beehiiv_e2e_clear_http_log();
 	beehiiv_e2e_clear_connection();
 	\Beehiiv\API\Cache::flush_all();
+}
+
+/**
+ * Records every outbound wp_remote_request() (method + URL) while logging is
+ * enabled, so specs can assert *which* beehiiv endpoint (e.g. which
+ * publication) a server-side action targeted. Runs at priority 5, before the
+ * mock filter above, and never short-circuits the request itself.
+ */
+add_filter(
+	'pre_http_request',
+	static function ( $preempt, $parsed_args, $url ) {
+		if ( ! get_option( 'beehiiv_e2e_http_log_enabled' ) ) {
+			return $preempt;
+		}
+
+		$log   = get_option( 'beehiiv_e2e_http_log', [] );
+		$log   = is_array( $log ) ? $log : [];
+		$log[] = [
+			'method' => strtoupper( (string) ( $parsed_args['method'] ?? 'GET' ) ),
+			'url'    => (string) $url,
+		];
+		update_option( 'beehiiv_e2e_http_log', $log, false );
+
+		return $preempt;
+	},
+	5,
+	3
+);
+
+/** Starts (and empties) the outbound HTTP request log. */
+function beehiiv_e2e_start_http_log(): void {
+	update_option( 'beehiiv_e2e_http_log', [], false );
+	update_option( 'beehiiv_e2e_http_log_enabled', 1, false );
+}
+
+/**
+ * Logged outbound requests since the last start.
+ *
+ * @return array<int, array{method: string, url: string}>
+ */
+function beehiiv_e2e_get_http_log(): array {
+	$log = get_option( 'beehiiv_e2e_http_log', [] );
+
+	return is_array( $log ) ? $log : [];
+}
+
+/** Stops logging and clears the log. */
+function beehiiv_e2e_stop_http_log(): void {
+	delete_option( 'beehiiv_e2e_http_log_enabled' );
+	delete_option( 'beehiiv_e2e_http_log' );
 }

@@ -45,6 +45,27 @@ final class Meta {
 	public const BEEHIIV_POST_TEMPLATE_ID = '_beehiiv_post_template_id';
 
 	/**
+	 * Beehiiv publication ID chosen for this post. Empty = use the site-wide default publication.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_PUBLICATION_ID = '_beehiiv_publication_id';
+
+	/**
+	 * Publication the linked beehiiv post lives in. Server-only; not registered for REST.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_LINKED_PUBLICATION_ID = '_beehiiv_linked_publication_id';
+
+	/**
+	 * Post template the linked beehiiv post was created with. Server-only; not registered for REST.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_LINKED_POST_TEMPLATE_ID = '_beehiiv_linked_post_template_id';
+
+	/**
 	 * Beehiiv post ID after the newsletter has been created via the API.
 	 *
 	 * @since 1.0.0

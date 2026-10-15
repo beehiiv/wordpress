@@ -8,6 +8,7 @@ export const META_SEND_TO_NEWSLETTER_DATE = '_beehiiv_send_to_newsletter_date';
 export const META_SEND_TO_NEWSLETTER_SNIPPET =
 	'_beehiiv_send_to_newsletter_snippet';
 export const META_BEEHIIV_POST_TEMPLATE_ID = '_beehiiv_post_template_id';
+export const META_BEEHIIV_PUBLICATION_ID = '_beehiiv_publication_id';
 export const META_BEEHIIV_POST_ID = '_beehiiv_post_id';
 export const META_BEEHIIV_SCHEDULED_AT = '_beehiiv_scheduled_at';
 export const META_NEWSLETTER_ERROR = '_beehiiv_newsletter_error';

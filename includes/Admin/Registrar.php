@@ -67,7 +67,7 @@ final class Registrar {
 
 		add_settings_field(
 			'beehiiv_publication_id',
-			__( 'Publication', 'beehiiv' ),
+			__( 'Default publication', 'beehiiv' ),
 			[ self::class, 'render_publication_id_field' ],
 			$page_slug,
 			self::PAGE_SETTINGS_SECTION_ID,
@@ -147,8 +147,18 @@ final class Registrar {
 					</option>
 				<?php endif; ?>
 		</select>
+		<button
+			type="button"
+			id="beehiiv_refresh_publications"
+			class="button button-secondary beehiiv-refresh-button"
+		>
+			<?php esc_html_e( 'Refresh publications', 'beehiiv' ); ?>
+		</button>
 		<p class="description">
-			<?php esc_html_e( 'The publication to use for newsletters sent from this site.', 'beehiiv' ); ?>
+			<?php
+			// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
+			esc_html_e( 'Preselected on new posts. Editors can choose a different publication for each post in the beehiiv sidebar.', 'beehiiv' );
+			?>
 		</p>
 		<?php
 	}
