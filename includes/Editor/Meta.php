@@ -59,6 +59,25 @@ final class Meta {
 	public const BEEHIIV_SCHEDULED_AT = '_beehiiv_scheduled_at';
 
 	/**
+	 * Whether beehiiv has already sent the linked newsletter. Internal; not exposed to REST.
+	 *
+	 * Once set, later saves never contact beehiiv for this post.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_NEWSLETTER_SENT = '_beehiiv_newsletter_sent';
+
+	/**
+	 * Subtitle last synced to the linked beehiiv post. Internal; not exposed to REST.
+	 *
+	 * Lets a sync remove a subtitle cleared in WordPress without ever sending an empty
+	 * subtitle for posts that never had one.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_SYNCED_SUBTITLE = '_beehiiv_synced_subtitle';
+
+	/**
 	 * User-facing error after a failed newsletter save or send (`save` or `send`).
 	 *
 	 * @since 1.0.0

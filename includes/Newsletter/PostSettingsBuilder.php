@@ -115,7 +115,15 @@ final class PostSettingsBuilder {
 			$settings['subtitle'] = $subtitle;
 		}
 
+		$settings['seo_settings'] = SeoMetadata::resolve( $post_object );
+		$settings['content_tags'] = self::get_content_tags( $post_object );
+
 		if ( ! $for_update ) {
+			// Nothing to clear on a first send, so an empty tag list is left out.
+			if ( empty( $settings['content_tags'] ) ) {
+				unset( $settings['content_tags'] );
+			}
+
 			$scheduled_at = self::convert_send_date_to_scheduled_at_utc( $post_object );
 
 			if ( is_wp_error( $scheduled_at ) ) {
@@ -176,10 +184,16 @@ final class PostSettingsBuilder {
 			'email_settings'      => $settings['email_settings'],
 			'web_settings'        => $settings['web_settings'],
 			'social_share'        => $settings['social_share'],
+			'content_tags'        => $settings['content_tags'],
+			'seo_settings'        => $settings['seo_settings'],
 		];
 
 		if ( isset( $settings['subtitle'] ) ) {
 			$payload['subtitle'] = $settings['subtitle'];
+		} elseif ( self::has_synced_subtitle( $post_id ) ) {
+			// The update API leaves omitted fields unchanged, so a subtitle cleared in
+			// WordPress is removed in beehiiv by sending it empty.
+			$payload['subtitle'] = '';
 		}
 
 		$schedule = self::resolve_update_scheduled_at( $post_object );
@@ -228,6 +242,51 @@ final class PostSettingsBuilder {
 		}
 
 		return $update['payload'];
+	}
+
+	/**
+	 * Whether a non-empty subtitle was last synced to the linked beehiiv post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since x.x.x
+	 */
+	private static function has_synced_subtitle( int $post_id ): bool {
+		$synced = get_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE, true );
+
+		return is_string( $synced ) && '' !== $synced;
+	}
+
+	/**
+	 * WordPress tag names for the beehiiv `content_tags` field.
+	 *
+	 * Always returns a list so beehiiv's tags match WordPress, including clearing them when
+	 * the post has no tags.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return array<int, string>
+	 * @since x.x.x
+	 */
+	private static function get_content_tags( WP_Post $post ): array {
+		$names = wp_get_post_tags( $post->ID, [ 'fields' => 'names' ] );
+
+		if ( ! is_array( $names ) ) {
+			return [];
+		}
+
+		return array_values(
+			array_filter(
+				array_map(
+					static function ( $name ): string {
+						return is_scalar( $name ) ? html_entity_decode( (string) $name, ENT_QUOTES, 'UTF-8' ) : '';
+					},
+					$names
+				),
+				static function ( string $name ): bool {
+					return '' !== $name;
+				}
+			)
+		);
 	}
 
 	/**
@@ -791,7 +850,7 @@ final class PostSettingsBuilder {
 	 * @return int|null Timestamp, or null when empty or invalid.
 	 * @since 1.0.0
 	 */
-	private static function utc_scheduled_at_to_timestamp( string $scheduled_at ): ?int {
+	public static function utc_scheduled_at_to_timestamp( string $scheduled_at ): ?int {
 		if ( '' === $scheduled_at ) {
 			return null;
 		}

@@ -16,10 +16,15 @@ import { useBeehiivEditorConfig } from '../hooks/use-beehiiv-editor-config';
 
 /**
  * @param {Object}                  props
- * @param {string}                  props.value    Saved template ID, or empty for plugin default.
- * @param {(value: string) => void} props.onChange Called when the user picks a template.
+ * @param {string}                  props.value      Saved template ID, or empty for plugin default.
+ * @param {(value: string) => void} props.onChange   Called when the user picks a template.
+ * @param {boolean}                 [props.disabled] Show the template read-only, once the newsletter is in beehiiv.
  */
-export default function NewsletterTemplateSelect( { value, onChange } ) {
+export default function NewsletterTemplateSelect( {
+	value,
+	onChange,
+	disabled = false,
+} ) {
 	const { publicationId, defaultPostTemplateId } = useBeehiivEditorConfig();
 	const [ templates, setTemplates ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( false );
@@ -162,14 +167,21 @@ export default function NewsletterTemplateSelect( { value, onChange } ) {
 				value={ value }
 				options={ options }
 				onChange={ onChange }
-				help={ helpText }
-				disabled={ isLoading }
+				help={
+					disabled
+						? __(
+								"The template can't be changed once the newsletter is in beehiiv.",
+								'beehiiv'
+						  )
+						: helpText
+				}
+				disabled={ disabled || isLoading }
 				__nextHasNoMarginBottom
 			/>
 			<Button
 				variant="secondary"
 				onClick={ handleRefresh }
-				disabled={ isLoading }
+				disabled={ disabled || isLoading }
 				isBusy={ isLoading }
 			>
 				{ isLoading
