@@ -182,7 +182,7 @@ export default function NewsletterTemplateSelect( {
 				help={
 					disabled
 						? __(
-								'The newsletter has been sent, so its template can no longer change.',
+								"The template can't be changed once the newsletter is in beehiiv.",
 								'beehiiv'
 						  )
 						: undefined

@@ -470,7 +470,7 @@ class NewsletterPublicationSendTest extends WP_UnitTestCase {
 		update_post_meta( $post_id, Meta::BEEHIIV_PUBLICATION_ID, 'pub_default' );
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, 'tpl_default' );
 
-		$this->assertTrue( Sender::is_newsletter_sent( $post_id ) );
+		$this->assertTrue( Sender::is_newsletter_published( $post_id ) );
 		$this->assertSame( 'pub_other', get_post_meta( $post_id, Meta::BEEHIIV_PUBLICATION_ID, true ) );
 		$this->assertSame( 'tpl_other', get_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, true ) );
 	}
@@ -484,7 +484,7 @@ class NewsletterPublicationSendTest extends WP_UnitTestCase {
 		update_post_meta( $post_id, Meta::BEEHIIV_PUBLICATION_ID, 'pub_other' );
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, 'tpl_other' );
 
-		$this->assertFalse( Sender::is_newsletter_sent( $post_id ) );
+		$this->assertFalse( Sender::is_newsletter_published( $post_id ) );
 		$this->assertSame( 'pub_other', get_post_meta( $post_id, Meta::BEEHIIV_PUBLICATION_ID, true ) );
 		$this->assertSame( 'tpl_other', get_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, true ) );
 	}

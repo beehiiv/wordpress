@@ -56,6 +56,7 @@ function usePostPublishDate() {
 function NewsletterPublicationAndTemplate( { beehiivMeta, postPublication } ) {
 	const {
 		beehiivPostTemplateId,
+		newsletterAlreadySent,
 		newsletterPublished,
 		setBeehiivPublicationId,
 		setBeehiivPostTemplateId,
@@ -88,7 +89,8 @@ function NewsletterPublicationAndTemplate( { beehiivMeta, postPublication } ) {
 					onChange={ setBeehiivPostTemplateId }
 					publicationId={ effectivePublicationId }
 					isDefaultPublication={ isDefaultPublication }
-					disabled={ newsletterPublished }
+					// Sync never changes a newsletter's template, so it is locked once linked.
+					disabled={ newsletterAlreadySent }
 				/>
 			) }
 		</>
@@ -205,10 +207,13 @@ function BeehiivPostSettingsPanel() {
 
 				<NewsletterLinkedNotice beehiivMeta={ beehiivMeta } />
 				{ newsletterAlreadySent && isNewsletterReady && (
-					<NewsletterPublicationAndTemplate
-						beehiivMeta={ beehiivMeta }
-						postPublication={ postPublication }
-					/>
+					<>
+						<NewsletterPublicationAndTemplate
+							beehiivMeta={ beehiivMeta }
+							postPublication={ postPublication }
+						/>
+						{ newsletterWording }
+					</>
 				) }
 				{ sendToNewsletter &&
 					! newsletterAlreadySent &&
@@ -267,10 +272,6 @@ function BeehiivPostSettingsPanel() {
 							/>
 						</>
 					) }
-
-				{ newsletterAlreadySent &&
-					isNewsletterReady &&
-					newsletterWording }
 			</PanelBody>
 		</div>
 	);

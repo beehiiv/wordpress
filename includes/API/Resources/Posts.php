@@ -15,6 +15,7 @@ defined( 'ABSPATH' ) || exit;
  * Create posts (newsletters) in a publication.
  *
  * @link https://developers.beehiiv.com/api-reference/posts/create
+ * @link https://developers.beehiiv.com/api-reference/posts/show
  * @link https://developers.beehiiv.com/api-reference/posts/delete
  * @link https://developers.beehiiv.com/api-reference/posts/update
  * @since 1.0.0
@@ -76,6 +77,60 @@ final class Posts {
 		return [
 			'success' => true,
 			'post_id' => $post_id,
+			'error'   => '',
+		];
+	}
+
+	/**
+	 * Fetch a single post from a beehiiv publication.
+	 *
+	 * @param string $publication_id Publication ID.
+	 * @param string $post_id        beehiiv post ID.
+	 * @return array{success: bool, post: array<string, mixed>, error: string}
+	 * @since x.x.x
+	 */
+	public static function get( string $publication_id, string $post_id ): array {
+		$publication_id = trim( $publication_id );
+		$post_id        = trim( $post_id );
+
+		if ( '' === $publication_id || '' === $post_id ) {
+			return [
+				'success' => false,
+				'post'    => [],
+				'error'   => 'Publication ID or post ID is empty.',
+			];
+		}
+
+		$path     = sprintf(
+			'/publications/%s/posts/%s',
+			rawurlencode( $publication_id ),
+			rawurlencode( $post_id )
+		);
+		$response = Client::request( $path );
+
+		$wp_error = Client::get_last_wp_error();
+
+		if ( null !== $wp_error ) {
+			return [
+				'success' => false,
+				'post'    => [],
+				'error'   => $wp_error,
+			];
+		}
+
+		$status_code = Client::get_last_status_code();
+
+		if ( null !== $status_code && $status_code > 299 ) {
+			return [
+				'success' => false,
+				'post'    => [],
+				'error'   => self::format_error_message( $response, $status_code ),
+			];
+		}
+
+		return [
+			'success' => true,
+			'post'    => isset( $response['data'] ) && is_array( $response['data'] ) ? $response['data'] : [],
 			'error'   => '',
 		];
 	}
