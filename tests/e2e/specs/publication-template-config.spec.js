@@ -73,6 +73,25 @@ const PUB_SELECT = '#beehiiv_publication_id';
 const TPL_SELECT = '#beehiiv_post_template_id';
 const REFRESH_BTN = '#beehiiv_refresh_post_templates';
 
+/**
+ * Whether a response is the post-templates REST call containing `needle`.
+ *
+ * Decodes the URL first so it matches both pretty permalinks
+ * (`/wp-json/beehiiv/v1/post-templates?...`) and plain permalinks
+ * (`index.php?rest_route=%2Fbeehiiv%2Fv1%2Fpost-templates&...`), since the
+ * tests environment's permalink structure is not pinned.
+ *
+ * @param {import('@playwright/test').Response} resp   Response to check.
+ * @param {string}                              needle Extra substring the URL must contain.
+ * @return {boolean} Whether it matches.
+ */
+function isPostTemplatesResponse( resp, needle ) {
+	const url = decodeURIComponent( resp.url() );
+	return (
+		url.includes( '/beehiiv/v1/post-templates' ) && url.includes( needle )
+	);
+}
+
 /** Seeds a connected + write-authorized state via the test-only mu-plugin seam. */
 function seedConnectedAndAuthorized() {
 	wpCli(
@@ -289,10 +308,8 @@ test.describe( 'Publication and Template Configuration', () => {
 		await expect( tplSelect.locator( 'option' ) ).toHaveCount( 1 );
 
 		const [ response ] = await Promise.all( [
-			page.waitForResponse(
-				( resp ) =>
-					resp.url().includes( '/beehiiv/v1/post-templates' ) &&
-					resp.url().includes( pubId )
+			page.waitForResponse( ( resp ) =>
+				isPostTemplatesResponse( resp, pubId )
 			),
 			pubSelect.selectOption( pubId ),
 		] );
@@ -380,9 +397,7 @@ test.describe( 'Publication and Template Configuration', () => {
 
 		const [ response ] = await Promise.all( [
 			page.waitForResponse(
-				( resp ) =>
-					resp.url().includes( '/beehiiv/v1/post-templates' ) &&
-					resp.url().includes( 'refresh=1' ),
+				( resp ) => isPostTemplatesResponse( resp, 'refresh=1' ),
 				{ timeout: 30000 }
 			),
 			page.locator( REFRESH_BTN ).click(),
@@ -428,9 +443,7 @@ test.describe( 'Publication and Template Configuration', () => {
 		// is mocked so the round trip is fast and deterministic.
 		await Promise.all( [
 			page.waitForResponse(
-				( resp ) =>
-					resp.url().includes( '/beehiiv/v1/post-templates' ) &&
-					resp.url().includes( 'refresh=1' ),
+				( resp ) => isPostTemplatesResponse( resp, 'refresh=1' ),
 				{ timeout: 30000 }
 			),
 			page.locator( REFRESH_BTN ).click(),
@@ -495,10 +508,8 @@ test.describe( 'Publication and Template Configuration', () => {
 		await page.goto( SETTINGS_PATH );
 
 		const [ templatesResponse ] = await Promise.all( [
-			page.waitForResponse(
-				( resp ) =>
-					resp.url().includes( '/beehiiv/v1/post-templates' ) &&
-					resp.url().includes( pubId )
+			page.waitForResponse( ( resp ) =>
+				isPostTemplatesResponse( resp, pubId )
 			),
 			page.locator( PUB_SELECT ).selectOption( pubId ),
 		] );

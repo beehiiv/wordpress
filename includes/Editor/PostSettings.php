@@ -48,48 +48,62 @@ final class PostSettings {
 	/**
 	 * Post meta keys registered for the block editor (REST-visible).
 	 *
-	 * @var array<string, array{type: string, default: bool|string}>
+	 * @var array<string, array{type: string, default: bool|string, readonly?: bool, sanitize?: callable-string}>
 	 */
 	private const META_KEYS = [
-		Meta::SEND_TO_NEWSLETTER         => [
+		Meta::SEND_TO_NEWSLETTER             => [
 			'type'    => 'boolean',
 			'default' => false,
 		],
-		Meta::SEND_TO_NEWSLETTER_DATE    => [
+		Meta::SEND_TO_NEWSLETTER_DATE        => [
 			'type'    => 'string',
 			'default' => '',
 		],
-		Meta::SEND_TO_NEWSLETTER_SNIPPET => [
+		Meta::SEND_TO_NEWSLETTER_SNIPPET     => [
 			'type'    => 'boolean',
 			'default' => false,
 		],
-		Meta::BEEHIIV_POST_TEMPLATE_ID   => [
+		Meta::BEEHIIV_POST_TEMPLATE_ID       => [
 			'type'    => 'string',
 			'default' => '',
 		],
-		Meta::BEEHIIV_PUBLICATION_ID     => [
+		Meta::BEEHIIV_PUBLICATION_ID         => [
 			'type'    => 'string',
 			'default' => '',
 		],
-		Meta::BEEHIIV_POST_ID            => [
+		Meta::BEEHIIV_POST_ID                => [
 			'type'     => 'string',
 			'default'  => '',
 			'readonly' => true,
 		],
-		Meta::BEEHIIV_SCHEDULED_AT       => [
+		Meta::BEEHIIV_SCHEDULED_AT           => [
 			'type'     => 'string',
 			'default'  => '',
 			'readonly' => true,
 		],
-		Meta::NEWSLETTER_ERROR           => [
+		Meta::NEWSLETTER_ERROR               => [
 			'type'     => 'string',
 			'default'  => '',
 			'readonly' => true,
 		],
-		Meta::NEWSLETTER_ERROR_TYPE      => [
+		Meta::NEWSLETTER_ERROR_TYPE          => [
 			'type'     => 'string',
 			'default'  => '',
 			'readonly' => true,
+		],
+		Meta::NEWSLETTER_TITLE               => [
+			'type'     => 'string',
+			'default'  => '',
+			'sanitize' => 'sanitize_text_field',
+		],
+		Meta::NEWSLETTER_SUBTITLE            => [
+			'type'     => 'string',
+			'default'  => '',
+			'sanitize' => 'sanitize_text_field',
+		],
+		Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL => [
+			'type'    => 'boolean',
+			'default' => false,
 		],
 	];
 
@@ -101,7 +115,7 @@ final class PostSettings {
 	 */
 	public static function register_meta(): void {
 		add_filter( 'rest_prepare_post', [ self::class, 'prepare_rest_post' ], 10, 3 );
-		add_filter( 'rest_request_before_callbacks', [ self::class, 'strip_readonly_meta' ], 10, 3 );
+		add_filter( 'rest_request_before_callbacks', [ self::class, 'drop_readonly_meta_from_request' ], 10, 3 );
 
 		foreach ( self::META_KEYS as $key => $config ) {
 			$show_in_rest = true;
@@ -116,17 +130,19 @@ final class PostSettings {
 				];
 			}
 
-			register_post_meta(
-				self::POST_TYPE,
-				$key,
-				[
-					'show_in_rest'  => $show_in_rest,
-					'single'        => true,
-					'type'          => $config['type'],
-					'default'       => $config['default'],
-					'auth_callback' => [ self::class, 'authorize_meta' ],
-				]
-			);
+			$args = [
+				'show_in_rest'  => $show_in_rest,
+				'single'        => true,
+				'type'          => $config['type'],
+				'default'       => $config['default'],
+				'auth_callback' => [ self::class, 'authorize_meta' ],
+			];
+
+			if ( ! empty( $config['sanitize'] ) ) {
+				$args['sanitize_callback'] = $config['sanitize'];
+			}
+
+			register_post_meta( self::POST_TYPE, $key, $args );
 		}
 	}
 
@@ -134,7 +150,8 @@ final class PostSettings {
 	 * Whether the current user may read or write a beehiiv post meta key.
 	 *
 	 * Readonly keys are never writable via REST. Newsletter send settings and
-	 * the post's publication require `publish_posts`; other keys allow `edit_posts`.
+	 * the post's publication and newsletter wording require `publish_posts`; other
+	 * keys allow `edit_posts`.
 	 *
 	 * @param bool   $allowed   Whether the user can add or edit the meta key.
 	 * @param string $meta_key  Meta key.
@@ -152,6 +169,9 @@ final class PostSettings {
 			Meta::SEND_TO_NEWSLETTER_DATE,
 			Meta::SEND_TO_NEWSLETTER_SNIPPET,
 			Meta::BEEHIIV_PUBLICATION_ID,
+			Meta::NEWSLETTER_TITLE,
+			Meta::NEWSLETTER_SUBTITLE,
+			Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL,
 		];
 
 		if ( in_array( $meta_key, $writable_keys, true ) ) {
@@ -159,48 +179,6 @@ final class PostSettings {
 		}
 
 		return current_user_can( 'edit_posts', (int) $post_id );
-	}
-
-	/**
-	 * Drop readonly beehiiv meta from post REST writes before WordPress applies them.
-	 *
-	 * The block editor sends every registered meta key on save, including the
-	 * readonly ones the server owns. {@see authorize_meta()} refuses those keys,
-	 * so passing them through would fail the whole save with a 403 whenever the
-	 * sent value differs from the stored one (for example an empty string for a
-	 * key that has no row yet). Ignoring them keeps them unwritable via REST
-	 * without breaking the save.
-	 *
-	 * @param mixed            $response Response to replace the requested version with, or null.
-	 * @param array            $handler  Route handler.
-	 * @param \WP_REST_Request $request  Request.
-	 * @return mixed
-	 * @since x.x.x
-	 */
-	public static function strip_readonly_meta( $response, $handler, $request ) {
-		if ( ! $request instanceof \WP_REST_Request ) {
-			return $response;
-		}
-
-		if ( 'GET' === $request->get_method() || 0 !== strpos( $request->get_route(), '/wp/v2/posts' ) ) {
-			return $response;
-		}
-
-		$meta = $request->get_param( 'meta' );
-
-		if ( ! is_array( $meta ) ) {
-			return $response;
-		}
-
-		foreach ( self::META_KEYS as $meta_key => $config ) {
-			if ( ! empty( $config['readonly'] ) ) {
-				unset( $meta[ $meta_key ] );
-			}
-		}
-
-		$request->set_param( 'meta', $meta );
-
-		return $response;
 	}
 
 	/**
@@ -305,6 +283,47 @@ final class PostSettings {
 			[ 'dashicons' ],
 			$version
 		);
+	}
+
+	/**
+	 * Drop readonly beehiiv meta from a post REST request before it is applied.
+	 *
+	 * The block editor sends the whole meta object on save, readonly keys included.
+	 * Core only skips the meta capability check when a value is unchanged, so a
+	 * stale readonly value (for example an empty beehiiv post ID while the server
+	 * already holds one) would fail the entire save. Readonly keys are never
+	 * written from REST, so they are removed and the rest of the save proceeds.
+	 *
+	 * @param \WP_REST_Response|\WP_HTTP_Response|\WP_Error|mixed $response Result to send to the client.
+	 * @param array                                               $handler  Route handler.
+	 * @param \WP_REST_Request                                    $request  Request object.
+	 * @return \WP_REST_Response|\WP_HTTP_Response|\WP_Error|mixed
+	 * @since x.x.x
+	 */
+	public static function drop_readonly_meta_from_request( $response, $handler, $request ) {
+		if ( ! $request instanceof \WP_REST_Request ) {
+			return $response;
+		}
+
+		if ( ! preg_match( '#^/wp/v2/posts(?:/\d+(?:/autosaves)?)?$#', $request->get_route() ) ) {
+			return $response;
+		}
+
+		$meta = $request->get_param( 'meta' );
+
+		if ( ! is_array( $meta ) ) {
+			return $response;
+		}
+
+		foreach ( self::META_KEYS as $key => $config ) {
+			if ( ! empty( $config['readonly'] ) ) {
+				unset( $meta[ $key ] );
+			}
+		}
+
+		$request->set_param( 'meta', $meta );
+
+		return $response;
 	}
 
 	/**

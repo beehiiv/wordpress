@@ -20,6 +20,9 @@ import {
 	META_BEEHIIV_POST_TEMPLATE_ID,
 	META_BEEHIIV_PUBLICATION_ID,
 	META_SEND_TO_NEWSLETTER_SNIPPET,
+	META_NEWSLETTER_TITLE,
+	META_NEWSLETTER_SUBTITLE,
+	META_NEWSLETTER_SHOW_TITLE_IN_EMAIL,
 } from '../../../shared/meta';
 
 /**
@@ -41,6 +44,12 @@ const SENT_SAFETY_MARGIN_MS = 60 * 1000;
  * @property {string|null}                     beehiivScheduledAt         UTC ISO 8601 beehiiv send time, or null when sent immediately.
  * @property {string|null}                     newsletterError            User-facing save or send error from the server.
  * @property {string|null}                     newsletterErrorType        `save` or `send` when {@link newsletterError} is set.
+ * @property {string}                          newsletterTitle            Newsletter title (email subject line), or empty to use the post title.
+ * @property {string}                          newsletterSubtitle         Newsletter subtitle (beehiiv post subtitle), or empty for none.
+ * @property {boolean}                         newsletterShowTitleInEmail Whether the email shows the title and subtitle. False when never set.
+ * @property {(title: string) => void}         setNewsletterTitle         Set the newsletter title. No-op once published.
+ * @property {(subtitle: string) => void}      setNewsletterSubtitle      Set the newsletter subtitle. No-op once published.
+ * @property {(show: boolean) => void}         setShowTitleInEmail        Show or hide the title and subtitle in the email. No-op once published.
  * @property {(enabled: boolean) => void}      setSendToNewsletter        Enable or disable newsletter delivery.
  * @property {(date: string|null) => void}     setSendToNewsletterDate    Set scheduled send time.
  * @property {(enabled: boolean) => void}      setSendToNewsletterSnippet Enable or disable snippet delivery.
@@ -223,6 +232,9 @@ export function useBeehiivPostMeta() {
 		rawBeehiivScheduledAt.length > 0
 			? rawBeehiivScheduledAt
 			: null;
+	// Linked is not the same as published: a linked newsletter stays unsent until
+	// its scheduled time. No scheduled time on a linked post means it was sent
+	// immediately. The stored value is UTC with a `Z` suffix.
 	const scheduledAtTime = beehiivScheduledAt
 		? new Date( beehiivScheduledAt ).getTime()
 		: NaN;
@@ -242,6 +254,15 @@ export function useBeehiivPostMeta() {
 			? rawNewsletterErrorType
 			: null;
 
+	const rawNewsletterTitle = meta?.[ META_NEWSLETTER_TITLE ];
+	const newsletterTitle =
+		typeof rawNewsletterTitle === 'string' ? rawNewsletterTitle : '';
+	const rawNewsletterSubtitle = meta?.[ META_NEWSLETTER_SUBTITLE ];
+	const newsletterSubtitle =
+		typeof rawNewsletterSubtitle === 'string' ? rawNewsletterSubtitle : '';
+	const newsletterShowTitleInEmail =
+		!! meta?.[ META_NEWSLETTER_SHOW_TITLE_IN_EMAIL ];
+
 	const patchMeta = ( patch ) => {
 		setMeta( { ...meta, ...patch } );
 	};
@@ -258,6 +279,36 @@ export function useBeehiivPostMeta() {
 		beehiivScheduledAt,
 		newsletterError,
 		newsletterErrorType,
+		newsletterTitle,
+		newsletterSubtitle,
+		newsletterShowTitleInEmail,
+		setNewsletterTitle( title ) {
+			if ( newsletterPublished ) {
+				return;
+			}
+
+			patchMeta( {
+				[ META_NEWSLETTER_TITLE ]: title ?? '',
+			} );
+		},
+		setNewsletterSubtitle( subtitle ) {
+			if ( newsletterPublished ) {
+				return;
+			}
+
+			patchMeta( {
+				[ META_NEWSLETTER_SUBTITLE ]: subtitle ?? '',
+			} );
+		},
+		setShowTitleInEmail( show ) {
+			if ( newsletterPublished ) {
+				return;
+			}
+
+			patchMeta( {
+				[ META_NEWSLETTER_SHOW_TITLE_IN_EMAIL ]: !! show,
+			} );
+		},
 		setSendToNewsletter( enabled ) {
 			if ( newsletterAlreadySent ) {
 				return;
