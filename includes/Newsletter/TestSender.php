@@ -54,6 +54,27 @@ final class TestSender {
 	private const POST_TYPE = 'post';
 
 	/**
+	 * Longest a test send waits for beehiiv to finish creating a temporary draft, in seconds.
+	 *
+	 * @since 1.0.0
+	 */
+	private const CREATION_WAIT_SECONDS = 20;
+
+	/**
+	 * Pause between creation checks when beehiiv sends no Retry-After, in seconds.
+	 *
+	 * @since 1.0.0
+	 */
+	private const CREATION_POLL_SECONDS = 1;
+
+	/**
+	 * Longest single pause between creation checks, in seconds.
+	 *
+	 * @since 1.0.0
+	 */
+	private const CREATION_POLL_MAX_SECONDS = 5;
+
+	/**
 	 * Whether the saved post can send a test email right now.
 	 *
 	 * @param int $post_id Post ID.
@@ -168,9 +189,39 @@ final class TestSender {
 		}
 
 		$leftover_draft = false;
+		$failure        = null;
+		$result         = [];
+		/**
+		 * Filters how long a test send waits for beehiiv to create its temporary draft.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param float $seconds Seconds to wait before giving up.
+		 */
+		$wait_seconds = (float) apply_filters(
+			'beehiiv_test_send_creation_wait_seconds',
+			(float) self::CREATION_WAIT_SECONDS
+		);
+		$deadline     = microtime( true ) + $wait_seconds;
 
 		try {
-			$result = Posts::test_send( $publication_id, $created['post_id'], $recipient_emails );
+			// beehiiv creates Send API posts in the background, so the new draft can't be
+			// tested until it reports ready.
+			$ready = self::wait_until_created( $publication_id, $created['post_id'], $deadline );
+
+			if ( is_wp_error( $ready ) ) {
+				$failure = $ready;
+			} else {
+				$result = Posts::test_send( $publication_id, $created['post_id'], $recipient_emails );
+
+				// A ready post can still briefly be missing from the test-send lookup; retry once.
+				$not_found = empty( $result['success'] ) && 404 === $result['status_code'];
+
+				if ( $not_found && microtime( true ) + self::CREATION_POLL_SECONDS < $deadline ) {
+					self::pause( self::CREATION_POLL_SECONDS );
+					$result = Posts::test_send( $publication_id, $created['post_id'], $recipient_emails );
+				}
+			}
 		} finally {
 			$deleted = Posts::delete( $publication_id, $created['post_id'] );
 
@@ -188,7 +239,84 @@ final class TestSender {
 			}
 		}
 
+		if ( null !== $failure ) {
+			self::log(
+				$post_id,
+				sprintf( 'temporary draft %s not ready: %s', $created['post_id'], $failure->get_error_message() )
+			);
+
+			return $failure;
+		}
+
 		return self::finish( $post_id, $publication_id, $result, $leftover_draft );
+	}
+
+	/**
+	 * Wait until beehiiv has finished creating a post made through the Send API.
+	 *
+	 * Polls the post until it reports ready, honoring beehiiv's Retry-After. When the
+	 * creation state can't be read (an unexpected status or a transport error), stops
+	 * waiting and lets the test send report whatever beehiiv says.
+	 *
+	 * @param string $publication_id Publication ID.
+	 * @param string $beehiiv_post_id beehiiv post ID returned by the create call.
+	 * @param float  $deadline        Unix time (with microseconds) to stop waiting at.
+	 * @return true|WP_Error True when ready (or unknown), an error when creation failed or timed out.
+	 * @since 1.0.0
+	 */
+	private static function wait_until_created(
+		string $publication_id,
+		string $beehiiv_post_id,
+		float $deadline
+	) {
+		while ( true ) {
+			$state = Posts::get_creation_state( $publication_id, $beehiiv_post_id );
+
+			if ( 'failed' === $state['state'] ) {
+				return new WP_Error(
+					'beehiiv_test_send_draft_failed',
+					__( "beehiiv couldn't prepare the test email. Try again.", 'beehiiv' )
+				);
+			}
+
+			if ( 'pending' !== $state['state'] ) {
+				return true;
+			}
+
+			$delay = null !== $state['retry_after'] ? $state['retry_after'] : self::CREATION_POLL_SECONDS;
+			$delay = max( 1, min( self::CREATION_POLL_MAX_SECONDS, $delay ) );
+
+			if ( microtime( true ) + $delay > $deadline ) {
+				return new WP_Error(
+					'beehiiv_test_send_draft_pending',
+					__( 'beehiiv is still preparing the test email. Try again in a moment.', 'beehiiv' )
+				);
+			}
+
+			self::pause( $delay );
+		}
+	}
+
+	/**
+	 * Sleep between beehiiv creation checks.
+	 *
+	 * @param int $seconds Seconds to wait.
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private static function pause( int $seconds ): void {
+		/**
+		 * Filters how long a test send pauses between beehiiv creation checks.
+		 *
+		 * @since 1.0.0
+		 *
+		 * @param float $seconds Seconds to wait.
+		 */
+		$seconds = (float) apply_filters( 'beehiiv_test_send_poll_seconds', (float) $seconds );
+
+		if ( $seconds > 0 ) {
+			usleep( (int) round( $seconds * 1000000 ) );
+		}
 	}
 
 	/**

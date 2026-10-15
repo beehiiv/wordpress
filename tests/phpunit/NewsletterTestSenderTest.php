@@ -77,9 +77,14 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 				'status' => 204,
 				'body'   => [],
 			],
+			'GET /posts/' . self::TEMP_POST_ID    => [
+				'status' => 200,
+				'body'   => [ 'data' => [ 'id' => self::TEMP_POST_ID ] ],
+			],
 		];
 
 		add_filter( 'pre_http_request', [ $this, 'stub_http' ], 10, 3 );
+		add_filter( 'beehiiv_test_send_poll_seconds', '__return_zero' );
 
 		TokenStore::save_tokens(
 			'qa-client',
@@ -103,6 +108,8 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 
 	public function tear_down(): void {
 		remove_filter( 'pre_http_request', [ $this, 'stub_http' ], 10 );
+		remove_all_filters( 'beehiiv_test_send_poll_seconds' );
+		remove_all_filters( 'beehiiv_test_send_creation_wait_seconds' );
 		remove_all_filters( 'beehiiv_newsletter_post_settings' );
 		TokenStore::delete_all();
 		delete_option( Config::OPTION_NAME );
@@ -143,7 +150,7 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 			if ( $route_method === $method && substr( $path, -strlen( $suffix ) ) === $suffix ) {
 				// Prefer the longest (most specific) suffix match.
 				if ( null === $match || strlen( $suffix ) > $match[0] ) {
-					$match = [ strlen( $suffix ), $response ];
+					$match = [ strlen( $suffix ), $response, $key ];
 				}
 			}
 		}
@@ -153,8 +160,18 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 			'body'   => [ 'errors' => [ [ 'message' => 'not stubbed' ] ] ],
 		] : $match[1];
 
+		// A `sequence` answers one response per call, repeating the last one.
+		if ( isset( $response['sequence'] ) ) {
+			$sequence = $response['sequence'];
+			$response = array_shift( $sequence );
+
+			if ( ! empty( $sequence ) ) {
+				$this->responses[ $match[2] ]['sequence'] = $sequence;
+			}
+		}
+
 		return [
-			'headers'  => [],
+			'headers'  => $response['headers'] ?? [],
 			'body'     => wp_json_encode( $response['body'] ),
 			'response' => [
 				'code'    => $response['status'],
@@ -239,6 +256,7 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 			[
 				'GET /workspaces/permissions',
 				'POST /posts',
+				'GET /posts/' . self::TEMP_POST_ID,
 				'POST /posts/' . self::TEMP_POST_ID . '/test_sends',
 				'DELETE /posts/' . self::TEMP_POST_ID,
 			],
@@ -248,7 +266,7 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 		$create_body = $this->requests[1]['body'];
 		$this->assertSame( 'draft', $create_body['status'], 'AC-009: temporary post must always be a draft.' );
 		$this->assertArrayNotHasKey( 'scheduled_at', $create_body, 'AC-009: temporary post must never be scheduled.' );
-		$this->assertSame( [ 'a@example.com', 'b@example.com' ], $this->requests[2]['body']['recipient_emails'] );
+		$this->assertSame( [ 'a@example.com', 'b@example.com' ], $this->requests[3]['body']['recipient_emails'] );
 
 		$this->assertSame( $before, $this->all_post_meta( $post_id ), 'AC-010: test send must not change post meta.' );
 		$this->assertSame( $result['reset_at'], TestSender::get_remembered_reset_at( self::PUBLICATION_ID ), 'AC-019' );
@@ -490,6 +508,114 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 
 		$this->assertIsArray( $result );
 		$this->assertTrue( $result['leftover_draft'] );
+	}
+
+	/**
+	 * beehiiv creates Send API posts in the background: the test send waits until
+	 * the temporary draft reports ready instead of failing with "Couldn't find post".
+	 */
+	public function test_waits_for_temporary_draft_to_finish_creating(): void {
+		$post_id = $this->create_post( 'draft' );
+
+		$this->responses[ 'GET /posts/' . self::TEMP_POST_ID ] = [
+			'sequence' => [
+				[
+					'status'  => 202,
+					'headers' => [ 'retry-after' => '1' ],
+					'body'    => [ 'data' => [ 'state' => 'pending' ] ],
+				],
+				[
+					'status' => 202,
+					'body'   => [ 'data' => [ 'state' => 'pending' ] ],
+				],
+				[
+					'status' => 200,
+					'body'   => [ 'data' => [ 'id' => self::TEMP_POST_ID ] ],
+				],
+			],
+		];
+
+		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
+
+		$this->assertIsArray( $result );
+		$this->assertSame(
+			[
+				'GET /workspaces/permissions',
+				'POST /posts',
+				'GET /posts/' . self::TEMP_POST_ID,
+				'GET /posts/' . self::TEMP_POST_ID,
+				'GET /posts/' . self::TEMP_POST_ID,
+				'POST /posts/' . self::TEMP_POST_ID . '/test_sends',
+				'DELETE /posts/' . self::TEMP_POST_ID,
+			],
+			$this->request_log()
+		);
+	}
+
+	/**
+	 * When beehiiv reports the temporary draft's creation failed, nothing is sent,
+	 * the editor gets a clear message, and the draft is still cleaned up.
+	 */
+	public function test_failed_draft_creation_is_reported(): void {
+		$post_id = $this->create_post( 'draft' );
+
+		$this->responses[ 'GET /posts/' . self::TEMP_POST_ID ] = [
+			'status' => 404,
+			'body'   => [ 'errors' => [ [ 'code' => 'POST_CREATION_FAILED' ] ] ],
+		];
+
+		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'beehiiv_test_send_draft_failed', $result->get_error_code() );
+		$this->assertNotContains( 'POST /posts/' . self::TEMP_POST_ID . '/test_sends', $this->request_log() );
+		$this->assertContains( 'DELETE /posts/' . self::TEMP_POST_ID, $this->request_log() );
+	}
+
+	/**
+	 * A draft still being created after the wait limit gives a "try again" message
+	 * rather than a send against a post beehiiv can't find yet.
+	 */
+	public function test_draft_still_pending_after_wait_limit(): void {
+		$post_id = $this->create_post( 'draft' );
+
+		add_filter( 'beehiiv_test_send_creation_wait_seconds', '__return_zero' );
+		$this->responses[ 'GET /posts/' . self::TEMP_POST_ID ] = [
+			'status' => 202,
+			'body'   => [ 'data' => [ 'state' => 'pending' ] ],
+		];
+
+		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'beehiiv_test_send_draft_pending', $result->get_error_code() );
+		$this->assertNotContains( 'POST /posts/' . self::TEMP_POST_ID . '/test_sends', $this->request_log() );
+		$this->assertContains( 'DELETE /posts/' . self::TEMP_POST_ID, $this->request_log() );
+	}
+
+	/**
+	 * A test send that still can't find a just-created draft is retried once.
+	 */
+	public function test_not_found_test_send_is_retried_once(): void {
+		$post_id = $this->create_post( 'draft' );
+
+		$this->responses[ 'POST /posts/' . self::TEMP_POST_ID . '/test_sends' ] = [
+			'sequence' => [
+				[
+					'status' => 404,
+					'body'   => [ 'errors' => [ [ 'message' => "Couldn't find post with 'id'=" . self::TEMP_POST_ID ] ] ],
+				],
+				[
+					'status' => 200,
+					'body'   => [ 'data' => [ 'remaining_test_sends' => 8 ] ],
+				],
+			],
+		];
+
+		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
+
+		$this->assertIsArray( $result );
+		$this->assertSame( 8, $result['remaining_test_sends'] );
 	}
 
 	/**

@@ -147,6 +147,68 @@ final class Posts {
 	}
 
 	/**
+	 * Whether a post created through the Send API has finished being created.
+	 *
+	 * The beehiiv API creates posts in the background: the create call returns
+	 * the id right away, and fetching the post answers 202 until creation
+	 * finishes, then 200. A 404 means creation failed.
+	 *
+	 * @link https://developers.beehiiv.com/api-reference/posts/get
+	 *
+	 * @param string $publication_id Publication ID.
+	 * @param string $post_id        beehiiv post ID.
+	 * @return array{state: string, retry_after: int|null, status_code: int|null, error: string}
+	 *     The state is one of `ready`, `pending`, `failed`, or `unknown`.
+	 * @since 1.0.0
+	 */
+	public static function get_creation_state( string $publication_id, string $post_id ): array {
+		$publication_id = trim( $publication_id );
+		$post_id        = trim( $post_id );
+		$result         = [
+			'state'       => 'unknown',
+			'retry_after' => null,
+			'status_code' => null,
+			'error'       => '',
+		];
+
+		if ( '' === $publication_id || '' === $post_id ) {
+			$result['error'] = 'Publication ID or post ID is empty.';
+			return $result;
+		}
+
+		$path     = sprintf(
+			'/publications/%s/posts/%s',
+			rawurlencode( $publication_id ),
+			rawurlencode( $post_id )
+		);
+		$response = Client::request( $path );
+
+		$wp_error = Client::get_last_wp_error();
+
+		if ( null !== $wp_error ) {
+			$result['error'] = $wp_error;
+			return $result;
+		}
+
+		$status_code           = Client::get_last_status_code();
+		$result['status_code'] = $status_code;
+		$result['retry_after'] = Client::get_last_retry_after();
+
+		if ( 200 === $status_code ) {
+			$result['state'] = 'ready';
+		} elseif ( 202 === $status_code ) {
+			$result['state'] = 'pending';
+		} elseif ( 404 === $status_code ) {
+			$result['state'] = 'failed';
+			$result['error'] = self::format_error_message( $response, $status_code );
+		} elseif ( null !== $status_code ) {
+			$result['error'] = self::format_error_message( $response, $status_code );
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Send a test email of a beehiiv post to one or more addresses.
 	 *
 	 * @link https://developers.beehiiv.com/api-reference/posts/test-send

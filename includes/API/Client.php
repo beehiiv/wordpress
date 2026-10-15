@@ -42,6 +42,13 @@ final class Client {
 	private static $allow_retry = true;
 
 	/**
+	 * Retry-After header from the most recent response, in seconds, if any.
+	 *
+	 * @var int|null
+	 */
+	private static $last_retry_after = null;
+
+	/**
 	 * HTTP timeout in seconds for beehiiv API requests.
 	 *
 	 * @since 1.0.0
@@ -78,6 +85,16 @@ final class Client {
 	 */
 	public static function get_last_wp_error(): ?string {
 		return self::$last_wp_error;
+	}
+
+	/**
+	 * Retry-After header from the most recent response, in seconds.
+	 *
+	 * @return int|null Null when the response had no numeric Retry-After header.
+	 * @since 1.0.0
+	 */
+	public static function get_last_retry_after(): ?int {
+		return self::$last_retry_after;
 	}
 
 	/**
@@ -156,6 +173,9 @@ final class Client {
 
 		self::$last_status_code = is_wp_error( $res ) ? null : (int) wp_remote_retrieve_response_code( $res );
 		self::$last_wp_error    = is_wp_error( $res ) ? $res->get_error_message() : null;
+
+		$retry_after            = is_wp_error( $res ) ? '' : wp_remote_retrieve_header( $res, 'retry-after' );
+		self::$last_retry_after = is_numeric( $retry_after ) ? (int) $retry_after : null;
 
 		$raw  = is_wp_error( $res ) ? '' : (string) wp_remote_retrieve_body( $res );
 		$json = json_decode( $raw, true );

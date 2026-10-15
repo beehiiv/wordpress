@@ -130,6 +130,8 @@ function seedReadyState( overrides = {} ) {
  * @param {Object} root0.testSend Response for POST …/test_sends.
  * @param {Object} root0.create   Response for POST …/posts (temporary draft).
  * @param {Object} root0.del      Response for DELETE …/posts/{id}.
+ * @param {Object} root0.get      Response for GET …/posts/{id} (creation state:
+ *                                200 ready, 202 still creating, 404 failed).
  */
 function mockBeehiivPosts( {
 	testSend = {
@@ -138,6 +140,7 @@ function mockBeehiivPosts( {
 	},
 	create = { status: 201, body: { data: { id: TMP_ID } } },
 	del = { status: 204, body: '' },
+	get = { status: 200, body: { data: { id: TMP_ID } } },
 } = {} ) {
 	const mocks = {
 		test_sends: {
@@ -154,6 +157,11 @@ function mockBeehiivPosts( {
 			pattern: '#/publications/[^/]+/posts/[^/?]+(\\?|$)#',
 			method: 'DELETE',
 			...del,
+		},
+		get_post: {
+			pattern: '#/publications/[^/]+/posts/[^/?]+(\\?|$)#',
+			method: 'GET',
+			...get,
 		},
 	};
 	php( `
@@ -688,11 +696,12 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		const calls = beehiivPostCalls( readHttpLog() );
 		expect( calls.map( ( c ) => `${ c.method } ${ c.mock }` ) ).toEqual( [
 			'POST create_post',
+			'GET get_post',
 			'POST test_sends',
 			'DELETE delete_post',
 		] );
-		expect( calls[ 1 ].url ).toContain( `/posts/${ TMP_ID }/test_sends` );
-		expect( calls[ 2 ].url ).toMatch(
+		expect( calls[ 2 ].url ).toContain( `/posts/${ TMP_ID }/test_sends` );
+		expect( calls[ 3 ].url ).toMatch(
 			new RegExp( `/posts/${ TMP_ID }(\\?|$)` )
 		);
 
@@ -806,10 +815,11 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 		const calls = beehiivPostCalls( readHttpLog() );
 		expect( calls.map( ( c ) => `${ c.method } ${ c.mock }` ) ).toEqual( [
 			'POST create_post',
+			'GET get_post',
 			'POST test_sends',
 			'DELETE delete_post',
 		] );
-		expect( calls[ 2 ].url ).toMatch(
+		expect( calls[ 3 ].url ).toMatch(
 			new RegExp( `/posts/${ TMP_ID }(\\?|$)` )
 		);
 	} );
