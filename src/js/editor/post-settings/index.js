@@ -57,7 +57,6 @@ function NewsletterPublicationAndTemplate( { beehiivMeta, postPublication } ) {
 	const {
 		beehiivPostTemplateId,
 		newsletterAlreadySent,
-		newsletterPublished,
 		setBeehiivPublicationId,
 		setBeehiivPostTemplateId,
 	} = beehiivMeta;
@@ -80,7 +79,8 @@ function NewsletterPublicationAndTemplate( { beehiivMeta, postPublication } ) {
 						: storedPublicationId || defaultPublicationId
 				}
 				onChange={ setBeehiivPublicationId }
-				disabled={ newsletterPublished }
+				// Like the template, the publication is locked once the post is linked.
+				disabled={ newsletterAlreadySent }
 			/>
 
 			{ effectivePublicationId && (
