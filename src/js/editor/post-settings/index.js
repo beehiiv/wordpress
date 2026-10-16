@@ -144,6 +144,11 @@ function BeehiivPostSettingsPanel() {
 
 	const showSendToggle = ! isConnected || canWritePosts;
 
+	// Test send follows the toggle's readiness: a post that still needs a
+	// template cannot send a test. Linked posts already carry theirs.
+	const isTemplateMissing =
+		postPublication.missingTemplate && ! newsletterAlreadySent;
+
 	// Newsletter wording stays editable while a linked newsletter is still
 	// scheduled, so it also renders for linked posts, where the other send
 	// settings are hidden. A send turns "Send to newsletter" back off, so the
@@ -274,7 +279,17 @@ function BeehiivPostSettingsPanel() {
 						</>
 					) }
 			</PanelBody>
-			{ isNewsletterReady && (
+			{ isNewsletterReady && isTemplateMissing && (
+				<PanelBody>
+					<PostSettingsNotice status="warning">
+						{ __(
+							'Pick a post template for this post.',
+							'beehiiv'
+						) }
+					</PostSettingsNotice>
+				</PanelBody>
+			) }
+			{ isNewsletterReady && ! isTemplateMissing && (
 				<PanelBody title={ __( 'Test email', 'beehiiv' ) }>
 					<TestEmailSend beehiivMeta={ beehiivMeta } />
 				</PanelBody>
