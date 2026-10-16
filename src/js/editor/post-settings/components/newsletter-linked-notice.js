@@ -18,7 +18,7 @@ import getBeehiivPostPreviewUrl from '../utils/get-beehiiv-post-preview-url';
  * @param {string} dateValue ISO 8601 datetime string.
  * @return {string|null} Formatted date, time, and timezone abbreviation.
  */
-function formatSiteDateTime( dateValue ) {
+export function formatSiteDateTime( dateValue ) {
 	const timestamp = new Date( dateValue ).getTime();
 
 	if ( Number.isNaN( timestamp ) ) {
@@ -38,7 +38,7 @@ function formatSiteDateTime( dateValue ) {
  * @param {string|null|undefined} sendToNewsletterDate Custom send datetime from post meta.
  * @return {string|null} Raw datetime string for a future send, or null when not scheduled.
  */
-function getFutureNewsletterSendDateString(
+export function getFutureNewsletterSendDateString(
 	scheduledAtUtc,
 	sendToNewsletterDate
 ) {

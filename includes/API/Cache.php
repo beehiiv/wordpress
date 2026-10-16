@@ -92,6 +92,18 @@ final class Cache {
 	}
 
 	/**
+	 * Clear the cached publications list so the next read fetches it from beehiiv.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return void
+	 */
+	public static function delete_publications(): void {
+
+		delete_transient( self::PUBLICATIONS_KEY );
+	}
+
+	/**
 	 * Cached templates for a publication.
 	 *
 	 * @since 1.0.0

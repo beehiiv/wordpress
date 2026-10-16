@@ -31,6 +31,7 @@
 		"build": "wp-scripts build --webpack-src-dir=src/js",
 		"make-pot": "wp-env run cli wp i18n make-pot wp-content/plugins/beehiiv wp-content/plugins/beehiiv/languages/beehiiv.pot --domain=beehiiv --exclude=node_modules,vendor,tests,dist,build,build-dev,build-module,build-style",
 		"build:zip": "npm run build && composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction --no-progress && find . -name '.DS_Store' -not -path './node_modules/*' -not -path './.git/*' -delete && rm -rf dist && mkdir -p dist && composer archive --format=zip --dir=dist --file=beehiiv",
+		"build:zip:release": "bash scripts/build-release-zip.sh",
 		"format": "wp-scripts format",
 		"lint": "npm run lint:js && npm run lint:css && npm run lint:php",
 		"lint:js": "wp-scripts lint-js",
@@ -42,8 +43,14 @@
 		"env:start": "wp-env start && npm run env:hosts",
 		"env:start:doppler": "doppler run --mount .wp-env.override.json --mount-template .wp-env.override.tmpl -- npm run env:start",
 		"env:hosts": "sh scripts/wp-env-extra-hosts.sh",
+		"env:set-version": "node scripts/wp-env-set-version.js",
 		"env:stop": "wp-env stop",
-		"env:destroy": "wp-env destroy"
+		"env:destroy": "wp-env destroy",
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui",
+		"test:e2e:report": "node tests/e2e/report/generate-dashboard.js",
+		"test:php:report": "node tests/phpunit/report/generate-dashboard.js",
+		"test:compat": "node scripts/test-compat.js"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.60.0",

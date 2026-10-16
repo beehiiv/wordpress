@@ -1,0 +1,138 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: "PHPUnit (PHP ${{ matrix.php-version }}, WP ${{ matrix.wp-version }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep in sync with "Requires PHP" / "Requires at least" in readme.txt.
+        php-version: ["7.4", "8.0", "8.1", "8.2", "8.3"]
+        wp-version: ["6.8", "latest"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Pin wp-env PHP/WP core version
+        run: npm run env:set-version -- --php=${{ matrix.php-version }} --wp=${{ matrix.wp-version }}
+
+      - name: Patch archived Debian base image (PHP 7.4 / 8.0)
+        if: matrix.php-version == '7.4' || matrix.php-version == '8.0'
+        run: scripts/ci-patch-debian-base.sh ${{ matrix.php-version }}
+
+      - name: Start wp-env
+        run: npx wp-env start
+
+      - name: Run PHPUnit
+        run: npx wp-env run tests-cli -- bash -c "cd wp-content/plugins/$(basename "$GITHUB_WORKSPACE") && composer test"
+
+      - name: Generate PHPUnit dashboard
+        if: always()
+        run: node tests/phpunit/report/generate-dashboard.js --label="PHP ${{ matrix.php-version }} / WP ${{ matrix.wp-version }}"
+
+      - name: Upload PHPUnit dashboard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phpunit-report-php${{ matrix.php-version }}-wp${{ matrix.wp-version }}
+          path: tests/phpunit/test-results
+          retention-days: 7
+
+      - name: Stop wp-env
+        if: always()
+        run: npx wp-env stop
+
+  e2e:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "7.4"
+          tools: composer:v2
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build plugin assets
+        run: npm run build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Patch archived Debian base image (PHP 7.4)
+        run: scripts/ci-patch-debian-base.sh 7.4
+
+      - name: Start wp-env
+        run: npx wp-env start
+
+      - name: Run Playwright E2E tests
+        run: npx playwright test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: tests/e2e/test-results
+          retention-days: 7
+
+      - name: Stop wp-env
+        if: always()
+        run: npx wp-env stop

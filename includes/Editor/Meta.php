@@ -45,6 +45,27 @@ final class Meta {
 	public const BEEHIIV_POST_TEMPLATE_ID = '_beehiiv_post_template_id';
 
 	/**
+	 * Beehiiv publication ID chosen for this post. Empty = use the site-wide default publication.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_PUBLICATION_ID = '_beehiiv_publication_id';
+
+	/**
+	 * Publication the linked beehiiv post lives in. Server-only; not registered for REST.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_LINKED_PUBLICATION_ID = '_beehiiv_linked_publication_id';
+
+	/**
+	 * Post template the linked beehiiv post was created with. Server-only; not registered for REST.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_LINKED_POST_TEMPLATE_ID = '_beehiiv_linked_post_template_id';
+
+	/**
 	 * Beehiiv post ID after the newsletter has been created via the API.
 	 *
 	 * @since 1.0.0
@@ -59,6 +80,25 @@ final class Meta {
 	public const BEEHIIV_SCHEDULED_AT = '_beehiiv_scheduled_at';
 
 	/**
+	 * Whether beehiiv has already sent the linked newsletter. Internal; not exposed to REST.
+	 *
+	 * Once set, later saves never contact beehiiv for this post.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_NEWSLETTER_SENT = '_beehiiv_newsletter_sent';
+
+	/**
+	 * Subtitle last synced to the linked beehiiv post. Internal; not exposed to REST.
+	 *
+	 * Lets a sync remove a subtitle cleared in WordPress without ever sending an empty
+	 * subtitle for posts that never had one.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_SYNCED_SUBTITLE = '_beehiiv_synced_subtitle';
+
+	/**
 	 * User-facing error after a failed newsletter save or send (`save` or `send`).
 	 *
 	 * @since 1.0.0
@@ -71,4 +111,25 @@ final class Meta {
 	 * @since 1.0.0
 	 */
 	public const NEWSLETTER_ERROR_TYPE = '_beehiiv_newsletter_error_type';
+
+	/**
+	 * Newsletter title for the post, used as the email subject line. Empty means the post title is used.
+	 *
+	 * @since x.x.x
+	 */
+	public const NEWSLETTER_TITLE = '_beehiiv_newsletter_title';
+
+	/**
+	 * Newsletter subtitle for the post, sent as the beehiiv post subtitle. Empty means no subtitle.
+	 *
+	 * @since x.x.x
+	 */
+	public const NEWSLETTER_SUBTITLE = '_beehiiv_newsletter_subtitle';
+
+	/**
+	 * Whether the beehiiv email shows the title and subtitle. Unset means hidden.
+	 *
+	 * @since x.x.x
+	 */
+	public const NEWSLETTER_SHOW_TITLE_IN_EMAIL = '_beehiiv_newsletter_show_title_in_email';
 }
