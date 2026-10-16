@@ -163,9 +163,13 @@ function postApiCalls() {
 		'echo "JSON=" . wp_json_encode( beehiiv_e2e_get_http_log() );'
 	);
 	const log = JSON.parse( out.slice( out.indexOf( 'JSON=' ) + 5 ) );
+	// A mocked request is logged twice: once by the request logger and once,
+	// with a `mock` key, by the mock that answered it. Count only the first.
 	return log
-		.filter( ( entry ) =>
-			/\/publications\/[^/]+\/posts(\/|$|\?)/.test( entry.url )
+		.filter(
+			( entry ) =>
+				! ( 'mock' in entry ) &&
+				/\/publications\/[^/]+\/posts(\/|$|\?)/.test( entry.url )
 		)
 		.map( ( entry ) => {
 			const match = /\/publications\/([^/]+)\/posts(?:\/([^/?]+))?/.exec(

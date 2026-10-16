@@ -949,7 +949,7 @@ test.describe( 'Test Email Send (PRD-06.5)', () => {
 			{
 				name: 'no template',
 				seed: { settings: { post_template_id: '' } },
-				message: 'Choose a default post template in',
+				message: 'Pick a post template for this post',
 			},
 		];
 		await loginAsAdmin( page );
