@@ -149,6 +149,7 @@ It is visible in the editor but does not render on the front end of your site.
 * Added a newsletter title and subtitle for each post, used as the email subject line and subtitle on beehiiv.
 * Added a "show title and subtitle in email" toggle for each post.
 * Added the ability to choose which beehiiv publication each post is sent to.
+* Added a "Send test email" section to the post editor, so you can send a test of the saved post to any addresses you choose without sending the newsletter.
 * Newsletters that haven't been sent now stay in step with their post on every save, including SEO metadata and tags.
 * A newsletter beehiiv has already sent is never changed by later edits.
 * Clearing a previously set subtitle now removes it on beehiiv.
