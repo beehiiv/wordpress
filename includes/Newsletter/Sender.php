@@ -1009,7 +1009,7 @@ final class Sender {
 	 * @return string
 	 * @since 1.0.0
 	 */
-	private static function format_save_error_message( \WP_Error $error ): string {
+	public static function format_save_error_message( \WP_Error $error ): string {
 		switch ( $error->get_error_code() ) {
 			case 'beehiiv_post_template_id_empty':
 				return __(
@@ -1131,7 +1131,7 @@ final class Sender {
 	 * @return string Mapped message, or empty when input is empty.
 	 * @since 1.0.0
 	 */
-	private static function format_api_error_message( string $error ): string {
+	public static function format_api_error_message( string $error ): string {
 		$error = trim( $error );
 
 		if ( '' === $error ) {

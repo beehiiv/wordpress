@@ -41,10 +41,14 @@ async function loginAs( page, username, password ) {
 		page.locator( '#user_login:focus, #user_pass:focus' )
 	).toHaveCount( 1 );
 
-	await user.fill( username );
-	await pass.fill( password );
-	await expect( user ).toHaveValue( username );
-	await expect( pass ).toHaveValue( password );
+	// Re-fill until both fields hold the expected values, in case a late focus
+	// change still lands between the two fills.
+	await expect( async () => {
+		await user.fill( username );
+		await pass.fill( password );
+		await expect( user ).toHaveValue( username, { timeout: 1000 } );
+		await expect( pass ).toHaveValue( password, { timeout: 1000 } );
+	} ).toPass( { timeout: 10000 } );
 
 	await page.click( '#wp-submit' );
 	await page.waitForURL( '**/wp-admin/**' );

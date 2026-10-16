@@ -46,6 +46,7 @@ final class Plugin {
 		add_action( 'rest_api_init', [ REST\PostTemplatesController::class, 'register_routes' ] );
 		add_action( 'rest_api_init', [ REST\PublicationsController::class, 'register_routes' ] );
 		add_action( 'rest_api_init', [ REST\AdvertisementOpportunitiesController::class, 'register_routes' ] );
+		add_action( 'rest_api_init', [ REST\TestSendController::class, 'register_routes' ] );
 	}
 
 	/**

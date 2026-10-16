@@ -24,6 +24,7 @@ import NewsletterPublicationSelect from './components/newsletter-publication-sel
 import NewsletterTemplateSelect from './components/newsletter-template-select';
 import PostSettingsNotice from './components/post-settings-notice';
 import SendNewsletterToggle from './components/send-newsletter-toggle';
+import TestEmailSend from './components/test-email-send';
 import IncompleteAdvertisementNotice from './components/incomplete-advertisement-notice';
 import { OmittedBlocksNoticeMessage } from './components/omitted-blocks-notice';
 import { useBeehiivEditorConfig } from './hooks/use-beehiiv-editor-config';
@@ -273,6 +274,11 @@ function BeehiivPostSettingsPanel() {
 						</>
 					) }
 			</PanelBody>
+			{ isNewsletterReady && (
+				<PanelBody title={ __( 'Test email', 'beehiiv' ) }>
+					<TestEmailSend beehiivMeta={ beehiivMeta } />
+				</PanelBody>
+			) }
 		</div>
 	);
 }
