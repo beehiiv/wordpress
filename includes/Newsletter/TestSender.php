@@ -134,7 +134,9 @@ final class TestSender {
 		}
 
 		if ( Sender::has_beehiiv_post_id( $post_id ) ) {
-			if ( self::is_linked_newsletter_sent( $post_id ) ) {
+			// The sync flow's stored flag wins: once beehiiv is known to have sent the
+			// newsletter, it is sent whatever the stored schedule says.
+			if ( Sender::is_newsletter_sent( $post_id ) || self::is_linked_newsletter_sent( $post_id ) ) {
 				return new WP_Error(
 					'beehiiv_test_send_already_sent',
 					__( "This post's newsletter was already sent, so it can't send a test email.", 'beehiiv' )
@@ -160,7 +162,7 @@ final class TestSender {
 			);
 		}
 
-		if ( '' === Sender::get_publication_id() ) {
+		if ( '' === PublicationResolver::resolve_for_post( $post_id ) ) {
 			return new WP_Error(
 				'beehiiv_missing_publication',
 				__( 'Choose a publication in <a>beehiiv settings</a>, then try again.', 'beehiiv' )
@@ -199,7 +201,9 @@ final class TestSender {
 			return $eligibility;
 		}
 
-		$publication_id  = Sender::get_publication_id();
+		// The linked newsletter's publication, or the post's chosen one when unlinked --
+		// the same publication a real send or sync of this post uses.
+		$publication_id  = PublicationResolver::resolve_for_post( $post_id );
 		$beehiiv_post_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true );
 		$beehiiv_post_id = is_string( $beehiiv_post_id ) ? trim( $beehiiv_post_id ) : '';
 
@@ -209,7 +213,7 @@ final class TestSender {
 			return self::finish( $post_id, $publication_id, $result, false );
 		}
 
-		$payload = self::build_temporary_draft_payload( $post_id );
+		$payload = self::build_temporary_draft_payload( $post_id, $publication_id );
 
 		if ( is_wp_error( $payload ) ) {
 			return new WP_Error( $payload->get_error_code(), Sender::format_save_error_message( $payload ) );
@@ -474,12 +478,13 @@ final class TestSender {
 	 * Uses the real send's payload builder in its no-schedule mode, then forces draft
 	 * status after the public settings filter so a test can never become a real send.
 	 *
-	 * @param int $post_id Post ID.
+	 * @param int         $post_id        Post ID.
+	 * @param string|null $publication_id Publication the draft is created in; defaults to the post's resolved one.
 	 * @return array<string, mixed>|WP_Error
 	 * @since 1.0.0
 	 */
-	public static function build_temporary_draft_payload( int $post_id ) {
-		$settings = PostSettingsBuilder::get_post_settings( $post_id, true );
+	public static function build_temporary_draft_payload( int $post_id, ?string $publication_id = null ) {
+		$settings = PostSettingsBuilder::get_post_settings( $post_id, true, $publication_id );
 
 		if ( is_wp_error( $settings ) ) {
 			return $settings;

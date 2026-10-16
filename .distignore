@@ -39,6 +39,8 @@ eslint.config.cjs
 mise.toml
 phpunit.xml
 phpunit.xml.dist
+playwright.config.js
+.env.build.example
 README.md
 docker-compose.extra-hosts.example.yml
 docker-compose.extra-hosts.yml

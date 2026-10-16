@@ -4,7 +4,7 @@ Tags: newsletter, email, publishing, beehiiv, subscribe
 Requires at least: 6.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.0.2
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -144,6 +144,14 @@ It is visible in the editor but does not render on the front end of your site.
 
 
 == Changelog ==
+
+= 1.1.0 =
+* Added a newsletter title and subtitle for each post, used as the email subject line and subtitle on beehiiv.
+* Added a "show title and subtitle in email" toggle for each post.
+* Added the ability to choose which beehiiv publication each post is sent to.
+* Newsletters that haven't been sent now stay in step with their post on every save, including SEO metadata and tags.
+* A newsletter beehiiv has already sent is never changed by later edits.
+* Clearing a previously set subtitle now removes it on beehiiv.
 
 = 1.0.2 =
 * Fixed connecting a beehiiv account on WordPress.org installs of 1.0.1.

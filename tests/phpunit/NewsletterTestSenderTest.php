@@ -804,6 +804,113 @@ class NewsletterTestSenderTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A post set to its own publication creates its temporary draft and sends the
+	 * test there, with that publication's template, not the site-wide default.
+	 */
+	public function test_unlinked_post_uses_its_own_publication(): void {
+		\Beehiiv\API\Cache::set_publications(
+			[
+				[
+					'id'   => self::PUBLICATION_ID,
+					'name' => 'Default',
+				],
+				[
+					'id'   => 'pub_other',
+					'name' => 'Other',
+				],
+			]
+		);
+		\Beehiiv\API\Cache::set_post_templates(
+			'pub_other',
+			[
+				[
+					'id'   => 'tpl_other',
+					'name' => 'Other template',
+				],
+			]
+		);
+
+		$post_id = $this->create_post(
+			'draft',
+			[
+				Meta::BEEHIIV_PUBLICATION_ID   => 'pub_other',
+				Meta::BEEHIIV_POST_TEMPLATE_ID => 'tpl_other',
+			]
+		);
+
+		$this->assertIsArray( TestSender::send( $post_id, [ 'a@example.com' ] ) );
+
+		$beehiiv_calls = array_values(
+			array_filter(
+				$this->requests,
+				static function ( $request ) {
+					return false !== strpos( $request['url'], '/publications/' );
+				}
+			)
+		);
+
+		$this->assertNotEmpty( $beehiiv_calls );
+
+		foreach ( $beehiiv_calls as $request ) {
+			$this->assertStringContainsString( '/publications/pub_other/', $request['url'] );
+		}
+
+		$this->assertSame( 'tpl_other', $beehiiv_calls[0]['body']['post_template_id'] );
+	}
+
+	/**
+	 * A linked newsletter is tested in the publication it was created in.
+	 */
+	public function test_linked_newsletter_uses_its_linked_publication(): void {
+		$post_id = $this->create_post(
+			'future',
+			[
+				Meta::BEEHIIV_POST_ID               => self::LINKED_POST_ID,
+				Meta::BEEHIIV_SCHEDULED_AT          => gmdate( 'Y-m-d\\TH:i:s\\Z', time() + DAY_IN_SECONDS ),
+				Meta::BEEHIIV_LINKED_PUBLICATION_ID => 'pub_linked',
+			]
+		);
+
+		$this->assertIsArray( TestSender::send( $post_id, [ 'a@example.com' ] ) );
+
+		$sends = array_values(
+			array_filter(
+				$this->requests,
+				static function ( $request ) {
+					return false !== strpos( $request['url'], '/test_sends' );
+				}
+			)
+		);
+
+		$this->assertCount( 1, $sends );
+		$this->assertStringContainsString(
+			'/publications/pub_linked/posts/' . self::LINKED_POST_ID . '/test_sends',
+			$sends[0]['url']
+		);
+	}
+
+	/**
+	 * AC-013: once the sync flow has recorded that beehiiv sent the newsletter, the
+	 * post can't send a test, even while its stored schedule is still in the future.
+	 */
+	public function test_sent_flag_from_sync_refuses_test_send(): void {
+		$post_id = $this->create_post(
+			'future',
+			[
+				Meta::BEEHIIV_POST_ID         => self::LINKED_POST_ID,
+				Meta::BEEHIIV_SCHEDULED_AT    => gmdate( 'Y-m-d\\TH:i:s\\Z', time() + DAY_IN_SECONDS ),
+				Meta::BEEHIIV_NEWSLETTER_SENT => '1',
+			]
+		);
+
+		$result = TestSender::send( $post_id, [ 'a@example.com' ] );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'beehiiv_test_send_already_sent', $result->get_error_code() );
+		$this->assertSame( 0, $this->count_requests( 'POST /posts/' . self::LINKED_POST_ID . '/test_sends' ) );
+	}
+
+	/**
 	 * AC-003: recipients split on commas and new lines, trimmed, de-duplicated.
 	 */
 	public function test_parse_recipients(): void {

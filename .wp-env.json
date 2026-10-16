@@ -5,7 +5,8 @@
 	"themes": [ "https://downloads.wordpress.org/theme/twentytwentyfive.zip" ],
 	"config": {
 		"WP_DEBUG": true,
-		"SCRIPT_DEBUG": true
+		"SCRIPT_DEBUG": true,
+		"AUTOMATIC_UPDATER_DISABLED": true
 	},
 	"port": 8890,
 	"testsEnvironment": true,
