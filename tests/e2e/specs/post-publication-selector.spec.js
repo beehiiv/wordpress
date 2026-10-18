@@ -737,10 +737,9 @@ test.describe( 'Post-level publication selector (PRD-06.8.02)', () => {
 		);
 	} );
 
-	test( 'AC-014: changing the publication on a scheduled, unsent post moves the beehiiv post on save', async ( {
+	test( 'AC-014: a post linked to a scheduled, unsent newsletter keeps its publication read-only', async ( {
 		page,
 	} ) => {
-		// Move to a non-default publication with the editor's template pick.
 		const id = createPost( {
 			title: 'QA AC-014',
 			status: 'publish',
@@ -751,59 +750,26 @@ test.describe( 'Post-level publication selector (PRD-06.8.02)', () => {
 			} ),
 		} );
 		await openEditorWithSidebar( page, id );
-		await expect( page.locator( PUB_SELECT ) ).toBeEnabled();
-		await page.locator( PUB_SELECT ).selectOption( PUB_B.id );
-		await waitForTemplateOptions( page, 'Beta Classic' );
-		await page.locator( TPL_SELECT ).selectOption( 'tpl_b1' );
+		const pub = page.locator( PUB_SELECT );
+		await expect( pub ).toBeVisible();
+		await expect( pub ).toBeDisabled();
+		expect( await selectedText( pub ) ).toBe( PUB_A.name );
+
+		// Saving leaves the newsletter where it is: nothing is removed or recreated.
 		resetLog();
 		await editorSave( page );
-
-		let calls = postApiCalls();
-		expect( calls ).toEqual(
-			expect.arrayContaining( [
-				{
-					method: 'DELETE',
-					publication: PUB_A.id,
-					beehiivPostId: 'bh_alpha_old',
-				},
-				{ method: 'POST', publication: PUB_B.id, beehiivPostId: '' },
+		expect( postApiCalls().filter( ( c ) => c.method !== 'GET' ) ).toEqual(
+			expect.not.arrayContaining( [
+				expect.objectContaining( { method: 'DELETE' } ),
+				expect.objectContaining( {
+					method: 'POST',
+					beehiivPostId: '',
+				} ),
 			] )
 		);
-		let meta = readMeta( id );
-		expect( meta._beehiiv_post_id ).toBe( CREATED_ID[ PUB_B.id ] );
-		expect( meta._beehiiv_linked_publication_id ).toBe( PUB_B.id );
-		expect( meta._beehiiv_linked_post_template_id ).toBe( 'tpl_b1' );
-
-		// Move back to the default publication with no pick -> settings default template.
-		const id2 = createPost( {
-			title: 'QA AC-014 back',
-			status: 'publish',
-			meta: linkedMeta( {
-				pub: PUB_B.id,
-				template: 'tpl_b1',
-				beehiivPostId: 'bh_beta_old',
-			} ),
-		} );
-		await openEditorWithSidebar( page, id2 );
-		await page.locator( PUB_SELECT ).selectOption( PUB_A.id );
-		await waitForTemplateOptions( page, 'Alpha Standard (default)' );
-		resetLog();
-		await editorSave( page );
-		calls = postApiCalls();
-		expect( calls ).toEqual(
-			expect.arrayContaining( [
-				{
-					method: 'DELETE',
-					publication: PUB_B.id,
-					beehiivPostId: 'bh_beta_old',
-				},
-				{ method: 'POST', publication: PUB_A.id, beehiivPostId: '' },
-			] )
-		);
-		meta = readMeta( id2 );
-		expect( meta._beehiiv_post_id ).toBe( CREATED_ID[ PUB_A.id ] );
+		const meta = readMeta( id );
+		expect( meta._beehiiv_post_id ).toBe( 'bh_alpha_old' );
 		expect( meta._beehiiv_linked_publication_id ).toBe( PUB_A.id );
-		expect( meta._beehiiv_linked_post_template_id ).toBe( 'tpl_a1' );
 	} );
 
 	test( 'AC-015: after unpublishing cancels the beehiiv post, the selector is editable and a re-send uses the newly selected publication', async ( {
@@ -883,7 +849,7 @@ test.describe( 'Post-level publication selector (PRD-06.8.02)', () => {
 		expect( readMeta( id )._beehiiv_publication_id ).toBe( PUB_B.id );
 	} );
 
-	test( 'AC-017: template dropdown stays editable while scheduled-unsent and locks together with the publication once sent', async ( {
+	test( 'AC-017: the template dropdown locks together with the publication once the post is linked', async ( {
 		page,
 	} ) => {
 		const scheduled = createPost( {
@@ -896,9 +862,11 @@ test.describe( 'Post-level publication selector (PRD-06.8.02)', () => {
 			} ),
 		} );
 		await openEditorWithSidebar( page, scheduled );
-		await waitForTemplateOptions( page, 'Alpha Promo' );
-		await expect( page.locator( PUB_SELECT ) ).toBeEnabled();
-		await expect( page.locator( TPL_SELECT ) ).toBeEnabled();
+		await expect( page.locator( TPL_SELECT ) ).toBeVisible( {
+			timeout: 15000,
+		} );
+		await expect( page.locator( PUB_SELECT ) ).toBeDisabled();
+		await expect( page.locator( TPL_SELECT ) ).toBeDisabled();
 
 		const sent = createPost( {
 			title: 'QA AC-017 sent',
