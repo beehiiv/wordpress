@@ -51,9 +51,26 @@ function seedConnected() {
 	);
 }
 
-/** Clears any stored OAuth credentials, back to the disconnected baseline. */
+/**
+ * Seeds the same connected state, with the permissions call answered locally.
+ *
+ * For tests that check card content, not plan gating. The settings page then
+ * never waits on the real beehiiv API, so a slow network cannot time them out.
+ */
+function seedConnectedOffline() {
+	wpCli(
+		`eval '\\Beehiiv\\OAuth\\TokenStore::save_tokens( "qa-e2e-client-id", [ "access_token" => "qa-e2e-access-token", "refresh_token" => "qa-e2e-refresh-token", "expires_in" => 3600 ], [ "first_name" => "QA", "last_name" => "Tester", "email" => "qa-e2e@example.test" ] ); beehiiv_e2e_mock_permissions( [ "posts" => [ "read", "write" ] ] );'`
+	);
+}
+
+/**
+ * Clears any stored OAuth credentials and the permissions mock, back to the
+ * disconnected, real-network baseline.
+ */
 function clearConnection() {
-	wpCliSafe( `eval '\\Beehiiv\\OAuth\\TokenStore::delete_all();'` );
+	wpCliSafe(
+		`eval '\\Beehiiv\\OAuth\\TokenStore::delete_all(); beehiiv_e2e_clear_permissions_mock();'`
+	);
 }
 
 test.beforeAll( () => {
@@ -99,7 +116,7 @@ test.describe( 'Connection status card', () => {
 		);
 		await expect( disconnectedIcon ).toHaveClass( /dashicons-marker/ );
 
-		seedConnected();
+		seedConnectedOffline();
 		await page.goto( SETTINGS_PATH );
 		const connectedIcon = page.locator(
 			'.beehiiv-connection-status__icon'
@@ -178,7 +195,7 @@ test.describe( 'Connection status card', () => {
 	test( 'AC-005: "Disconnect" button is visible when connected', async ( {
 		page,
 	} ) => {
-		seedConnected();
+		seedConnectedOffline();
 		await page.goto( SETTINGS_PATH );
 		await expect(
 			page.getByRole( 'link', { name: 'Disconnect' } )
@@ -211,7 +228,7 @@ test.describe( 'Connection status card', () => {
 	test( "AC-007: connected user's account identifier displays when available", async ( {
 		page,
 	} ) => {
-		seedConnected();
+		seedConnectedOffline();
 		await page.goto( SETTINGS_PATH );
 		await expect(
 			page.locator( '.beehiiv-connection-status__account' )
@@ -245,7 +262,7 @@ test.describe( 'Connection status card', () => {
 			'https://wordpress.org/plugins/beehiiv/'
 		);
 
-		seedConnected();
+		seedConnectedOffline();
 		await page.goto( SETTINGS_PATH );
 		docsLink = page.locator( '.beehiiv-connection-docs a' );
 		await expect( docsLink ).toBeVisible();
