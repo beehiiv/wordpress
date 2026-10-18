@@ -283,7 +283,7 @@ function BeehiivPostSettingsPanel() {
 				<PanelBody>
 					<PostSettingsNotice status="warning">
 						{ __(
-							'Pick a post template for this post.',
+							'Pick a post template for this post to send a test email.',
 							'beehiiv'
 						) }
 					</PostSettingsNotice>
