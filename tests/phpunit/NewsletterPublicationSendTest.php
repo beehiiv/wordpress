@@ -188,10 +188,14 @@ class NewsletterPublicationSendTest extends WP_UnitTestCase {
 	 * @return int Post ID.
 	 */
 	private function create_scheduled_linked_post( string $linked_publication, string $linked_template, array $meta = array() ): int {
-		$send_at = gmdate( 'Y-m-d\TH:i:s\Z', time() + DAY_IN_SECONDS );
+		// One timestamp for both values: a second boundary between two time()
+		// calls would make the send date later than the stored schedule, and the
+		// sender would then recreate the newsletter instead of updating it.
+		$send_ts = time() + DAY_IN_SECONDS;
+		$send_at = gmdate( 'Y-m-d\TH:i:s\Z', $send_ts );
 		$post_id = $this->create_post( $meta );
 
-		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER_DATE, get_date_from_gmt( gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS ), 'Y-m-d\TH:i:s' ) );
+		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER_DATE, get_date_from_gmt( gmdate( 'Y-m-d H:i:s', $send_ts ), 'Y-m-d\TH:i:s' ) );
 		update_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT, $send_at );
 		update_post_meta( $post_id, Meta::BEEHIIV_LINKED_PUBLICATION_ID, $linked_publication );
 		update_post_meta( $post_id, Meta::BEEHIIV_LINKED_POST_TEMPLATE_ID, $linked_template );
