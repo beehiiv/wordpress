@@ -45,10 +45,16 @@ final class EmailPreviewController {
 				'callback'            => [ self::class, 'preview' ],
 				'permission_callback' => [ self::class, 'permissions_check' ],
 				'args'                => [
-					'post_id' => [
+					'post_id'    => [
 						'required'          => true,
 						'type'              => 'integer',
 						'sanitize_callback' => 'absint',
+					],
+					'fetch_only' => [
+						'required'          => false,
+						'type'              => 'boolean',
+						'default'           => false,
+						'sanitize_callback' => 'rest_sanitize_boolean',
 					],
 				],
 			]
@@ -82,7 +88,10 @@ final class EmailPreviewController {
 	 */
 	public static function preview( WP_REST_Request $request ): WP_REST_Response {
 
-		$result = EmailPreview::render( absint( $request->get_param( 'post_id' ) ) );
+		$result = EmailPreview::render(
+			absint( $request->get_param( 'post_id' ) ),
+			(bool) $request->get_param( 'fetch_only' )
+		);
 
 		if ( is_wp_error( $result ) ) {
 			return new WP_REST_Response(
@@ -94,6 +103,7 @@ final class EmailPreviewController {
 			);
 		}
 
-		return new WP_REST_Response( $result, 200 );
+		// 202: beehiiv is still preparing the email; the editor asks again shortly.
+		return new WP_REST_Response( $result, isset( $result['processing'] ) ? 202 : 200 );
 	}
 }

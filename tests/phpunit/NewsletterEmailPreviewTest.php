@@ -77,7 +77,6 @@ class NewsletterEmailPreviewTest extends WP_UnitTestCase {
 		];
 
 		add_filter( 'pre_http_request', [ $this, 'stub_http' ], 10, 3 );
-		add_filter( 'beehiiv_email_preview_poll_interval', '__return_zero' );
 
 		TokenStore::save_tokens(
 			'qa-client',
@@ -101,7 +100,6 @@ class NewsletterEmailPreviewTest extends WP_UnitTestCase {
 
 	public function tear_down(): void {
 		remove_filter( 'pre_http_request', [ $this, 'stub_http' ], 10 );
-		remove_filter( 'beehiiv_email_preview_poll_interval', '__return_zero' );
 		TokenStore::delete_all();
 		delete_option( Config::OPTION_NAME );
 		wp_set_current_user( 0 );
@@ -315,22 +313,44 @@ class NewsletterEmailPreviewTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-006, AC-013: an email beehiiv is still preparing is retried, then reported as processing.
+	 * AC-006: an email beehiiv is still preparing returns `processing` at once, without waiting;
+	 * a follow-up fetch-only call returns the email without syncing the draft again.
 	 */
-	public function test_still_preparing_email_retries_then_reports_processing(): void {
+	public function test_still_preparing_email_returns_processing_then_fetch_only_completes(): void {
+		$ready = $this->responses[ 'GET /posts/' . self::DRAFT_ID ];
+
 		$this->responses[ 'GET /posts/' . self::DRAFT_ID ]['body'] = [ 'data' => [ 'content' => [ 'free' => [ 'email' => '' ] ] ] ];
 		$post_id = $this->create_post( 'draft', [ Meta::SEND_TO_NEWSLETTER => '1' ] );
 
+		$start  = microtime( true );
 		$result = EmailPreview::render( $post_id );
 
-		$this->assertSame( 'beehiiv_preview_processing', $result->get_error_code() );
-		$gets = array_filter(
+		$this->assertSame( [ 'processing' => true ], $result );
+		$this->assertLessThan( 1.0, microtime( true ) - $start, 'The request must not wait for beehiiv.' );
+
+		$this->requests                                    = [];
+		$this->responses[ 'GET /posts/' . self::DRAFT_ID ] = $ready;
+
+		$result = EmailPreview::render( $post_id, true );
+
+		$this->assertSame( '<html><body>Rendered</body></html>', $result['html'] );
+		$this->assertSame(
+			[ 'GET /workspaces/permissions', 'GET /posts/' . self::DRAFT_ID, 'GET /publications' ],
 			$this->request_log(),
-			static function ( $line ) {
-				return 'GET /posts/' . self::DRAFT_ID === $line;
-			}
+			'A fetch-only call never creates or updates the draft.'
 		);
-		$this->assertGreaterThan( 1, count( $gets ) );
+	}
+
+	/**
+	 * A fetch-only call without a linked draft is refused rather than creating one.
+	 */
+	public function test_fetch_only_without_a_linked_draft_is_refused(): void {
+		$post_id = $this->create_post( 'draft', [ Meta::SEND_TO_NEWSLETTER => '1' ] );
+
+		$result = EmailPreview::render( $post_id, true );
+
+		$this->assertWPError( $result );
+		$this->assertNotContains( 'POST /posts', $this->request_log() );
 	}
 
 	/**
@@ -453,6 +473,13 @@ class NewsletterEmailPreviewTest extends WP_UnitTestCase {
 		$ok = EmailPreviewController::preview( $request );
 		$this->assertSame( 200, $ok->get_status() );
 		$this->assertArrayHasKey( 'html', $ok->get_data() );
+
+		$this->responses[ 'GET /posts/' . self::DRAFT_ID ]['body'] = [ 'data' => [ 'content' => [ 'free' => [ 'email' => '' ] ] ] ];
+		$request->set_param( 'fetch_only', true );
+		$processing = EmailPreviewController::preview( $request );
+		$this->assertSame( 202, $processing->get_status() );
+		$this->assertSame( [ 'processing' => true ], $processing->get_data() );
+		$request->set_param( 'fetch_only', false );
 
 		delete_post_meta( $post_id, Meta::BEEHIIV_POST_ID );
 		delete_post_meta( $post_id, Meta::BEEHIIV_POST_STATE );

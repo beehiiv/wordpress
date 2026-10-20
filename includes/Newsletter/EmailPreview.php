@@ -27,73 +27,61 @@ defined( 'ABSPATH' ) || exit;
 final class EmailPreview {
 
 	/**
-	 * Seconds to wait between fetches while beehiiv prepares the email.
+	 * Sync the draft from the saved post and fetch the rendered email once.
 	 *
+	 * beehiiv may still be preparing a new email, so this never waits: when the email is
+	 * not ready it returns `processing`, and the editor polls with `$fetch_only` (no new
+	 * sync) until it is ready or it gives up. No PHP request is ever held open.
+	 *
+	 * @param int  $post_id    Post ID.
+	 * @param bool $fetch_only Only fetch the email of the already linked draft; skip the sync.
+	 * @return array{html: string, subject: string, preview_text: string, from_name: string}
+	 *     |array{processing: bool}|WP_Error
 	 * @since 1.0.0
 	 */
-	private const POLL_INTERVAL = 2;
-
-	/**
-	 * Fetch attempts before telling the publisher the email is still being prepared.
-	 *
-	 * @since 1.0.0
-	 */
-	private const MAX_ATTEMPTS = 4;
-
-	/**
-	 * Sync the draft from the saved post and return the rendered email HTML.
-	 *
-	 * @param int $post_id Post ID.
-	 * @return array{html: string, subject: string, preview_text: string, from_name: string}|WP_Error
-	 * @since 1.0.0
-	 */
-	public static function render( int $post_id ) {
+	public static function render( int $post_id, bool $fetch_only = false ) {
 		$eligibility = self::check_eligibility( $post_id );
 
 		if ( is_wp_error( $eligibility ) ) {
 			return $eligibility;
 		}
 
-		$synced = Sender::sync_preview_draft( $post_id );
+		if ( $fetch_only ) {
+			if ( ! Sender::is_draft_linked( $post_id ) ) {
+				return new WP_Error(
+					'beehiiv_preview_failed',
+					__( "Something went wrong and the preview couldn't load. Try again.", 'beehiiv' )
+				);
+			}
 
-		if ( is_wp_error( $synced ) ) {
-			return self::classify_sync_error( $synced );
+			$beehiiv_post_id = (string) get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true );
+		} else {
+			$synced = Sender::sync_preview_draft( $post_id );
+
+			if ( is_wp_error( $synced ) ) {
+				return self::classify_sync_error( $synced );
+			}
+
+			$beehiiv_post_id = $synced['beehiiv_post_id'];
 		}
 
 		$publication_id = PublicationResolver::get_linked_publication_id( $post_id );
-		$last_error     = null;
+		$result         = Posts::get_email_content( $publication_id, $beehiiv_post_id );
 
-		for ( $attempt = 1; $attempt <= self::MAX_ATTEMPTS; $attempt++ ) {
-			$result = Posts::get_email_content( $publication_id, $synced['beehiiv_post_id'] );
-
-			if ( ! $result['success'] ) {
-				$last_error = $result;
-				break;
-			}
-
-			if ( '' !== trim( $result['email_html'] ) ) {
-				return [
-					'html'         => $result['email_html'],
-					'subject'      => self::resolve_subject( $post_id, $result['subject'] ),
-					'preview_text' => self::resolve_preview_text( $post_id, $result['preview_text'] ),
-					'from_name'    => PublicationResolver::get_publication_name( $publication_id ),
-				];
-			}
-
-			if ( $attempt < self::MAX_ATTEMPTS ) {
-				$interval = (int) apply_filters( 'beehiiv_email_preview_poll_interval', self::POLL_INTERVAL );
-				sleep( $interval ); // phpcs:ignore WordPress.WP.AlternativeFunctions.sleep_sleep
-			}
+		if ( ! $result['success'] ) {
+			return self::classify_api_error( (string) $result['error'], $result['status_code'] );
 		}
 
-		if ( null !== $last_error ) {
-			return self::classify_api_error( (string) $last_error['error'], $last_error['status_code'] );
+		if ( '' === trim( $result['email_html'] ) ) {
+			return [ 'processing' => true ];
 		}
 
-		return new WP_Error(
-			'beehiiv_preview_processing',
-			__( 'beehiiv is still preparing this email. Try again in a moment.', 'beehiiv' )
-		);
+		return [
+			'html'         => $result['email_html'],
+			'subject'      => self::resolve_subject( $post_id, $result['subject'] ),
+			'preview_text' => self::resolve_preview_text( $post_id, $result['preview_text'] ),
+			'from_name'    => PublicationResolver::get_publication_name( $publication_id ),
+		];
 	}
 
 	/**

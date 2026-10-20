@@ -12,6 +12,12 @@ import apiFetch from '@wordpress/api-fetch';
 import { useBeehiivEditorConfig } from '../hooks/use-beehiiv-editor-config';
 import renderSettingsLinkMessage from '../utils/render-settings-link-message';
 
+// While beehiiv prepares a new email: up to MAX_ATTEMPTS fetches, POLL_INTERVAL_MS apart.
+const MAX_ATTEMPTS = 4;
+const POLL_INTERVAL_MS = 2000;
+
+const wait = ( ms ) => new Promise( ( resolve ) => setTimeout( resolve, ms ) );
+
 /**
  * Make the email view-only: links cannot be followed, even with the keyboard.
  * Scripts and forms are already blocked by the empty `sandbox` attribute.
@@ -72,48 +78,64 @@ export default function EmailPreview( { beehiivMeta } ) {
 
 	const needsSave = isNew || isDirty;
 
-	const load = () => {
+	const load = async () => {
 		const requestId = ++latestRequest.current;
+		const isCurrent = () => requestId === latestRequest.current;
 
 		setIsLoading( true );
 		setError( null );
 		setEmail( null );
 
-		apiFetch( {
-			path: '/beehiiv/v1/email-preview',
-			method: 'POST',
-			data: { post_id: postId },
-		} )
-			.then( ( data ) => {
-				if ( requestId === latestRequest.current ) {
-					setEmail(
-						data?.html
-							? {
-									html: data.html,
-									subject: data.subject ?? '',
-									previewText: data.preview_text ?? '',
-									fromName: data.from_name ?? '',
-							  }
-							: null
-					);
+		try {
+			// The first call syncs the draft; while beehiiv is still preparing the
+			// email, later calls only fetch it, so no request is held open.
+			for ( let attempt = 0; attempt < MAX_ATTEMPTS; attempt++ ) {
+				if ( attempt > 0 ) {
+					await wait( POLL_INTERVAL_MS );
 				}
-			} )
-			.catch( ( apiError ) => {
-				if ( requestId === latestRequest.current ) {
-					setError(
-						apiError?.message ||
-							__(
-								"Something went wrong and the preview couldn't load. Try again.",
-								'beehiiv'
-							)
-					);
+
+				const data = await apiFetch( {
+					path: '/beehiiv/v1/email-preview',
+					method: 'POST',
+					data: { post_id: postId, fetch_only: attempt > 0 },
+				} );
+
+				if ( ! isCurrent() ) {
+					return;
 				}
-			} )
-			.finally( () => {
-				if ( requestId === latestRequest.current ) {
-					setIsLoading( false );
+
+				if ( data?.html ) {
+					setEmail( {
+						html: data.html,
+						subject: data.subject ?? '',
+						previewText: data.preview_text ?? '',
+						fromName: data.from_name ?? '',
+					} );
+					return;
 				}
-			} );
+			}
+
+			setError(
+				__(
+					'beehiiv is still preparing this email. Try again in a moment.',
+					'beehiiv'
+				)
+			);
+		} catch ( apiError ) {
+			if ( isCurrent() ) {
+				setError(
+					apiError?.message ||
+						__(
+							"Something went wrong and the preview couldn't load. Try again.",
+							'beehiiv'
+						)
+				);
+			}
+		} finally {
+			if ( isCurrent() ) {
+				setIsLoading( false );
+			}
+		}
 	};
 
 	const open = () => {
