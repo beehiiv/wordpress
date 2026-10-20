@@ -601,12 +601,32 @@ final class Sender {
 		}
 
 		if ( self::is_draft_linked( $post->ID ) ) {
-			// Turning the toggle off removes the draft; saves never otherwise touch it.
+			// Turning the toggle off removes the draft.
 			if ( ! self::is_send_to_newsletter_enabled( $post->ID, $request ) ) {
 				self::delete_linked_draft( $post->ID );
+				return;
 			}
 
-			return;
+			// Saves of a post that is not published or scheduled never touch the draft.
+			if ( ! self::can_sync_newsletter( $post ) ) {
+				return;
+			}
+
+			// Publishing or scheduling replaces the draft with a real send, so the email
+			// is never left behind as an unsent draft. A failed cleanup is reported and retried.
+			self::clear_error( $post->ID );
+
+			if ( ! self::delete_linked_draft( $post->ID ) ) {
+				self::record_error(
+					$post->ID,
+					'send',
+					__(
+						"We couldn't replace the email draft in beehiiv. Try saving the post again.",
+						'beehiiv'
+					)
+				);
+				return;
+			}
 		}
 
 		if ( self::has_beehiiv_post_id( $post->ID ) ) {
@@ -1541,7 +1561,7 @@ final class Sender {
 		string $old_status,
 		WP_Post $post
 	): bool {
-		if ( self::has_beehiiv_post_id( $post->ID ) ) {
+		if ( self::has_beehiiv_post_id( $post->ID ) && ! self::is_draft_linked( $post->ID ) ) {
 			return false;
 		}
 

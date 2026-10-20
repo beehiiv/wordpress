@@ -303,6 +303,60 @@ class NewsletterPreviewDraftTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Publishing a post with a previewed draft replaces the draft with a real send, so the
+	 * email is never left behind as an unsent draft.
+	 */
+	public function test_publishing_replaces_the_draft_with_a_real_send(): void {
+		$post_id = $this->create_post( 'draft', [ Meta::SEND_TO_NEWSLETTER => '1' ] );
+		Sender::sync_preview_draft( $post_id );
+		$this->requests = [];
+
+		$this->responses['POST /posts'] = [
+			'status' => 201,
+			'body'   => [ 'data' => [ 'id' => 'post_sent_1' ] ],
+		];
+
+		wp_update_post(
+			[
+				'ID'          => $post_id,
+				'post_status' => 'publish',
+			]
+		);
+
+		$log = $this->request_log();
+		$this->assertContains( 'DELETE /posts/' . self::DRAFT_ID, $log );
+		$this->assertContains( 'POST /posts', $log );
+		$this->assertLessThan( array_search( 'POST /posts', $log, true ), array_search( 'DELETE /posts/' . self::DRAFT_ID, $log, true ) );
+		$this->assertSame( 'confirmed', $this->find_request( 'POST' )['body']['status'] );
+		$this->assertSame( 'post_sent_1', get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true ) );
+		$this->assertFalse( Sender::is_draft_linked( $post_id ) );
+	}
+
+	/**
+	 * A failed draft cleanup on publish is reported and keeps the draft link, so a later save retries.
+	 */
+	public function test_failed_draft_cleanup_on_publish_is_reported_and_retried(): void {
+		$post_id = $this->create_post( 'draft', [ Meta::SEND_TO_NEWSLETTER => '1' ] );
+		Sender::sync_preview_draft( $post_id );
+
+		$this->responses[ 'DELETE /posts/' . self::DRAFT_ID ] = [
+			'status' => 500,
+			'body'   => [],
+		];
+
+		wp_update_post(
+			[
+				'ID'          => $post_id,
+				'post_status' => 'publish',
+			]
+		);
+
+		$this->assertNotSame( '', get_post_meta( $post_id, Meta::NEWSLETTER_ERROR, true ) );
+		$this->assertTrue( Sender::is_draft_linked( $post_id ) );
+		$this->assertNotContains( 'confirmed', array_column( array_column( $this->requests, 'body' ), 'status' ) );
+	}
+
+	/**
 	 * AC-042: deleting the WordPress post deletes the draft.
 	 */
 	public function test_deleting_the_post_deletes_the_draft(): void {
