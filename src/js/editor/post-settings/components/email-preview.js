@@ -18,27 +18,35 @@ const POLL_INTERVAL_MS = 2000;
 
 const wait = ( ms ) => new Promise( ( resolve ) => setTimeout( resolve, ms ) );
 
-/**
- * Make the email view-only: links cannot be followed, even with the keyboard.
- * Scripts and forms are already blocked by the empty `sandbox` attribute.
- */
-const INERT_HEAD =
-	'<base target="_blank"><style>a,a *{pointer-events:none!important;cursor:default!important}</style>';
+const INERT_STYLE =
+	'a,a *,area{pointer-events:none!important;cursor:default!important}';
 
 /**
+ * Make the email view-only: links cannot be followed, even with the keyboard.
+ *
+ * Scripts, forms and popups are already blocked by the empty `sandbox` attribute; this
+ * removes link targets so the frame cannot navigate away from the email either.
+ *
  * @param {string} html Rendered email HTML from beehiiv.
  * @return {string} HTML with links made inert.
  */
 export function makeEmailInert( html ) {
-	return (
-		html.replace( /<a\b([^>]*)>/gi, ( match, attrs ) => {
-			const stripped = attrs.replace(
-				/\shref\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/i,
-				''
-			);
-			return `<a${ stripped }>`;
-		} ) + INERT_HEAD
-	);
+	// DOMParser builds an inert document: nothing in it loads or runs.
+	const doc = new window.DOMParser().parseFromString( html, 'text/html' );
+
+	doc.querySelectorAll( 'a[href], area[href]' ).forEach( ( link ) => {
+		link.removeAttribute( 'href' );
+	} );
+
+	const base = doc.createElement( 'base' );
+	base.setAttribute( 'target', '_blank' );
+	doc.head.prepend( base );
+
+	const style = doc.createElement( 'style' );
+	style.textContent = INERT_STYLE;
+	doc.head.append( style );
+
+	return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
 }
 
 /**

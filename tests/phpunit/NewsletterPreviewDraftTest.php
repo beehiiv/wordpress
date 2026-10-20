@@ -384,6 +384,52 @@ class NewsletterPreviewDraftTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A draft is recreated, not updated, when the post's template changes: the update API
+	 * cannot change a post's template.
+	 */
+	public function test_template_change_recreates_the_draft(): void {
+		$this->responses['GET /post_templates'] = [
+			'status' => 200,
+			'body'   => [
+				'data' => [
+					[
+						'id'   => 'tpl_default',
+						'name' => 'Default',
+					],
+					[
+						'id'   => 'tpl_other',
+						'name' => 'Other',
+					],
+				],
+			],
+		];
+
+		$post_id = $this->create_post( 'draft', [ Meta::SEND_TO_NEWSLETTER => '1' ] );
+		Sender::sync_preview_draft( $post_id );
+		$this->assertSame( 'tpl_default', get_post_meta( $post_id, Meta::BEEHIIV_LINKED_POST_TEMPLATE_ID, true ) );
+
+		// The same template updates in place.
+		$this->requests = [];
+		Sender::sync_preview_draft( $post_id );
+		$this->assertContains( 'PATCH /posts/' . self::DRAFT_ID, $this->request_log() );
+		$this->assertNotContains( 'POST /posts', $this->request_log() );
+
+		// A different template deletes and recreates the draft with the new template.
+		update_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, 'tpl_other' );
+		$this->requests = [];
+		$result         = Sender::sync_preview_draft( $post_id );
+
+		$this->assertIsArray( $result );
+		$this->assertTrue( $result['created'] );
+		$log = $this->request_log();
+		$this->assertContains( 'DELETE /posts/' . self::DRAFT_ID, $log );
+		$this->assertContains( 'POST /posts', $log );
+		$this->assertNotContains( 'PATCH /posts/' . self::DRAFT_ID, $log );
+		$this->assertSame( 'tpl_other', $this->find_request( 'POST' )['body']['post_template_id'] );
+		$this->assertSame( 'tpl_other', get_post_meta( $post_id, Meta::BEEHIIV_LINKED_POST_TEMPLATE_ID, true ) );
+	}
+
+	/**
 	 * AC-042: deleting the WordPress post deletes the draft.
 	 */
 	public function test_deleting_the_post_deletes_the_draft(): void {

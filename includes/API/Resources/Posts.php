@@ -84,20 +84,22 @@ final class Posts {
 	/**
 	 * Fetch a single post from a beehiiv publication.
 	 *
-	 * @param string $publication_id Publication ID.
-	 * @param string $post_id        beehiiv post ID.
-	 * @return array{success: bool, post: array<string, mixed>, error: string}
+	 * @param string      $publication_id Publication ID.
+	 * @param string      $post_id        beehiiv post ID.
+	 * @param string|null $expand         Optional `expand` value, for example `free_email_content`.
+	 * @return array{success: bool, post: array<string, mixed>, error: string, status_code: int|null}
 	 * @since x.x.x
 	 */
-	public static function get( string $publication_id, string $post_id ): array {
+	public static function get( string $publication_id, string $post_id, ?string $expand = null ): array {
 		$publication_id = trim( $publication_id );
 		$post_id        = trim( $post_id );
 
 		if ( '' === $publication_id || '' === $post_id ) {
 			return [
-				'success' => false,
-				'post'    => [],
-				'error'   => 'Publication ID or post ID is empty.',
+				'success'     => false,
+				'post'        => [],
+				'error'       => 'Publication ID or post ID is empty.',
+				'status_code' => null,
 			];
 		}
 
@@ -106,15 +108,16 @@ final class Posts {
 			rawurlencode( $publication_id ),
 			rawurlencode( $post_id )
 		);
-		$response = Client::request( $path );
+		$response = Client::request( $path, null === $expand ? [] : [ 'expand' => $expand ] );
 
 		$wp_error = Client::get_last_wp_error();
 
 		if ( null !== $wp_error ) {
 			return [
-				'success' => false,
-				'post'    => [],
-				'error'   => $wp_error,
+				'success'     => false,
+				'post'        => [],
+				'error'       => $wp_error,
+				'status_code' => null,
 			];
 		}
 
@@ -122,16 +125,18 @@ final class Posts {
 
 		if ( null !== $status_code && $status_code > 299 ) {
 			return [
-				'success' => false,
-				'post'    => [],
-				'error'   => self::format_error_message( $response, $status_code ),
+				'success'     => false,
+				'post'        => [],
+				'error'       => self::format_error_message( $response, $status_code ),
+				'status_code' => $status_code,
 			];
 		}
 
 		return [
-			'success' => true,
-			'post'    => isset( $response['data'] ) && is_array( $response['data'] ) ? $response['data'] : [],
-			'error'   => '',
+			'success'     => true,
+			'post'        => isset( $response['data'] ) && is_array( $response['data'] ) ? $response['data'] : [],
+			'error'       => '',
+			'status_code' => $status_code,
 		];
 	}
 
@@ -289,58 +294,32 @@ final class Posts {
 	 *     error: string,
 	 *     status_code: int|null
 	 * }
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	public static function get_email_content( string $publication_id, string $post_id ): array {
-		$publication_id = trim( $publication_id );
-		$post_id        = trim( $post_id );
-		$result         = [
+		$fetched = self::get( $publication_id, $post_id, 'free_email_content' );
+		$result  = [
 			'success'      => false,
 			'email_html'   => '',
 			'subject'      => '',
 			'preview_text' => '',
-			'error'        => '',
-			'status_code'  => null,
+			'error'        => $fetched['error'],
+			'status_code'  => $fetched['status_code'],
 		];
 
-		if ( '' === $publication_id || '' === $post_id ) {
-			$result['error'] = 'Publication ID or post ID is empty.';
+		if ( ! $fetched['success'] ) {
 			return $result;
 		}
 
-		$path     = sprintf(
-			'/publications/%s/posts/%s',
-			rawurlencode( $publication_id ),
-			rawurlencode( $post_id )
-		);
-		$response = Client::request( $path, [ 'expand' => 'free_email_content' ] );
-
-		$wp_error = Client::get_last_wp_error();
-
-		if ( null !== $wp_error ) {
-			$result['error'] = $wp_error;
-			return $result;
-		}
-
-		$status_code           = Client::get_last_status_code();
-		$result['status_code'] = $status_code;
-
-		if ( null !== $status_code && $status_code > 299 ) {
-			$result['error'] = self::format_error_message( $response, $status_code );
-			return $result;
-		}
-
-		$data    = isset( $response['data'] ) && is_array( $response['data'] ) ? $response['data'] : [];
-		$html    = $data['content']['free']['email'] ?? '';
-		$subject = self::first_non_empty( [ $data['email_settings']['email_subject_line'] ?? '' ] );
-		$preview = self::first_non_empty(
-			[ $data['email_settings']['email_preview_text'] ?? '', $data['subtitle'] ?? '' ]
-		);
+		$data = $fetched['post'];
+		$html = $data['content']['free']['email'] ?? '';
 
 		$result['success']      = true;
 		$result['email_html']   = is_string( $html ) ? $html : '';
-		$result['subject']      = $subject;
-		$result['preview_text'] = $preview;
+		$result['subject']      = self::first_non_empty( [ $data['email_settings']['email_subject_line'] ?? '' ] );
+		$result['preview_text'] = self::first_non_empty(
+			[ $data['email_settings']['email_preview_text'] ?? '', $data['subtitle'] ?? '' ]
+		);
 
 		return $result;
 	}
@@ -474,7 +453,7 @@ final class Posts {
 	 *
 	 * @param array<int, mixed> $values Candidate values in priority order.
 	 * @return string
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	private static function first_non_empty( array $values ): string {
 		foreach ( $values as $value ) {

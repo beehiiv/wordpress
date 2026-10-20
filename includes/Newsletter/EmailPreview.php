@@ -29,8 +29,8 @@ final class EmailPreview {
 	/**
 	 * Sync the draft from the saved post and fetch the rendered email once.
 	 *
-	 * beehiiv may still be preparing a new email, so this never waits: when the email is
-	 * not ready it returns `processing`, and the editor polls with `$fetch_only` (no new
+	 * A new email can still be in preparation at beehiiv, so this never waits: when the email
+	 * is not ready it returns `processing`, and the editor polls with `$fetch_only` (no new
 	 * sync) until it is ready or it gives up. No PHP request is ever held open.
 	 *
 	 * @param int  $post_id    Post ID.
