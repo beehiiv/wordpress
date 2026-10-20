@@ -81,6 +81,11 @@ final class PostSettings {
 			'default'  => '',
 			'readonly' => true,
 		],
+		Meta::BEEHIIV_POST_STATE             => [
+			'type'     => 'string',
+			'default'  => '',
+			'readonly' => true,
+		],
 		Meta::NEWSLETTER_ERROR               => [
 			'type'     => 'string',
 			'default'  => '',
@@ -359,6 +364,7 @@ final class PostSettings {
 				Meta::BEEHIIV_POST_ID,
 				Meta::BEEHIIV_SCHEDULED_AT,
 				Meta::BEEHIIV_PUBLICATION_ID,
+				Meta::BEEHIIV_POST_STATE,
 				Meta::SEND_TO_NEWSLETTER,
 				Meta::NEWSLETTER_ERROR,
 				Meta::NEWSLETTER_ERROR_TYPE,

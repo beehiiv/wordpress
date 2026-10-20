@@ -275,6 +275,77 @@ final class Posts {
 	}
 
 	/**
+	 * Read a post together with its rendered free email content.
+	 *
+	 * @link https://developers.beehiiv.com/api-reference/posts/show
+	 *
+	 * @param string $publication_id Publication ID.
+	 * @param string $post_id        beehiiv post ID.
+	 * @return array{
+	 *     success: bool,
+	 *     email_html: string,
+	 *     subject: string,
+	 *     preview_text: string,
+	 *     error: string,
+	 *     status_code: int|null
+	 * }
+	 * @since 1.0.0
+	 */
+	public static function get_email_content( string $publication_id, string $post_id ): array {
+		$publication_id = trim( $publication_id );
+		$post_id        = trim( $post_id );
+		$result         = [
+			'success'      => false,
+			'email_html'   => '',
+			'subject'      => '',
+			'preview_text' => '',
+			'error'        => '',
+			'status_code'  => null,
+		];
+
+		if ( '' === $publication_id || '' === $post_id ) {
+			$result['error'] = 'Publication ID or post ID is empty.';
+			return $result;
+		}
+
+		$path     = sprintf(
+			'/publications/%s/posts/%s',
+			rawurlencode( $publication_id ),
+			rawurlencode( $post_id )
+		);
+		$response = Client::request( $path, [ 'expand' => 'free_email_content' ] );
+
+		$wp_error = Client::get_last_wp_error();
+
+		if ( null !== $wp_error ) {
+			$result['error'] = $wp_error;
+			return $result;
+		}
+
+		$status_code           = Client::get_last_status_code();
+		$result['status_code'] = $status_code;
+
+		if ( null !== $status_code && $status_code > 299 ) {
+			$result['error'] = self::format_error_message( $response, $status_code );
+			return $result;
+		}
+
+		$data    = isset( $response['data'] ) && is_array( $response['data'] ) ? $response['data'] : [];
+		$html    = $data['content']['free']['email'] ?? '';
+		$subject = self::first_non_empty( [ $data['email_settings']['email_subject_line'] ?? '' ] );
+		$preview = self::first_non_empty(
+			[ $data['email_settings']['email_preview_text'] ?? '', $data['subtitle'] ?? '' ]
+		);
+
+		$result['success']      = true;
+		$result['email_html']   = is_string( $html ) ? $html : '';
+		$result['subject']      = $subject;
+		$result['preview_text'] = $preview;
+
+		return $result;
+	}
+
+	/**
 	 * Send a test email of a beehiiv post to one or more addresses.
 	 *
 	 * @link https://developers.beehiiv.com/api-reference/posts/test-send
@@ -396,6 +467,23 @@ final class Posts {
 			'success' => true,
 			'error'   => '',
 		];
+	}
+
+	/**
+	 * First value that is a non-empty string, or an empty string.
+	 *
+	 * @param array<int, mixed> $values Candidate values in priority order.
+	 * @return string
+	 * @since 1.0.0
+	 */
+	private static function first_non_empty( array $values ): string {
+		foreach ( $values as $value ) {
+			if ( is_string( $value ) && '' !== trim( $value ) ) {
+				return $value;
+			}
+		}
+
+		return '';
 	}
 
 	/**
