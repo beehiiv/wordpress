@@ -351,7 +351,7 @@ class NewsletterPublicationSendTest extends WP_UnitTestCase {
 	 * AC-014: changing the publication of a scheduled, unsent post moves it.
 	 */
 	public function test_publication_change_moves_scheduled_post(): void {
-		$post_id = $this->create_scheduled_linked_post(
+		$post_id      = $this->create_scheduled_linked_post(
 			'pub_default',
 			'tpl_default',
 			array(
@@ -418,7 +418,7 @@ class NewsletterPublicationSendTest extends WP_UnitTestCase {
 	 * R-002: when the new post cannot be created, the post is never left linked to the deleted one.
 	 */
 	public function test_failed_move_clears_link(): void {
-		$post_id = $this->create_scheduled_linked_post(
+		$post_id             = $this->create_scheduled_linked_post(
 			'pub_default',
 			'tpl_default',
 			array(

@@ -10,6 +10,7 @@ namespace Beehiiv\Newsletter;
 use Beehiiv\API\Resources\Posts;
 use Beehiiv\Connection\Manager;
 use Beehiiv\Editor\Meta;
+use WP_Error;
 use WP_Post;
 use WP_REST_Request;
 
