@@ -5,7 +5,17 @@
 	"themes": [ "https://downloads.wordpress.org/theme/twentytwentyfive.zip" ],
 	"config": {
 		"WP_DEBUG": true,
-		"SCRIPT_DEBUG": true
+		"SCRIPT_DEBUG": true,
+		"AUTOMATIC_UPDATER_DISABLED": true
 	},
-	"testsEnvironment": false
+	"port": 8890,
+	"testsEnvironment": true,
+	"env": {
+		"tests": {
+			"port": 8891,
+			"mappings": {
+				"wp-content/mu-plugins": "./tests/e2e/plugins"
+			}
+		}
+	}
 }

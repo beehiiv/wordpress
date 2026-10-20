@@ -30,12 +30,13 @@ final class PostSettingsBuilder {
 	/**
 	 * Create beehiiv post settings array for the WordPress post.
 	 *
-	 * @param int  $post_id    Post ID.
-	 * @param bool $for_update When true, omit schedule validation and `scheduled_at` (used for linked-post updates).
+	 * @param int         $post_id        Post ID.
+	 * @param bool        $for_update     When true, omit schedule validation and `scheduled_at` (linked-post updates).
+	 * @param string|null $publication_id Publication the payload is for. Defaults to the post's resolved publication.
 	 * @return array<string, mixed>|WP_Error beehiiv post settings or error.
 	 * @since 1.0.0
 	 */
-	public static function get_post_settings( int $post_id, bool $for_update = false ) {
+	public static function get_post_settings( int $post_id, bool $for_update = false, ?string $publication_id = null ) {
 		$post_object = get_post( $post_id );
 
 		if ( ! $post_object instanceof WP_Post ) {
@@ -45,7 +46,25 @@ final class PostSettingsBuilder {
 			);
 		}
 
-		$post_template_id = self::get_post_template_id( $post_id );
+		if ( null === $publication_id ) {
+			$publication_id = PublicationResolver::resolve_for_post( $post_id );
+		}
+
+		if ( '' === $publication_id ) {
+			return new WP_Error(
+				'beehiiv_publication_missing',
+				sprintf( 'No beehiiv publication is chosen for post ID: %d.', $post_id )
+			);
+		}
+
+		$post_template_id = self::resolve_post_template_id( $post_id, $publication_id );
+
+		if ( '' === $post_template_id && PublicationResolver::get_default_publication_id() !== $publication_id ) {
+			return new WP_Error(
+				'beehiiv_post_template_required',
+				sprintf( 'No post template is chosen for this post\'s publication (post ID: %d).', $post_id )
+			);
+		}
 
 		if ( '' === $post_template_id ) {
 			return new WP_Error(
@@ -87,7 +106,8 @@ final class PostSettingsBuilder {
 		$thumbnail_image_url = get_the_post_thumbnail_url( $post_object, 'full' );
 		$thumbnail_image_url = is_string( $thumbnail_image_url ) ? $thumbnail_image_url : '';
 
-		$post_title = html_entity_decode( get_the_title( $post_object ) );
+		$post_title          = html_entity_decode( get_the_title( $post_object ) );
+		$show_title_in_email = self::should_show_title_in_email( $post_id );
 
 		$settings = [
 			'post_template_id'    => $post_template_id,
@@ -96,10 +116,10 @@ final class PostSettingsBuilder {
 			'status'              => 'confirmed',
 			'thumbnail_image_url' => '' !== $thumbnail_image_url ? $thumbnail_image_url : '',
 			'email_settings'      => [
-				'email_subject_line'        => $post_title,
-				'display_title_in_email'    => true,
+				'email_subject_line'        => self::get_newsletter_title( $post_id, $post_title ),
+				'display_title_in_email'    => $show_title_in_email,
 				'display_byline_in_email'   => false,
-				'display_subtitle_in_email' => false,
+				'display_subtitle_in_email' => $show_title_in_email,
 			],
 			'web_settings'        => [
 				'slug'                     => $post_object->post_name,
@@ -108,7 +128,21 @@ final class PostSettingsBuilder {
 			'social_share'        => 'none',
 		];
 
+		$subtitle = self::get_newsletter_subtitle( $post_id );
+
+		if ( '' !== $subtitle ) {
+			$settings['subtitle'] = $subtitle;
+		}
+
+		$settings['seo_settings'] = SeoMetadata::resolve( $post_object );
+		$settings['content_tags'] = self::get_content_tags( $post_object );
+
 		if ( ! $for_update ) {
+			// Nothing to clear on a first send, so an empty tag list is left out.
+			if ( empty( $settings['content_tags'] ) ) {
+				unset( $settings['content_tags'] );
+			}
+
 			$scheduled_at = self::convert_send_date_to_scheduled_at_utc( $post_object );
 
 			if ( is_wp_error( $scheduled_at ) ) {
@@ -139,15 +173,16 @@ final class PostSettingsBuilder {
 	 * {@see Sender::reschedule_linked_post()} recreates the beehiiv post because the API
 	 * does not allow updating `scheduled_at` on confirmed posts.
 	 *
-	 * @param int $post_id Post ID.
+	 * @param int         $post_id        Post ID.
+	 * @param string|null $publication_id Publication the payload is for. Defaults to the post's resolved publication.
 	 * @return array{
 	 *     payload: array<string, mixed>,
 	 *     meta: array{scheduled_at: string|null, clear_custom_date: bool}
 	 * }|WP_Error
 	 * @since 1.0.0
 	 */
-	public static function build_update( int $post_id ) {
-		$settings = self::get_post_settings( $post_id, true );
+	public static function build_update( int $post_id, ?string $publication_id = null ) {
+		$settings = self::get_post_settings( $post_id, true, $publication_id );
 
 		if ( is_wp_error( $settings ) ) {
 			return $settings;
@@ -169,7 +204,17 @@ final class PostSettingsBuilder {
 			'email_settings'      => $settings['email_settings'],
 			'web_settings'        => $settings['web_settings'],
 			'social_share'        => $settings['social_share'],
+			'content_tags'        => $settings['content_tags'],
+			'seo_settings'        => $settings['seo_settings'],
 		];
+
+		if ( isset( $settings['subtitle'] ) ) {
+			$payload['subtitle'] = $settings['subtitle'];
+		} elseif ( self::has_synced_subtitle( $post_id ) ) {
+			// The update API leaves omitted fields unchanged, so a subtitle cleared in
+			// WordPress is removed in beehiiv by sending it empty.
+			$payload['subtitle'] = '';
+		}
 
 		$schedule = self::resolve_update_scheduled_at( $post_object );
 
@@ -217,6 +262,51 @@ final class PostSettingsBuilder {
 		}
 
 		return $update['payload'];
+	}
+
+	/**
+	 * Whether a non-empty subtitle was last synced to the linked beehiiv post.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since x.x.x
+	 */
+	private static function has_synced_subtitle( int $post_id ): bool {
+		$synced = get_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE, true );
+
+		return is_string( $synced ) && '' !== $synced;
+	}
+
+	/**
+	 * WordPress tag names for the beehiiv `content_tags` field.
+	 *
+	 * Always returns a list so beehiiv's tags match WordPress, including clearing them when
+	 * the post has no tags.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return array<int, string>
+	 * @since x.x.x
+	 */
+	private static function get_content_tags( WP_Post $post ): array {
+		$names = wp_get_post_tags( $post->ID, [ 'fields' => 'names' ] );
+
+		if ( ! is_array( $names ) ) {
+			return [];
+		}
+
+		return array_values(
+			array_filter(
+				array_map(
+					static function ( $name ): string {
+						return is_scalar( $name ) ? html_entity_decode( (string) $name, ENT_QUOTES, 'UTF-8' ) : '';
+					},
+					$names
+				),
+				static function ( string $name ): bool {
+					return '' !== $name;
+				}
+			)
+		);
 	}
 
 	/**
@@ -288,7 +378,7 @@ final class PostSettingsBuilder {
 			return null;
 		}
 
-		$publication_id = self::get_publication_id();
+		$publication_id = self::get_ad_publication_id();
 
 		if ( '' === $publication_id ) {
 			return null;
@@ -344,38 +434,95 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Post template for the post: post meta when set and valid, else plugin default.
+	 * Post template for the post in a publication.
 	 *
-	 * @since 1.0.0
+	 * The post's own template when it exists in that publication. Otherwise the
+	 * plugin default template, but only for the site-wide default publication,
+	 * which is the only publication that has a default template. Empty when
+	 * neither applies.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $post_id        Post ID.
+	 * @param string $publication_id Publication ID.
+	 *
+	 * @return string
+	 */
+	public static function resolve_post_template_id( int $post_id, string $publication_id ): string {
+
+		$post_template_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, true );
+		$post_template_id = is_string( $post_template_id ) ? trim( $post_template_id ) : '';
+
+		if ( '' !== $post_template_id && self::post_template_exists( $post_template_id, $publication_id ) ) {
+			return $post_template_id;
+		}
+
+		if ( '' !== $publication_id && PublicationResolver::get_default_publication_id() === $publication_id ) {
+			return self::get_site_post_template_id();
+		}
+
+		return '';
+	}
+
+	/**
+	 * Email subject line for the post: its newsletter title, or the post title when empty.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int    $post_id    Post ID.
+	 * @param string $post_title Decoded WordPress post title.
+	 *
+	 * @return string
+	 */
+	private static function get_newsletter_title( int $post_id, string $post_title ): string {
+
+		$newsletter_title = get_post_meta( $post_id, Meta::NEWSLETTER_TITLE, true );
+		$newsletter_title = is_string( $newsletter_title ) ? trim( $newsletter_title ) : '';
+
+		return '' !== $newsletter_title ? html_entity_decode( $newsletter_title ) : $post_title;
+	}
+
+	/**
+	 * Subtitle for the beehiiv post: its newsletter subtitle, or empty for none.
+	 *
+	 * @since x.x.x
 	 *
 	 * @param int $post_id Post ID.
 	 *
 	 * @return string
 	 */
-	private static function get_post_template_id( int $post_id ): string {
+	private static function get_newsletter_subtitle( int $post_id ): string {
 
-		$post_template_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, true );
-		$post_template_id = is_string( $post_template_id ) ? trim( $post_template_id ) : '';
+		$subtitle = get_post_meta( $post_id, Meta::NEWSLETTER_SUBTITLE, true );
 
-		if ( '' !== $post_template_id && self::post_template_exists( $post_template_id ) ) {
-			return $post_template_id;
-		}
-
-		return self::get_site_post_template_id();
+		return is_string( $subtitle ) ? html_entity_decode( trim( $subtitle ) ) : '';
 	}
 
 	/**
-	 * Whether a template ID exists for the configured publication.
+	 * Whether the beehiiv email shows the title and subtitle: the post's choice, hidden when never set.
 	 *
-	 * @since 1.0.0
+	 * @since x.x.x
 	 *
-	 * @param string $template_id Template ID.
+	 * @param int $post_id Post ID.
 	 *
 	 * @return bool
 	 */
-	private static function post_template_exists( string $template_id ): bool {
+	private static function should_show_title_in_email( int $post_id ): bool {
 
-		$publication_id = self::get_publication_id();
+		return rest_sanitize_boolean( get_post_meta( $post_id, Meta::NEWSLETTER_SHOW_TITLE_IN_EMAIL, true ) );
+	}
+
+	/**
+	 * Whether a template ID exists in a publication.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $template_id    Template ID.
+	 * @param string $publication_id Publication ID.
+	 *
+	 * @return bool
+	 */
+	private static function post_template_exists( string $template_id, string $publication_id ): bool {
 
 		if ( '' === $publication_id ) {
 			return false;
@@ -392,13 +539,16 @@ final class PostSettingsBuilder {
 	}
 
 	/**
-	 * Configured beehiiv publication ID.
+	 * Publication used to validate Advertisement blocks.
+	 *
+	 * Advertisements stay on the site-wide default publication until per-post
+	 * publications are decided for ads (PRD-06.8.02 Q-001).
 	 *
 	 * @since 1.0.0
 	 *
 	 * @return string
 	 */
-	private static function get_publication_id(): string {
+	private static function get_ad_publication_id(): string {
 
 		$settings = Options::get();
 
@@ -732,7 +882,7 @@ final class PostSettingsBuilder {
 	 * @return int|null Timestamp, or null when empty or invalid.
 	 * @since 1.0.0
 	 */
-	private static function utc_scheduled_at_to_timestamp( string $scheduled_at ): ?int {
+	public static function utc_scheduled_at_to_timestamp( string $scheduled_at ): ?int {
 		if ( '' === $scheduled_at ) {
 			return null;
 		}

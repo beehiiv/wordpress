@@ -42,6 +42,13 @@ final class Client {
 	private static $allow_retry = true;
 
 	/**
+	 * Retry-After header from the most recent response, in seconds, if any.
+	 *
+	 * @var int|null
+	 */
+	private static $last_retry_after = null;
+
+	/**
 	 * HTTP timeout in seconds for beehiiv API requests.
 	 *
 	 * @since 1.0.0
@@ -51,13 +58,14 @@ final class Client {
 	/**
 	 * Make an authenticated GET request to beehiiv v2.
 	 *
-	 * @param string              $path Relative API path (e.g. `/publications`).
-	 * @param array<string,mixed> $query Query parameters.
+	 * @param string              $path    Relative API path (e.g. `/publications`).
+	 * @param array<string,mixed> $query   Query parameters.
+	 * @param int                 $timeout HTTP timeout in seconds; 0 uses the default.
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
-	public static function request( string $path, array $query = [] ): array {
-		return self::send( 'GET', $path, $query, null );
+	public static function request( string $path, array $query = [], int $timeout = 0 ): array {
+		return self::send( 'GET', $path, $query, null, $timeout );
 	}
 
 	/**
@@ -78,6 +86,16 @@ final class Client {
 	 */
 	public static function get_last_wp_error(): ?string {
 		return self::$last_wp_error;
+	}
+
+	/**
+	 * Retry-After header from the most recent response, in seconds.
+	 *
+	 * @return int|null Null when the response had no numeric Retry-After header.
+	 * @since 1.0.0
+	 */
+	public static function get_last_retry_after(): ?int {
+		return self::$last_retry_after;
 	}
 
 	/**
@@ -125,10 +143,11 @@ final class Client {
 	 * @param string                   $path   Relative API path.
 	 * @param array<string,mixed>      $query  Query parameters.
 	 * @param array<string,mixed>|null $body   JSON body for POST and PATCH; null for GET and DELETE.
+	 * @param int                      $timeout HTTP timeout in seconds; 0 uses the default.
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
-	private static function send( string $method, string $path, array $query, ?array $body ): array {
+	private static function send( string $method, string $path, array $query, ?array $body, int $timeout = 0 ): array {
 
 		$access_token = Manager::get_access_token();
 		$url          = OAuthConfig::get_api_base_url() . $path;
@@ -139,7 +158,7 @@ final class Client {
 
 		$args = [
 			'method'    => $method,
-			'timeout'   => self::REQUEST_TIMEOUT,
+			'timeout'   => $timeout > 0 ? $timeout : self::REQUEST_TIMEOUT,
 			'sslverify' => OAuthConfig::should_verify_ssl(),
 			'headers'   => [
 				'Authorization' => 'Bearer ' . $access_token,
@@ -157,6 +176,10 @@ final class Client {
 		self::$last_status_code = is_wp_error( $res ) ? null : (int) wp_remote_retrieve_response_code( $res );
 		self::$last_wp_error    = is_wp_error( $res ) ? $res->get_error_message() : null;
 
+		self::$last_retry_after = is_wp_error( $res )
+			? null
+			: self::parse_retry_after( wp_remote_retrieve_header( $res, 'retry-after' ) );
+
 		$raw  = is_wp_error( $res ) ? '' : (string) wp_remote_retrieve_body( $res );
 		$json = json_decode( $raw, true );
 
@@ -165,12 +188,35 @@ final class Client {
 			$refreshed         = TokenRefresher::refresh();
 
 			if ( ! is_wp_error( $refreshed ) ) {
-				return self::send( $method, $path, $query, $body );
+				return self::send( $method, $path, $query, $body, $timeout );
 			}
 		}
 
 		self::$allow_retry = true;
 
 		return is_array( $json ) ? $json : [];
+	}
+
+	/**
+	 * Seconds to wait from a Retry-After header, given as seconds or as an HTTP date.
+	 *
+	 * @param string|array<int,string> $value Header value.
+	 * @return int|null Seconds (0 or more), or null when absent or unparsable.
+	 * @since 1.0.0
+	 */
+	private static function parse_retry_after( $value ): ?int {
+		$value = is_array( $value ) ? (string) reset( $value ) : trim( (string) $value );
+
+		if ( '' === $value ) {
+			return null;
+		}
+
+		if ( is_numeric( $value ) ) {
+			return max( 0, (int) $value );
+		}
+
+		$timestamp = strtotime( $value );
+
+		return false === $timestamp ? null : max( 0, $timestamp - time() );
 	}
 }

@@ -68,6 +68,22 @@ Without Doppler, define the same constants in `wp-config.php`, or put them in a 
 
 If your local app uses HTTPS with a private CA, set `BEEHIIV_SSLVERIFY` to `false` (or install that CA in the WordPress container). PHP’s cURL does not trust host mkcert/Caddy CAs by default.
 
+### Backward-compatibility testing (wp-env)
+
+Point wp-env at a specific PHP / WordPress core version to check compatibility with older or newer combinations than your default local setup, and get an HTML dashboard for that combination:
+
+```bash
+npm run test:compat -- --php=8.1 --wp=6.8
+```
+
+That pins wp-env to PHP 8.1 / WP 6.8 (leaving it set for subsequent `npm run env:start` runs — clear with `npm run env:set-version -- --clear`), **destroys and recreates the wp-env environment** so the combination starts from a genuinely clean install, runs PHPUnit, and writes `tests/phpunit/test-results/php8.1-wp6.8/dashboard.html` — pass/fail counts, a per-class breakdown, and failure details. Run it again with different `--php`/`--wp` values to get a separate dashboard per combination; nothing gets overwritten. `--wp` accepts a WordPress.org release number (e.g. `6.8`), `latest` (wp-env's own default), or `nightly`.
+
+⚠️ `test:compat` deletes your current wp-env database and content for this project (`wp-env destroy`) every time it runs. Only use it against a wp-env instance you're fine wiping — not one with dev content you want to keep.
+
+To only change the pinned version without wiping anything, use `npm run env:set-version -- --php=8.1 --wp=6.8` directly — it writes to the gitignored `.wp-env.override.json`, so it never touches tracked config, and wp-env rebuilds the WordPress core files (not the database) the next time it starts. Because the database is left as-is, wp-admin will show the "database needs to be updated" screen after switching to a different WP version; run `npm run env:destroy` first if you want a clean database for manual browsing too. `npm run test:php:report` regenerates a dashboard from an existing JUnit report (e.g. after `composer test`) without re-running anything.
+
+CI runs the full PHP × WP matrix on every PR (see `.github/workflows/test.yml`) and uploads one `phpunit-report-php{X}-wp{Y}` dashboard artifact per combination.
+
 ## Development Commands
 
 | Command                     | Purpose                                              |
@@ -77,8 +93,11 @@ If your local app uses HTTPS with a private CA, set `BEEHIIV_SSLVERIFY` to `fals
 | `npm run env:start`         | Start wp-env (+ optional extra_hosts overlay)        |
 | `npm run env:start:doppler` | Start with Doppler-mounted OAuth/API overrides       |
 | `npm run env:hosts`         | Re-apply `docker-compose.extra-hosts.yml` if present |
+| `npm run env:set-version`   | Pin wp-env's PHP/WP core version (`--php` / `--wp`)  |
 | `npm run env:stop`          | Stop wp-env                                          |
 | `npm run env:destroy`       | Tear down wp-env                                     |
+| `npm run test:compat`       | Run PHPUnit for one PHP/WP combo + its own dashboard |
+| `npm run test:php:report`   | Regenerate a PHPUnit dashboard from an existing run  |
 | `npm run lint`              | Lint JS, CSS, and PHP (or individually)              |
 
 ## Project layout
