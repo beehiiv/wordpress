@@ -46,6 +46,20 @@ final class Sender {
 	private const SENT_SAFETY_MARGIN = 60;
 
 	/**
+	 * Option name prefix for the per-post preview lock.
+	 *
+	 * @since x.x.x
+	 */
+	private const PREVIEW_LOCK_PREFIX = 'beehiiv_preview_lock_';
+
+	/**
+	 * Seconds after which a preview lock counts as abandoned.
+	 *
+	 * @since x.x.x
+	 */
+	private const PREVIEW_LOCK_SECONDS = 60;
+
+	/**
 	 * Meta keys that lock once beehiiv has sent the newsletter.
 	 *
 	 * @since x.x.x
@@ -402,6 +416,68 @@ final class Sender {
 	 * @since x.x.x
 	 */
 	public static function sync_preview_draft( int $post_id ) {
+		if ( ! self::acquire_preview_lock( $post_id ) ) {
+			return new WP_Error(
+				'beehiiv_preview_in_progress',
+				__( 'A preview of this post is already being prepared. Try again in a moment.', 'beehiiv' )
+			);
+		}
+
+		try {
+			return self::sync_preview_draft_locked( $post_id );
+		} finally {
+			self::release_preview_lock( $post_id );
+		}
+	}
+
+	/**
+	 * Take the per-post preview lock so two simultaneous previews cannot both create a draft.
+	 *
+	 * Uses an option insert, which is atomic in the database. A lock older than
+	 * {@see PREVIEW_LOCK_SECONDS} is treated as abandoned and taken over.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool Whether the lock was acquired.
+	 * @since x.x.x
+	 */
+	private static function acquire_preview_lock( int $post_id ): bool {
+		$key = self::PREVIEW_LOCK_PREFIX . $post_id;
+
+		if ( add_option( $key, time(), '', false ) ) {
+			return true;
+		}
+
+		$taken_at = (int) get_option( $key, 0 );
+
+		if ( $taken_at > time() - self::PREVIEW_LOCK_SECONDS ) {
+			return false;
+		}
+
+		// Abandoned lock: replace it, then re-check that this request holds it.
+		delete_option( $key );
+
+		return add_option( $key, time(), '', false );
+	}
+
+	/**
+	 * Release the per-post preview lock.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 * @since x.x.x
+	 */
+	private static function release_preview_lock( int $post_id ): void {
+		delete_option( self::PREVIEW_LOCK_PREFIX . $post_id );
+	}
+
+	/**
+	 * Create or update the Preview draft; the caller holds the preview lock.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array{beehiiv_post_id: string, created: bool}|WP_Error
+	 * @since x.x.x
+	 */
+	private static function sync_preview_draft_locked( int $post_id ) {
 		$post = get_post( $post_id );
 
 		if ( ! $post instanceof WP_Post || self::POST_TYPE !== $post->post_type ) {

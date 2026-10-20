@@ -231,6 +231,33 @@ class NewsletterPreviewDraftTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A preview that starts while another is in flight is refused, so only one beehiiv draft
+	 * is ever created; the lock is released afterwards, and an abandoned lock is taken over.
+	 */
+	public function test_simultaneous_previews_create_only_one_draft(): void {
+		$post_id = $this->create_post( 'draft', [ Meta::SEND_TO_NEWSLETTER => '1' ] );
+
+		// Another request holds the lock.
+		add_option( 'beehiiv_preview_lock_' . $post_id, time(), '', false );
+
+		$result = Sender::sync_preview_draft( $post_id );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'beehiiv_preview_in_progress', $result->get_error_code() );
+		$this->assertSame( [], $this->requests );
+		$this->assertSame( '', get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true ) );
+
+		// An abandoned (stale) lock is taken over.
+		update_option( 'beehiiv_preview_lock_' . $post_id, time() - 3600 );
+
+		$result = Sender::sync_preview_draft( $post_id );
+
+		$this->assertIsArray( $result );
+		$this->assertFalse( get_option( 'beehiiv_preview_lock_' . $post_id ), 'The lock is released after the sync.' );
+		$this->assertSame( [ 'POST /posts' ], $this->request_log() );
+	}
+
+	/**
 	 * AC-038: a later Preview updates the same beehiiv post and never confirms it.
 	 */
 	public function test_second_preview_updates_same_draft(): void {
