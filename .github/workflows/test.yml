@@ -21,8 +21,8 @@ jobs:
       fail-fast: false
       matrix:
         # Keep in sync with "Requires PHP" / "Requires at least" in readme.txt.
-        php-version: ["7.4", "8.0", "8.1", "8.2", "8.3"]
-        wp-version: ["6.8", "latest"]
+        php-version: ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4", "8.5"]
+        wp-version: ["6.8", "6.9", "7.0", "latest"]
 
     steps:
       - name: Checkout
@@ -58,7 +58,7 @@ jobs:
         run: npx wp-env start
 
       - name: Run PHPUnit
-        run: npx wp-env run tests-cli -- bash -c "cd wp-content/plugins/$(basename "$GITHUB_WORKSPACE") && composer test"
+        run: npx wp-env run tests-cli -- bash -c "cd wp-content/plugins/$(basename "$GITHUB_WORKSPACE") && composer test:unit"
 
       - name: Generate PHPUnit dashboard
         if: always()
