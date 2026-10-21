@@ -59,6 +59,13 @@ final class PostSettingsBuilder {
 
 		$post_template_id = self::resolve_post_template_id( $post_id, $publication_id );
 
+		if ( '' === $post_template_id && self::is_template_choice_required( $post_id ) ) {
+			return new WP_Error(
+				'beehiiv_post_template_choice_required',
+				sprintf( 'An editor must choose a post template before post ID: %d is sent.', $post_id )
+			);
+		}
+
 		if ( '' === $post_template_id && PublicationResolver::get_default_publication_id() !== $publication_id ) {
 			return new WP_Error(
 				'beehiiv_post_template_required',
@@ -457,11 +464,32 @@ final class PostSettingsBuilder {
 			return $post_template_id;
 		}
 
+		// With the required-template rule on, a never-sent post gets no automatic template.
+		if ( self::is_template_choice_required( $post_id ) ) {
+			return '';
+		}
+
 		if ( '' !== $publication_id && PublicationResolver::get_default_publication_id() === $publication_id ) {
 			return self::get_site_post_template_id();
 		}
 
 		return '';
+	}
+
+	/**
+	 * Whether an editor must choose this post's template before it can be sent.
+	 *
+	 * True when the "require template choice" setting is on and the post has never
+	 * been sent to beehiiv. Applies to every user role.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since x.x.x
+	 */
+	public static function is_template_choice_required( int $post_id ): bool {
+		$settings = Options::get();
+
+		return ! empty( $settings['require_template_choice'] ) && ! Sender::has_beehiiv_post_id( $post_id );
 	}
 
 	/**

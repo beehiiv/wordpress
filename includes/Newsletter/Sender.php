@@ -1017,6 +1017,8 @@ final class Sender {
 					'Choose a default post template in <a>beehiiv settings</a>, or pick one for this post in the beehiiv sidebar.',
 					'beehiiv'
 				);
+			case 'beehiiv_post_template_choice_required':
+				return __( 'Choose a post template before sending this post to beehiiv.', 'beehiiv' );
 			case 'beehiiv_post_template_required':
 				return __( "Pick a post template for this post's publication in the beehiiv sidebar.", 'beehiiv' );
 			case 'beehiiv_publication_missing':

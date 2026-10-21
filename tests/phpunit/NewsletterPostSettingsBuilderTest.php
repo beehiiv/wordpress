@@ -8,9 +8,11 @@
  * @package beehiiv
  */
 
+use Beehiiv\API\Cache;
 use Beehiiv\Config;
 use Beehiiv\Editor\Meta;
 use Beehiiv\Newsletter\PostSettingsBuilder;
+use Beehiiv\Newsletter\Sender;
 
 /**
  * Payload coverage for newsletter title and subtitle.
@@ -216,5 +218,110 @@ class NewsletterPostSettingsBuilderTest extends WP_UnitTestCase {
 
 		$settings = PostSettingsBuilder::get_post_settings( $post_id );
 		$this->assertFalse( $settings['email_settings']['display_byline_in_email'] );
+	}
+
+	/**
+	 * Turn the required-template setting on, keeping the site default template.
+	 */
+	private function require_template_choice(): void {
+		update_option(
+			Config::OPTION_NAME,
+			array(
+				'publication_id'          => 'pub_test',
+				'post_template_id'        => 'tmpl_test',
+				'require_template_choice' => true,
+			)
+		);
+	}
+
+	/**
+	 * Post Template Selection PRD AC-012, AC-013: with the rule on, a never-sent post
+	 * gets no automatic template and cannot be sent, even with a site default set.
+	 */
+	public function test_required_choice_blocks_never_sent_post_without_template(): void {
+		$this->require_template_choice();
+		$post_id = $this->create_sendable_post();
+
+		$this->assertSame( '', PostSettingsBuilder::resolve_post_template_id( $post_id, 'pub_test' ) );
+
+		$settings = PostSettingsBuilder::get_post_settings( $post_id );
+
+		$this->assertWPError( $settings );
+		$this->assertSame( 'beehiiv_post_template_choice_required', $settings->get_error_code() );
+	}
+
+	/**
+	 * AC-014: the blocked send shows the agreed message.
+	 */
+	public function test_required_choice_error_has_agreed_message(): void {
+		$this->require_template_choice();
+		$settings = PostSettingsBuilder::get_post_settings( $this->create_sendable_post() );
+
+		$this->assertSame(
+			'Choose a post template before sending this post to beehiiv.',
+			Sender::format_save_error_message( $settings )
+		);
+	}
+
+	/**
+	 * AC-015: no user role skips the rule.
+	 */
+	public function test_required_choice_applies_to_every_role(): void {
+		$this->require_template_choice();
+		$post_id = $this->create_sendable_post();
+
+		foreach ( array( 'administrator', 'editor', 'author' ) as $role ) {
+			wp_set_current_user( self::factory()->user->create( array( 'role' => $role ) ) );
+
+			$this->assertWPError( PostSettingsBuilder::get_post_settings( $post_id ), $role );
+		}
+	}
+
+	/**
+	 * AC-016, AC-009: a post already sent to beehiiv keeps using the default.
+	 */
+	public function test_required_choice_does_not_block_sent_post(): void {
+		$this->require_template_choice();
+		$post_id = $this->create_sendable_post();
+		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, 'post_existing' );
+
+		$this->assertSame( 'tmpl_test', PostSettingsBuilder::resolve_post_template_id( $post_id, 'pub_test' ) );
+		$this->assertIsArray( PostSettingsBuilder::get_post_settings( $post_id, true ) );
+	}
+
+	/**
+	 * AC-017: once an editor chooses a template, the send continues with it.
+	 */
+	public function test_required_choice_passes_with_chosen_template(): void {
+		$this->require_template_choice();
+		Cache::set_post_templates(
+			'pub_test',
+			array(
+				array(
+					'id'   => 'tmpl_chosen',
+					'name' => 'Chosen',
+				),
+			)
+		);
+		$post_id = $this->create_sendable_post();
+		update_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, 'tmpl_chosen' );
+
+		$settings = PostSettingsBuilder::get_post_settings( $post_id );
+
+		$this->assertIsArray( $settings );
+		$this->assertSame( 'tmpl_chosen', $settings['post_template_id'] );
+
+		Cache::flush_all();
+	}
+
+	/**
+	 * AC-018, AC-009: with the setting off, the site default is used as today.
+	 */
+	public function test_setting_off_keeps_site_default(): void {
+		$post_id = $this->create_sendable_post();
+
+		$this->assertFalse( PostSettingsBuilder::is_template_choice_required( $post_id ) );
+		$this->assertSame( 'tmpl_test', PostSettingsBuilder::resolve_post_template_id( $post_id, 'pub_test' ) );
+		$this->assertIsArray( PostSettingsBuilder::get_post_settings( $post_id ) );
 	}
 }
