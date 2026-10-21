@@ -40,17 +40,18 @@
 		"lint:css:fix": "wp-scripts lint-style --fix",
 		"lint:php": "vendor/bin/phpcs",
 		"lint:php:fix": "vendor/bin/phpcbf",
-		"env:start": "wp-env start && npm run env:hosts",
+		"env:start": "node scripts/wp-env-start.js && sh scripts/wp-env-extra-hosts.sh",
 		"env:start:doppler": "doppler run --mount .wp-env.override.json --mount-template .wp-env.override.tmpl -- npm run env:start",
-		"env:hosts": "sh scripts/wp-env-extra-hosts.sh",
+		"env:hosts": "npm run env:start",
 		"env:set-version": "node scripts/wp-env-set-version.js",
-		"env:stop": "wp-env stop",
+		"env:stop": "node scripts/wp-env-start.js --stop",
 		"env:destroy": "wp-env destroy",
 		"test:e2e": "playwright test",
 		"test:e2e:ui": "playwright test --ui",
 		"test:e2e:report": "node tests/e2e/report/generate-dashboard.js",
 		"test:php:report": "node tests/phpunit/report/generate-dashboard.js",
-		"test:compat": "node scripts/test-compat.js"
+		"test:compat": "node scripts/test-compat.js",
+		"test:php-runtime": "node --test tests/php-runtime/*.test.js"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.60.0",
