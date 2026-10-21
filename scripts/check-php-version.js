@@ -35,11 +35,9 @@ function assertPhpVersion( version, label = 'PHP', expectedSeries ) {
 		);
 	}
 	if ( Number( patch ) < minimumVersions[ series ] ) {
-		const error = new Error(
+		throw new Error(
 			`${ label }: PHP ${ version } is affected by CVE-2026-109618/CVE-2026-109619; requires ${ series }.${ minimumVersions[ series ] } or newer in that series.`
 		);
-		error.code = 'PHP_SECURITY_PATCH_REQUIRED';
-		throw error;
 	}
 	console.log( `${ label }: verified PHP ${ version.trim() }.` );
 }

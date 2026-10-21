@@ -99,14 +99,7 @@ test( 'a registry failure cannot fall back to a cached image', ( context ) => {
 			throw new Error( 'registry unavailable' );
 		}
 	} );
-	assert.throws(
-		() => start( config, execute, { buildPatchedImages: true } ),
-		/registry unavailable/
-	);
-	assert.equal(
-		calls.some( ( call ) => call[ 0 ] === 'node' ),
-		false
-	);
+	assert.throws( () => start( config, execute ), /registry unavailable/ );
 	assert.equal(
 		calls.some( ( call ) => call[ 0 ] === 'npx' ),
 		false
@@ -216,89 +209,16 @@ test( 'a failed wp-env startup stops partially started services', ( context ) =>
 	assert.equal( calls.at( -1 ).at( -1 ), 'stop' );
 } );
 
-test( 'the CI fallback rebuilds affected bases and verifies them before startup', ( context ) => {
-	const rebuilt = new Set();
-	const { config, calls, execute } = fixture( context, ( command, args ) => {
-		if ( command === 'node' ) {
-			rebuilt.add( args[ 1 ] );
-		}
-		if ( args[ 0 ] === 'run' && ! rebuilt.has( args[ 6 ] ) ) {
-			return '8.4.26';
-		}
-		return '8.4.27';
-	} );
-	start( config, execute, { buildPatchedImages: true } );
-	assert.deepEqual(
-		[ ...rebuilt ],
-		[ 'wordpress:php8.4', 'wordpress:cli-php8.4' ]
-	);
-	assert.equal( calls.filter( ( call ) => call[ 1 ] === 'run' ).length, 4 );
-	assert.equal(
-		calls.filter( ( call ) => call.includes( 'exec' ) ).length,
-		4
-	);
-	const startupIndex = calls.findIndex( ( call ) => call[ 0 ] === 'npx' );
-	assert.ok(
-		startupIndex > calls.findLastIndex( ( call ) => call[ 1 ] === 'run' )
-	);
-} );
-
-test( 'patched upstream images do not invoke the CI fallback', ( context ) => {
-	const { config, calls, execute } = fixture( context );
-	start( config, execute, { buildPatchedImages: true } );
-	assert.equal(
-		calls.some( ( call ) => call[ 0 ] === 'node' ),
-		false
-	);
-} );
-
-test( 'unverified or mismatched PHP does not invoke the CI fallback', ( context ) => {
+test( 'unverified or mismatched image versions block startup', ( context ) => {
 	for ( const version of [ '8.4.27RC1', '8.3.36', '' ] ) {
 		const { config, calls, execute } = fixture( context, () => version );
-		assert.throws( () =>
-			start( config, execute, { buildPatchedImages: true } )
-		);
-		assert.equal(
-			calls.some( ( call ) => call[ 0 ] === 'node' ),
-			false
-		);
+		assert.throws( () => start( config, execute ) );
 		assert.equal(
 			calls.some( ( call ) => call[ 0 ] === 'npx' ),
 			false
 		);
+		assert.equal( calls.at( -1 ).at( -1 ), 'stop' );
 	}
-} );
-
-test( 'an affected rebuilt image still blocks startup', ( context ) => {
-	const { config, calls, execute } = fixture( context, () => '8.4.26' );
-	assert.throws(
-		() => start( config, execute, { buildPatchedImages: true } ),
-		/is affected/
-	);
-	assert.equal( calls.filter( ( call ) => call[ 0 ] === 'node' ).length, 1 );
-	assert.equal(
-		calls.some( ( call ) => call[ 0 ] === 'npx' ),
-		false
-	);
-	assert.equal( calls.at( -1 ).at( -1 ), 'stop' );
-} );
-
-test( 'a failed CI image build leaves the project stopped', ( context ) => {
-	const { config, calls, execute } = fixture( context, ( command ) => {
-		if ( command === 'node' ) {
-			throw new Error( 'image build failed' );
-		}
-		return '8.4.26';
-	} );
-	assert.throws(
-		() => start( config, execute, { buildPatchedImages: true } ),
-		/image build failed/
-	);
-	assert.equal(
-		calls.some( ( call ) => call[ 0 ] === 'npx' ),
-		false
-	);
-	assert.equal( calls.at( -1 ).at( -1 ), 'stop' );
 } );
 
 test( 'cleanup succeeds before wp-env has initialized', ( context ) => {

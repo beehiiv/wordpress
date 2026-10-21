@@ -27,7 +27,7 @@ function stop( config, execute = run ) {
 	}
 }
 
-function start( config, execute = run, { buildPatchedImages = false } = {} ) {
+function start( config, execute = run ) {
 	const compose = [ 'compose', '-f', config.dockerComposeConfigPath ];
 	const environments = config.testsEnvironment
 		? [ 'development', 'tests' ]
@@ -55,37 +55,22 @@ function start( config, execute = run, { buildPatchedImages = false } = {} ) {
 				`wordpress:cli-php${ phpSeries }`,
 			] ) {
 				execute( 'docker', [ 'pull', image ] );
-				const readVersion = () =>
-					execute(
-						'docker',
-						[
-							'run',
-							'--rm',
-							'--network',
-							'none',
-							'--entrypoint',
-							'php',
-							image,
-							'-r',
-							'echo PHP_VERSION;',
-						],
-						true
-					);
-				try {
-					assertPhpVersion( readVersion(), image, phpSeries );
-				} catch ( error ) {
-					if (
-						! buildPatchedImages ||
-						error.code !== 'PHP_SECURITY_PATCH_REQUIRED'
-					) {
-						throw error;
-					}
-					execute( 'node', [
-						path.join( __dirname, 'ci-build-wordpress-image.js' ),
+				const version = execute(
+					'docker',
+					[
+						'run',
+						'--rm',
+						'--network',
+						'none',
+						'--entrypoint',
+						'php',
 						image,
-					] );
-					assertPhpVersion( readVersion(), image, phpSeries );
-				}
+						'-r',
+						'echo PHP_VERSION;',
+					],
+					true
+				);
+				assertPhpVersion( version, image, phpSeries );
 			}
 		}
 		if ( existsSync( config.dockerComposeConfigPath ) ) {
@@ -142,10 +127,7 @@ if ( require.main === module ) {
 			if ( process.argv[ 2 ] === '--stop' ) {
 				return stop( config );
 			}
-			return start( config, run, {
-				buildPatchedImages:
-					process.env.BEEHIIV_BUILD_PATCHED_WORDPRESS === 'true',
-			} );
+			return start( config );
 		} )
 		.catch( ( error ) => {
 			console.error( `WordPress startup blocked: ${ error.message }` );
