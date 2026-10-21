@@ -59,17 +59,19 @@ jobs:
         run: npm run env:set-version -- --php=${{ matrix.php.series }} --wp=${{ matrix.wp-version }}
 
       - name: Start wp-env
+        env:
+          BEEHIIV_BUILD_PATCHED_WORDPRESS: "true"
         run: npm run env:start
 
       - name: Run PHPUnit
         run: npx wp-env run tests-cli -- bash -c "cd wp-content/plugins/$(basename "$GITHUB_WORKSPACE") && composer test"
 
       - name: Generate PHPUnit dashboard
-        if: always()
+        if: always() && hashFiles('tests/phpunit/test-results/junit.xml') != ''
         run: node tests/phpunit/report/generate-dashboard.js --label="PHP ${{ matrix.php.series }} / WP ${{ matrix.wp-version }}"
 
       - name: Upload PHPUnit dashboard
-        if: always()
+        if: always() && hashFiles('tests/phpunit/test-results/**') != ''
         uses: actions/upload-artifact@v4
         with:
           name: phpunit-report-php${{ matrix.php.series }}-wp${{ matrix.wp-version }}
@@ -78,7 +80,7 @@ jobs:
 
       - name: Stop wp-env
         if: always()
-        run: npx wp-env stop
+        run: npm run env:stop
 
   e2e:
     name: E2E tests
@@ -129,13 +131,15 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Start wp-env
+        env:
+          BEEHIIV_BUILD_PATCHED_WORDPRESS: "true"
         run: npm run env:start
 
       - name: Run Playwright E2E tests
         run: npx playwright test
 
       - name: Upload Playwright report on failure
-        if: failure()
+        if: failure() && hashFiles('tests/e2e/test-results/**') != ''
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
@@ -144,4 +148,4 @@ jobs:
 
       - name: Stop wp-env
         if: always()
-        run: npx wp-env stop
+        run: npm run env:stop

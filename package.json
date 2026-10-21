@@ -44,7 +44,7 @@
 		"env:start:doppler": "doppler run --mount .wp-env.override.json --mount-template .wp-env.override.tmpl -- npm run env:start",
 		"env:hosts": "npm run env:start",
 		"env:set-version": "node scripts/wp-env-set-version.js",
-		"env:stop": "wp-env stop",
+		"env:stop": "node scripts/wp-env-start.js --stop",
 		"env:destroy": "wp-env destroy",
 		"test:e2e": "playwright test",
 		"test:e2e:ui": "playwright test --ui",

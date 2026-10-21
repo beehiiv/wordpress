@@ -16,20 +16,26 @@ function run( command, args, capture = false ) {
 	} );
 }
 
-function start( config, execute = run ) {
+function stop( config, execute = run ) {
+	if ( existsSync( config.dockerComposeConfigPath ) ) {
+		execute( 'docker', [
+			'compose',
+			'-f',
+			config.dockerComposeConfigPath,
+			'stop',
+		] );
+	}
+}
+
+function start( config, execute = run, { buildPatchedImages = false } = {} ) {
 	const compose = [ 'compose', '-f', config.dockerComposeConfigPath ];
-	const stop = () => {
-		if ( existsSync( config.dockerComposeConfigPath ) ) {
-			execute( 'docker', [ ...compose, 'stop' ] );
-		}
-	};
 	const environments = config.testsEnvironment
 		? [ 'development', 'tests' ]
 		: [ 'development' ];
 
 	try {
 		// An existing environment must not keep serving an older PHP while checks run.
-		stop();
+		stop( config, execute );
 		for ( const environment of environments ) {
 			if ( config.env[ environment ].phpmyadmin ) {
 				throw new Error(
@@ -49,22 +55,37 @@ function start( config, execute = run ) {
 				`wordpress:cli-php${ phpSeries }`,
 			] ) {
 				execute( 'docker', [ 'pull', image ] );
-				const version = execute(
-					'docker',
-					[
-						'run',
-						'--rm',
-						'--network',
-						'none',
-						'--entrypoint',
-						'php',
+				const readVersion = () =>
+					execute(
+						'docker',
+						[
+							'run',
+							'--rm',
+							'--network',
+							'none',
+							'--entrypoint',
+							'php',
+							image,
+							'-r',
+							'echo PHP_VERSION;',
+						],
+						true
+					);
+				try {
+					assertPhpVersion( readVersion(), image, phpSeries );
+				} catch ( error ) {
+					if (
+						! buildPatchedImages ||
+						error.code !== 'PHP_SECURITY_PATCH_REQUIRED'
+					) {
+						throw error;
+					}
+					execute( 'node', [
+						path.join( __dirname, 'ci-build-wordpress-image.js' ),
 						image,
-						'-r',
-						'echo PHP_VERSION;',
-					],
-					true
-				);
-				assertPhpVersion( version, image, phpSeries );
+					] );
+					assertPhpVersion( readVersion(), image, phpSeries );
+				}
 			}
 		}
 		if ( existsSync( config.dockerComposeConfigPath ) ) {
@@ -105,7 +126,7 @@ function start( config, execute = run ) {
 		}
 	} catch ( error ) {
 		try {
-			stop();
+			stop( config, execute );
 		} catch ( stopError ) {
 			throw new Error(
 				`${ error.message }\nCould not stop wp-env: ${ stopError.message }`
@@ -117,11 +138,19 @@ function start( config, execute = run ) {
 
 if ( require.main === module ) {
 	loadConfig( pluginRoot )
-		.then( ( config ) => start( config ) )
+		.then( ( config ) => {
+			if ( process.argv[ 2 ] === '--stop' ) {
+				return stop( config );
+			}
+			return start( config, run, {
+				buildPatchedImages:
+					process.env.BEEHIIV_BUILD_PATCHED_WORDPRESS === 'true',
+			} );
+		} )
 		.catch( ( error ) => {
 			console.error( `WordPress startup blocked: ${ error.message }` );
 			process.exitCode = 1;
 		} );
 }
 
-module.exports = { start };
+module.exports = { start, stop };
