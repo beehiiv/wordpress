@@ -22,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
  * preview never touches the post's newsletter error, link, toggle or send date.
  *
  * @link https://developers.beehiiv.com/api-reference/posts/show
- * @since 1.0.0
+ * @since x.x.x
  */
 final class EmailPreview {
 
@@ -37,16 +37,22 @@ final class EmailPreview {
 	 * @param bool $fetch_only Only fetch the email of the already linked draft; skip the sync.
 	 * @return array{html: string, subject: string, preview_text: string, from_name: string}
 	 *     |array{processing: bool}|WP_Error
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	public static function render( int $post_id, bool $fetch_only = false ) {
-		$eligibility = self::check_eligibility( $post_id );
-
-		if ( is_wp_error( $eligibility ) ) {
-			return $eligibility;
-		}
-
 		if ( $fetch_only ) {
+			// A sync syncs after checking eligibility itself; a fetch-only call checks it here.
+			$eligibility = self::check_eligibility( $post_id );
+
+			if ( is_wp_error( $eligibility ) ) {
+				return $eligibility;
+			}
+
+			// Another request is creating or replacing the draft: ask the editor to wait.
+			if ( Sender::is_preview_in_progress( $post_id ) ) {
+				return [ 'processing' => true ];
+			}
+
 			if ( ! Sender::is_draft_linked( $post_id ) ) {
 				return new WP_Error(
 					'beehiiv_preview_failed',
@@ -90,7 +96,7 @@ final class EmailPreview {
 	 * @param int    $post_id Post ID.
 	 * @param string $fetched Subject returned by beehiiv.
 	 * @return string
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	private static function resolve_subject( int $post_id, string $fetched ): string {
 		if ( '' !== trim( $fetched ) ) {
@@ -112,7 +118,7 @@ final class EmailPreview {
 	 * @param int    $post_id Post ID.
 	 * @param string $fetched Preview text returned by beehiiv.
 	 * @return string
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	private static function resolve_preview_text( int $post_id, string $fetched ): string {
 		if ( '' !== trim( $fetched ) ) {
@@ -129,7 +135,7 @@ final class EmailPreview {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return true|WP_Error
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	public static function check_eligibility( int $post_id ) {
 		$post = get_post( $post_id );
@@ -138,6 +144,13 @@ final class EmailPreview {
 			return new WP_Error(
 				'beehiiv_post_not_found',
 				__( 'This post no longer exists. Save or reload the editor and try again.', 'beehiiv' )
+			);
+		}
+
+		if ( ! current_user_can( 'publish_posts', $post_id ) ) {
+			return new WP_Error(
+				'beehiiv_preview_forbidden',
+				__( "You don't have permission to preview this newsletter.", 'beehiiv' )
 			);
 		}
 
@@ -194,7 +207,7 @@ final class EmailPreview {
 	 *
 	 * @param WP_Error $error Error from {@see Sender::sync_preview_draft()}.
 	 * @return WP_Error
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	private static function classify_sync_error( WP_Error $error ): WP_Error {
 		$code = $error->get_error_code();
@@ -217,7 +230,7 @@ final class EmailPreview {
 	 * @param string   $error       Error string from the API client.
 	 * @param int|null $status_code HTTP status code when known.
 	 * @return WP_Error
-	 * @since 1.0.0
+	 * @since x.x.x
 	 */
 	private static function classify_api_error( string $error, ?int $status_code ): WP_Error {
 		if ( null === $status_code && preg_match( '/^HTTP (\d+):/i', trim( $error ), $matches ) ) {

@@ -443,6 +443,11 @@ final class Sender {
 	private static function acquire_preview_lock( int $post_id ): bool {
 		$key = self::PREVIEW_LOCK_PREFIX . $post_id;
 
+		self::purge_stale_preview_locks();
+		// The purge bypasses the options cache, so drop any cached copy of this lock.
+		wp_cache_delete( $key, 'options' );
+		wp_cache_delete( 'notoptions', 'options' );
+
 		if ( add_option( $key, time(), '', false ) ) {
 			return true;
 		}
@@ -457,6 +462,38 @@ final class Sender {
 		delete_option( $key );
 
 		return add_option( $key, time(), '', false );
+	}
+
+	/**
+	 * Whether a preview sync of this post is running right now.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since x.x.x
+	 */
+	public static function is_preview_in_progress( int $post_id ): bool {
+		$taken_at = (int) get_option( self::PREVIEW_LOCK_PREFIX . $post_id, 0 );
+
+		return $taken_at > time() - self::PREVIEW_LOCK_SECONDS;
+	}
+
+	/**
+	 * Remove preview locks left behind by requests that died before releasing them.
+	 *
+	 * @return void
+	 * @since x.x.x
+	 */
+	private static function purge_stale_preview_locks(): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Housekeeping of this feature's own lock rows.
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s AND CAST( option_value AS UNSIGNED ) < %d",
+				$wpdb->esc_like( self::PREVIEW_LOCK_PREFIX ) . '%',
+				time() - self::PREVIEW_LOCK_SECONDS
+			)
+		);
 	}
 
 	/**
@@ -478,42 +515,11 @@ final class Sender {
 	 * @since x.x.x
 	 */
 	private static function sync_preview_draft_locked( int $post_id ) {
-		$post = get_post( $post_id );
+		// One definition of "can this post be previewed" for the whole feature.
+		$eligibility = EmailPreview::check_eligibility( $post_id );
 
-		if ( ! $post instanceof WP_Post || self::POST_TYPE !== $post->post_type ) {
-			return new WP_Error(
-				'beehiiv_post_not_found',
-				__( 'This post no longer exists. Save or reload the editor and try again.', 'beehiiv' )
-			);
-		}
-
-		if ( ! current_user_can( 'publish_posts', $post_id ) ) {
-			return new WP_Error(
-				'beehiiv_preview_forbidden',
-				__( "You don't have permission to preview this newsletter.", 'beehiiv' )
-			);
-		}
-
-		if ( ! rest_sanitize_boolean( get_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true ) )
-			&& ! self::has_beehiiv_post_id( $post_id ) ) {
-			return new WP_Error(
-				'beehiiv_preview_not_opted_in',
-				__( 'Turn on "Send to newsletter" to preview this email.', 'beehiiv' )
-			);
-		}
-
-		if ( ! Manager::is_connected() ) {
-			return new WP_Error( 'beehiiv_not_connected', self::not_connected_message() );
-		}
-
-		if ( self::has_beehiiv_post_id( $post_id ) && ! self::is_draft_linked( $post_id ) ) {
-			return new WP_Error(
-				'beehiiv_newsletter_confirmed',
-				__(
-					'This newsletter is already scheduled or sent, so it can no longer be previewed from here.',
-					'beehiiv'
-				)
-			);
+		if ( is_wp_error( $eligibility ) ) {
+			return $eligibility;
 		}
 
 		$target         = PublicationResolver::resolve_target( $post_id );

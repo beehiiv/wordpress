@@ -342,6 +342,23 @@ class NewsletterEmailPreviewTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A fetch-only poll that arrives while another request is replacing the draft waits
+	 * (`processing`) instead of failing.
+	 */
+	public function test_fetch_only_waits_while_a_sync_is_running(): void {
+		$post_id = $this->create_post( 'draft', [ Meta::SEND_TO_NEWSLETTER => '1' ] );
+		EmailPreview::render( $post_id );
+		$this->requests = [];
+
+		add_option( 'beehiiv_preview_lock_' . $post_id, time(), '', false );
+
+		$this->assertSame( [ 'processing' => true ], EmailPreview::render( $post_id, true ) );
+		$this->assertNotContains( 'GET /posts/' . self::DRAFT_ID, $this->request_log() );
+
+		delete_option( 'beehiiv_preview_lock_' . $post_id );
+	}
+
+	/**
 	 * A fetch-only call without a linked draft is refused rather than creating one.
 	 */
 	public function test_fetch_only_without_a_linked_draft_is_refused(): void {

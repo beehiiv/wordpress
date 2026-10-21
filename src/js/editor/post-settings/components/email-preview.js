@@ -2,7 +2,7 @@
  * Preview the real beehiiv email of the saved post in a WordPress modal.
  */
 import { __ } from '@wordpress/i18n';
-import { useRef, useState } from '@wordpress/element';
+import { useMemo, useRef, useState } from '@wordpress/element';
 import { useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { Button, Modal, Spinner } from '@wordpress/components';
@@ -61,6 +61,11 @@ export default function EmailPreview( { beehiivMeta } ) {
 	const [ device, setDevice ] = useState( 'desktop' );
 	const [ error, setError ] = useState( null );
 	const latestRequest = useRef( 0 );
+	// Parsing a large email is costly; redo it only when the email itself changes.
+	const inertHtml = useMemo(
+		() => ( email ? makeEmailInert( email.html ) : '' ),
+		[ email ]
+	);
 
 	const { postId, isDirty, isNew, isSaving } = useSelect( ( select ) => {
 		const editor = select( editorStore );
@@ -273,7 +278,7 @@ export default function EmailPreview( { beehiivMeta } ) {
 										'beehiiv'
 									) }
 									sandbox=""
-									srcDoc={ makeEmailInert( email.html ) }
+									srcDoc={ inertHtml }
 								/>
 							</div>
 						</div>

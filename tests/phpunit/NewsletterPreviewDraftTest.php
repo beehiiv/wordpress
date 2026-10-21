@@ -42,6 +42,10 @@ class NewsletterPreviewDraftTest extends WP_UnitTestCase {
 
 		$this->requests  = [];
 		$this->responses = [
+			'GET /workspaces/permissions'     => [
+				'status' => 200,
+				'body'   => [ 'data' => [ 'posts' => [ 'read', 'write' ] ] ],
+			],
 			'POST /posts'                     => [
 				'status' => 201,
 				'body'   => [ 'data' => [ 'id' => self::DRAFT_ID ] ],
@@ -147,7 +151,7 @@ class NewsletterPreviewDraftTest extends WP_UnitTestCase {
 	 * @return array<int, string>
 	 */
 	private function request_log(): array {
-		return array_map(
+		$log = array_map(
 			static function ( $request ) {
 				$path = (string) wp_parse_url( $request['url'], PHP_URL_PATH );
 
@@ -157,6 +161,9 @@ class NewsletterPreviewDraftTest extends WP_UnitTestCase {
 			},
 			$this->requests
 		);
+
+		// The readiness lookup is not what these tests are about.
+		return array_values( array_diff( $log, [ 'GET /workspaces/permissions' ] ) );
 	}
 
 	private function create_post( string $status = 'draft', array $meta = [] ): int {
@@ -272,7 +279,7 @@ class NewsletterPreviewDraftTest extends WP_UnitTestCase {
 		$this->assertFalse( $result['created'] );
 		$this->assertSame( [ 'PATCH /posts/' . self::DRAFT_ID ], $this->request_log() );
 
-		$body = $this->requests[0]['body'];
+		$body = $this->find_request( 'PATCH' )['body'];
 		$this->assertArrayNotHasKey( 'status', $body );
 		$this->assertArrayNotHasKey( 'scheduled_at', $body );
 		$this->assertSame( self::DRAFT_ID, get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true ) );
@@ -427,6 +434,54 @@ class NewsletterPreviewDraftTest extends WP_UnitTestCase {
 		$this->assertNotContains( 'PATCH /posts/' . self::DRAFT_ID, $log );
 		$this->assertSame( 'tpl_other', $this->find_request( 'POST' )['body']['post_template_id'] );
 		$this->assertSame( 'tpl_other', get_post_meta( $post_id, Meta::BEEHIIV_LINKED_POST_TEMPLATE_ID, true ) );
+	}
+
+	/**
+	 * The post's publication and template stay editable while only a draft is linked, and
+	 * lock only once the newsletter is no longer a draft.
+	 */
+	public function test_pickers_stay_editable_while_a_draft_is_linked(): void {
+		$post_id = $this->create_post( 'draft', [ Meta::SEND_TO_NEWSLETTER => '1' ] );
+		Sender::sync_preview_draft( $post_id );
+
+		update_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, 'tpl_changed' );
+		update_post_meta( $post_id, Meta::BEEHIIV_PUBLICATION_ID, 'pub_changed' );
+
+		$this->assertSame( 'tpl_changed', get_post_meta( $post_id, Meta::BEEHIIV_POST_TEMPLATE_ID, true ) );
+		$this->assertSame( 'pub_changed', get_post_meta( $post_id, Meta::BEEHIIV_PUBLICATION_ID, true ) );
+
+		// A newsletter that is sent (linked, no draft state, no future send time) keeps its choice.
+		$sent = $this->create_post( 'publish', [ Meta::BEEHIIV_POST_TEMPLATE_ID => 'tpl_original' ] );
+		update_post_meta( $sent, Meta::BEEHIIV_POST_ID, 'post_sent_1' );
+		update_post_meta( $sent, Meta::BEEHIIV_POST_TEMPLATE_ID, 'tpl_changed' );
+
+		$this->assertSame( 'tpl_original', get_post_meta( $sent, Meta::BEEHIIV_POST_TEMPLATE_ID, true ) );
+	}
+
+	/**
+	 * Locks left behind by requests that died are removed on the next preview, and a running
+	 * preview is reported so the editor's polling can wait instead of failing.
+	 */
+	public function test_stale_locks_are_purged_and_a_running_preview_is_reported(): void {
+		$other = $this->create_post( 'draft' );
+		add_option( 'beehiiv_preview_lock_' . $other, time() - 3600, '', false );
+
+		$post_id = $this->create_post( 'draft', [ Meta::SEND_TO_NEWSLETTER => '1' ] );
+
+		$this->assertFalse( Sender::is_preview_in_progress( $post_id ) );
+		Sender::sync_preview_draft( $post_id );
+		global $wpdb;
+		$this->assertNull(
+			$wpdb->get_var(
+				$wpdb->prepare( "SELECT option_id FROM {$wpdb->options} WHERE option_name = %s", 'beehiiv_preview_lock_' . $other )
+			),
+			'Stale locks are purged from the database.'
+		);
+
+		add_option( 'beehiiv_preview_lock_' . $post_id, time(), '', false );
+		$this->assertTrue( Sender::is_preview_in_progress( $post_id ) );
+		delete_option( 'beehiiv_preview_lock_' . $post_id );
+		$this->assertFalse( Sender::is_preview_in_progress( $post_id ) );
 	}
 
 	/**
