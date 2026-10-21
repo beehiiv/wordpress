@@ -205,7 +205,9 @@ npm run lint
 
 Or individually: `lint:js`, `lint:css`, `lint:php`. Autofix variants: `lint:js:fix`, `lint:css:fix`, `lint:php:fix`, plus `npm run format` for Prettier.
 
-On every pull request (and pushes to `main` / `master`), GitHub Actions runs the same checks via [`.github/workflows/lint.yml`](.github/workflows/lint.yml) on the patched PHP **8.2** through **8.5** releases listed above. PHPCompatibility still checks syntax/API compatibility with PHP **7.4+**.
+On every pull request (and pushes to `main` / `master`), [`.github/workflows/lint.yml`](.github/workflows/lint.yml) runs JS, CSS, and PHP lint under the required check names `Lint (7.4)` through `Lint (8.5)`. These labels identify static compatibility targets. Targets **7.4–8.1** run on patched PHP **8.4.27**; targets **8.2–8.5** run on their patched branches listed above. Each job passes `--runtime-set testVersion <target>-` to PHPCS, keeping end-of-life PHP versions out of CI execution.
+
+The pinned PHPCompatibility **9.3.5** rules provide partial static checks and predate PHP 8. They do not cover all PHP 8 changes or replace runtime and PHPUnit coverage on the target versions.
 
 ## Releasing (maintainers)
 
