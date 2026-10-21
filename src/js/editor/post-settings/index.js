@@ -90,6 +90,7 @@ function NewsletterPublicationAndTemplate( { beehiivMeta, postPublication } ) {
 					onChange={ setBeehiivPostTemplateId }
 					publicationId={ effectivePublicationId }
 					isDefaultPublication={ isDefaultPublication }
+					requireChoice={ postPublication.requireChoice }
 					// Sync never changes a newsletter's template, so it is locked once linked.
 					disabled={ newsletterAlreadySent }
 				/>

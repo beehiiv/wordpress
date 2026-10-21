@@ -131,7 +131,12 @@ function PostPublicationNotices( { beehiivMeta, postPublication } ) {
 	if ( missingTemplate ) {
 		return (
 			<PostSettingsNotice status="warning">
-				{ __( 'Pick a post template for this post.', 'beehiiv' ) }
+				{ postPublication.requireChoice
+					? __(
+							'Choose a post template before sending this post to beehiiv.',
+							'beehiiv'
+					  )
+					: __( 'Pick a post template for this post.', 'beehiiv' ) }
 			</PostSettingsNotice>
 		);
 	}
