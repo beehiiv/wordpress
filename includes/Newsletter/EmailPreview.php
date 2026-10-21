@@ -8,11 +8,8 @@
 namespace Beehiiv\Newsletter;
 
 use Beehiiv\API\Resources\Posts;
-use Beehiiv\API\Resources\Workspace;
-use Beehiiv\Connection\Manager;
 use Beehiiv\Editor\Meta;
 use WP_Error;
-use WP_Post;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -41,8 +38,8 @@ final class EmailPreview {
 	 */
 	public static function render( int $post_id, bool $fetch_only = false ) {
 		if ( $fetch_only ) {
-			// A sync syncs after checking eligibility itself; a fetch-only call checks it here.
-			$eligibility = self::check_eligibility( $post_id );
+			// A full sync checks eligibility itself; a fetch-only call checks it here.
+			$eligibility = PreviewEligibility::check( $post_id );
 
 			if ( is_wp_error( $eligibility ) ) {
 				return $eligibility;
@@ -128,78 +125,6 @@ final class EmailPreview {
 		$subtitle = get_post_meta( $post_id, Meta::NEWSLETTER_SUBTITLE, true );
 
 		return is_string( $subtitle ) ? html_entity_decode( trim( $subtitle ) ) : '';
-	}
-
-	/**
-	 * Whether the saved post can be previewed right now.
-	 *
-	 * @param int $post_id Post ID.
-	 * @return true|WP_Error
-	 * @since x.x.x
-	 */
-	public static function check_eligibility( int $post_id ) {
-		$post = get_post( $post_id );
-
-		if ( ! $post instanceof WP_Post || 'post' !== $post->post_type ) {
-			return new WP_Error(
-				'beehiiv_post_not_found',
-				__( 'This post no longer exists. Save or reload the editor and try again.', 'beehiiv' )
-			);
-		}
-
-		if ( ! current_user_can( 'publish_posts', $post_id ) ) {
-			return new WP_Error(
-				'beehiiv_preview_forbidden',
-				__( "You don't have permission to preview this newsletter.", 'beehiiv' )
-			);
-		}
-
-		if ( Sender::has_beehiiv_post_id( $post_id ) && ! Sender::is_draft_linked( $post_id ) ) {
-			return new WP_Error(
-				'beehiiv_newsletter_confirmed',
-				__( 'This newsletter is already scheduled or sent, so it can no longer be previewed.', 'beehiiv' )
-			);
-		}
-
-		if ( ! rest_sanitize_boolean( get_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true ) )
-			&& ! Sender::is_draft_linked( $post_id ) ) {
-			return new WP_Error(
-				'beehiiv_preview_not_opted_in',
-				__( 'Turn on "Send to newsletter" to preview this email.', 'beehiiv' )
-			);
-		}
-
-		if ( ! Manager::is_connected() ) {
-			return new WP_Error(
-				'beehiiv_not_connected',
-				__( 'Connect your beehiiv account in <a>beehiiv settings</a> to preview.', 'beehiiv' )
-			);
-		}
-
-		if ( '' === PublicationResolver::resolve_for_post( $post_id ) ) {
-			return new WP_Error(
-				'beehiiv_missing_publication',
-				__( 'Choose a publication in <a>beehiiv settings</a>, then try again.', 'beehiiv' )
-			);
-		}
-
-		$publication_id = PublicationResolver::resolve_for_post( $post_id );
-
-		if ( '' === PostSettingsBuilder::resolve_post_template_id( $post_id, $publication_id ) ) {
-			return new WP_Error(
-				'beehiiv_missing_post_template',
-				__( 'Choose a default post template in <a>beehiiv settings</a> to preview.', 'beehiiv' )
-			);
-		}
-
-		if ( ! Workspace::can_write_posts() ) {
-			return new WP_Error(
-				'beehiiv_preview_plan',
-				__( 'Email preview needs beehiiv Send API access (Max and Enterprise plans).', 'beehiiv' )
-			);
-		}
-
-		return true;
 	}
 
 	/**

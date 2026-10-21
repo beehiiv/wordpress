@@ -53,11 +53,12 @@ final class Sender {
 	private const PREVIEW_LOCK_PREFIX = 'beehiiv_preview_lock_';
 
 	/**
-	 * Seconds after which a preview lock counts as abandoned.
+	 * Seconds after which a preview lock counts as abandoned. Longer than the slowest sync
+	 * (a delete and a create, each with a 30 second request timeout).
 	 *
 	 * @since x.x.x
 	 */
-	private const PREVIEW_LOCK_SECONDS = 60;
+	private const PREVIEW_LOCK_SECONDS = 180;
 
 	/**
 	 * Meta keys that lock once beehiiv has sent the newsletter.
@@ -446,7 +447,6 @@ final class Sender {
 		self::purge_stale_preview_locks();
 		// The purge bypasses the options cache, so drop any cached copy of this lock.
 		wp_cache_delete( $key, 'options' );
-		wp_cache_delete( 'notoptions', 'options' );
 
 		if ( add_option( $key, time(), '', false ) ) {
 			return true;
@@ -516,7 +516,7 @@ final class Sender {
 	 */
 	private static function sync_preview_draft_locked( int $post_id ) {
 		// One definition of "can this post be previewed" for the whole feature.
-		$eligibility = EmailPreview::check_eligibility( $post_id );
+		$eligibility = PreviewEligibility::check( $post_id );
 
 		if ( is_wp_error( $eligibility ) ) {
 			return $eligibility;
