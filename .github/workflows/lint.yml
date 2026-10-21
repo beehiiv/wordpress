@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4", "8.5"]
+        php: ["8.2.35", "8.3.36", "8.4.27", "8.5.12"]
 
     steps:
       - name: Checkout
@@ -50,10 +50,15 @@ jobs:
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
+        env:
+          update: "true"
         with:
           php-version: ${{ matrix.php }}
           tools: composer:v2
           coverage: none
+
+      - name: Verify host PHP security version
+        run: node scripts/check-php-version.js
 
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress
