@@ -130,7 +130,9 @@ function PostPublicationNotices( { beehiivMeta, postPublication } ) {
 
 	if ( missingTemplate ) {
 		return (
-			<PostSettingsNotice status="warning">
+			<PostSettingsNotice
+				status={ postPublication.requireChoice ? 'error' : 'warning' }
+			>
 				{ postPublication.requireChoice
 					? __(
 							'Choose a post template before sending this post to beehiiv.',

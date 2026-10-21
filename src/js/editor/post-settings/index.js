@@ -368,6 +368,14 @@ function BeehiivSendNewsletterPrePublishPanel() {
 		postPublishDate
 	);
 
+	// Pre-publish panels start collapsed. Open this one when the newsletter
+	// still needs a template, so the warning is visible before publishing.
+	const needsTemplate =
+		sendToNewsletter &&
+		! newsletterAlreadySent &&
+		isNewsletterReady &&
+		postPublication.missingTemplate;
+
 	const sendToNewsletterStatus =
 		sendToNewsletter && canWritePosts
 			? __( 'Yes', 'beehiiv' )
@@ -385,6 +393,7 @@ function BeehiivSendNewsletterPrePublishPanel() {
 				</>
 			}
 			icon={ false }
+			initialOpen={ needsTemplate }
 		>
 			{ showSendToggle && (
 				<SendNewsletterToggle
