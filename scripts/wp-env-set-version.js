@@ -9,7 +9,7 @@
  * `wp-env start` runs, because it detects that the resolved config changed.
  *
  * Usage:
- *   node scripts/wp-env-set-version.js --php=8.1 --wp=6.8
+ *   node scripts/wp-env-set-version.js --php=8.4 --wp=6.8
  *   node scripts/wp-env-set-version.js --php=8.3            # PHP only, leave WP core as-is
  *   node scripts/wp-env-set-version.js --wp=nightly         # WordPress/WordPress#master
  *   node scripts/wp-env-set-version.js --wp=latest          # wp-env default (newest stable)
@@ -18,7 +18,7 @@
  * Then apply with: npm run env:start
  *
  * Add --destroy to also run `wp-env destroy` right away (e.g.
- * `--php=8.1 --wp=6.8 --destroy`). wp-env only refreshes the WordPress core
+ * `--php=8.4 --wp=6.8 --destroy`). wp-env only refreshes the WordPress core
  * files when the version changes, not the database, so a stale database
  * can trigger the "database needs to be updated" screen or skew test
  * results after switching versions -- --destroy avoids that by starting
@@ -29,6 +29,7 @@
 const fs = require( 'fs' );
 const path = require( 'path' );
 const { execFileSync } = require( 'child_process' );
+const { assertPhpSeries } = require( './check-php-version' );
 
 const PLUGIN_ROOT = path.join( __dirname, '..' );
 const overridePath = path.join( PLUGIN_ROOT, '.wp-env.override.json' );
@@ -108,6 +109,7 @@ if ( ! args.php && ! args.wp ) {
 }
 
 if ( args.php ) {
+	assertPhpSeries( args.php );
 	override.phpVersion = args.php;
 }
 

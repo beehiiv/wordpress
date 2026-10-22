@@ -7,13 +7,33 @@ Your beehiiv newsletters, launched straight from the WordPress editor.
 -   [Node.js](https://nodejs.org/) (version from `.nvmrc`, currently 20) and npm
 -   [Composer](https://getcomposer.org/)
 -   [Docker](https://www.docker.com/) — only if you use wp-env
--   **WordPress 6.5+** and **PHP 7.4+** (see `beehiiv.php`)
+-   **PHP 8.4.27** for the default development environment (`mise install` uses `mise.toml`)
+-   The plugin declares compatibility with **WordPress 6.5+** and **PHP 7.4+** (see `beehiiv.php`); use a supported, patched PHP runtime for development and hosting
 
 ## Development environments
 
 Use **wp-env** if you're running Docker — it spins up WordPress, creates the database, mounts this repo as the plugin, and activates it for you. No separate WordPress install required.
 
 Or, if you prefer **Local**, **MAMP**, **Valet**, or similar, clone or symlink this repo into `wp-content/plugins/beehiiv`, run the [setup commands](#setup) below, and activate the plugin manually under **Plugins** in wp-admin.
+
+### PHP security requirements
+
+Development and CI execute PHP only on these supported branches, at or above the listed security release:
+
+| PHP branch | Minimum patch |
+| ---------- | ------------- |
+| 8.2        | 8.2.35        |
+| 8.3        | 8.3.36        |
+| 8.4        | 8.4.27        |
+| 8.5        | 8.5.12        |
+
+These releases fix [CVE-2026-109618](https://github.com/php/php-src/security/advisories/GHSA-w8hw-w9fx-j79w) and [CVE-2026-109619](https://github.com/php/php-src/security/advisories/GHSA-6wmf-4rv5-p3rp). See the [PHP security advisory](https://www.php.net/archive/2026.php#2026-10-21-5). PHP 8.1 and older do not receive upstream fixes and are excluded from executable development/CI environments.
+
+CI requests the listed host patches with `setup-php` updates enabled and checks the actual interpreter before Composer runs. `setup-php` resolves the requested version to its minor branch, so the patch selector expresses the required minimum; only the runtime check proves that minimum was installed. wp-env uses minor Docker tags such as `wordpress:php8.4` and `wordpress:cli-php8.4`; those tags also do not prove the PHP patch version. `npm run env:start` stops this project's existing containers, pulls both base images, and checks their actual PHP versions with networking disabled. After those checks pass, it removes this project's derived images and recreates the environment, then checks each enabled web/CLI service. A failed check leaves the project stopped. The wrapper does not remove Docker volumes; back up local content before changing WordPress/PHP versions, since wp-env may change core files or require database updates.
+
+Direct `npx wp-env start` bypasses this gate and must not be used for development or CI. Keep phpMyAdmin disabled in wp-env configuration because its separate PHP image is not covered by these checks.
+
+The plugin's PHP 7.4 compatibility declaration, Composer platform, and PHPCompatibility static checks remain in place. Removing PHP 7.4–8.1 from the execution matrix means those versions no longer receive dynamic PHPUnit coverage; static checks do not replace that coverage.
 
 ## Setup
 
@@ -22,6 +42,7 @@ git clone <repository-url> beehiiv
 cd beehiiv
 nvm install && nvm use   # optional; use Node version from .nvmrc
 npm install
+node scripts/check-php-version.js
 composer install
 npm run build
 ```
@@ -62,7 +83,7 @@ That:
 1. Mounts an ephemeral `.wp-env.override.json` from `.wp-env.override.tmpl` for `wp-env start`
 2. If `docker-compose.extra-hosts.yml` exists, maps those hostnames to the Docker host (`host-gateway`) so WordPress inside the container can reach your machine
 
-Re-run after changing Doppler secrets. If containers were recreated without the overlay, run `npm run env:hosts`.
+Re-run after changing Doppler secrets. `npm run env:hosts` also performs the guarded PHP checks and project restart before applying the overlay; it is an alias for `npm run env:start`.
 
 Without Doppler, define the same constants in `wp-config.php`, or put them in a gitignored `.wp-env.override.json` (`config` map) and use `npm run env:start`.
 
@@ -73,32 +94,33 @@ If your local app uses HTTPS with a private CA, set `BEEHIIV_SSLVERIFY` to `fals
 Point wp-env at a specific PHP / WordPress core version to check compatibility with older or newer combinations than your default local setup, and get an HTML dashboard for that combination:
 
 ```bash
-npm run test:compat -- --php=8.1 --wp=6.8
+npm run test:compat -- --php=8.3 --wp=6.8
 ```
 
-That pins wp-env to PHP 8.1 / WP 6.8 (leaving it set for subsequent `npm run env:start` runs — clear with `npm run env:set-version -- --clear`), **destroys and recreates the wp-env environment** so the combination starts from a genuinely clean install, runs PHPUnit, and writes `tests/phpunit/test-results/php8.1-wp6.8/dashboard.html` — pass/fail counts, a per-class breakdown, and failure details. Run it again with different `--php`/`--wp` values to get a separate dashboard per combination; nothing gets overwritten. `--wp` accepts a WordPress.org release number (e.g. `6.8`), `latest` (wp-env's own default), or `nightly`.
+That selects PHP 8.3 / WP 6.8 (leaving it set for subsequent `npm run env:start` runs; clear with `npm run env:set-version -- --clear`), **destroys and recreates the wp-env environment**, checks the actual PHP versions against the security requirements above, runs PHPUnit, and writes `tests/phpunit/test-results/php8.3-wp6.8/dashboard.html`. The dashboard contains pass/fail counts, a per-class breakdown, and failure details. Different `--php`/`--wp` combinations have separate report directories. `--php` accepts supported branches 8.2–8.5; `--wp` accepts a WordPress.org release number (e.g. `6.8`), `latest` (wp-env's own default), or `nightly`.
 
 ⚠️ `test:compat` deletes your current wp-env database and content for this project (`wp-env destroy`) every time it runs. Only use it against a wp-env instance you're fine wiping — not one with dev content you want to keep.
 
-To only change the pinned version without wiping anything, use `npm run env:set-version -- --php=8.1 --wp=6.8` directly — it writes to the gitignored `.wp-env.override.json`, so it never touches tracked config, and wp-env rebuilds the WordPress core files (not the database) the next time it starts. Because the database is left as-is, wp-admin will show the "database needs to be updated" screen after switching to a different WP version; run `npm run env:destroy` first if you want a clean database for manual browsing too. `npm run test:php:report` regenerates a dashboard from an existing JUnit report (e.g. after `composer test`) without re-running anything.
+To update only the configuration, use `npm run env:set-version -- --php=8.3 --wp=6.8`. It writes to the gitignored `.wp-env.override.json`; apply the change with `npm run env:start`. Back up local content before switching versions. For an intentionally clean environment, `npm run env:destroy` deletes the project's database and content. `npm run test:php:report` regenerates a dashboard from an existing JUnit report (e.g. after `composer test`) without re-running anything.
 
-CI runs the full PHP × WP matrix on every PR (see `.github/workflows/test.yml`) and uploads one `phpunit-report-php{X}-wp{Y}` dashboard artifact per combination.
+CI runs PHP 8.2–8.5 against WP 6.8 and `latest` on every PR (see `.github/workflows/test.yml`) and uploads one `phpunit-report-php{X}-wp{Y}` dashboard artifact per combination. E2E tests and release builds require host PHP 8.4.27 or later in that branch; E2E containers use the guarded PHP 8.4 images.
 
 ## Development Commands
 
-| Command                     | Purpose                                              |
-| --------------------------- | ---------------------------------------------------- |
-| `npm run start`             | Webpack watcher — rebuilds `build/` on save          |
-| `npm run build`             | Production asset build                               |
-| `npm run env:start`         | Start wp-env (+ optional extra_hosts overlay)        |
-| `npm run env:start:doppler` | Start with Doppler-mounted OAuth/API overrides       |
-| `npm run env:hosts`         | Re-apply `docker-compose.extra-hosts.yml` if present |
-| `npm run env:set-version`   | Pin wp-env's PHP/WP core version (`--php` / `--wp`)  |
-| `npm run env:stop`          | Stop wp-env                                          |
-| `npm run env:destroy`       | Tear down wp-env                                     |
-| `npm run test:compat`       | Run PHPUnit for one PHP/WP combo + its own dashboard |
-| `npm run test:php:report`   | Regenerate a PHPUnit dashboard from an existing run  |
-| `npm run lint`              | Lint JS, CSS, and PHP (or individually)              |
+| Command                     | Purpose                                                                |
+| --------------------------- | ---------------------------------------------------------------------- |
+| `npm run start`             | Webpack watcher — rebuilds `build/` on save                            |
+| `npm run build`             | Production asset build                                                 |
+| `npm run env:start`         | Verify PHP runtimes, recreate wp-env, and apply optional hosts overlay |
+| `npm run env:start:doppler` | Start with Doppler-mounted OAuth/API overrides                         |
+| `npm run env:hosts`         | Alias for guarded startup and optional hosts overlay                   |
+| `npm run env:set-version`   | Pin wp-env's PHP/WP core version (`--php` / `--wp`)                    |
+| `npm run env:stop`          | Stop wp-env                                                            |
+| `npm run env:destroy`       | Tear down wp-env                                                       |
+| `npm run test:compat`       | Run PHPUnit for one PHP/WP combo + its own dashboard                   |
+| `npm run test:php:report`   | Regenerate a PHPUnit dashboard from an existing run                    |
+| `npm run test:php-runtime`  | Test PHP version policy and guarded startup without Docker             |
+| `npm run lint`              | Lint JS, CSS, and PHP (or individually)                                |
 
 ## Project layout
 
@@ -211,7 +233,9 @@ npm run lint
 
 Or individually: `lint:js`, `lint:css`, `lint:php`. Autofix variants: `lint:js:fix`, `lint:css:fix`, `lint:php:fix`, plus `npm run format` for Prettier.
 
-On every pull request (and pushes to `main` / `master`), GitHub Actions runs the same checks via [`.github/workflows/lint.yml`](.github/workflows/lint.yml) on PHP **7.4** through **8.5**.
+On every pull request (and pushes to `main` / `master`), [`.github/workflows/lint.yml`](.github/workflows/lint.yml) runs JS, CSS, and PHP lint under the required check names `Lint (7.4)` through `Lint (8.5)`. These labels identify static compatibility targets. Targets **7.4–8.1** run on patched PHP **8.4.27**; targets **8.2–8.5** run on their patched branches listed above. Each job passes `--runtime-set testVersion <target>-` to PHPCS, keeping end-of-life PHP versions out of CI execution.
+
+The pinned PHPCompatibility **9.3.5** rules provide partial static checks and predate PHP 8. They do not cover all PHP 8 changes or replace runtime and PHPUnit coverage on the target versions.
 
 ## Releasing (maintainers)
 

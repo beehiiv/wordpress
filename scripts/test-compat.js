@@ -6,11 +6,11 @@
  * backward-compatibility testing.
  *
  * Usage:
- *   npm run test:compat -- --php=8.1 --wp=6.8
+ *   npm run test:compat -- --php=8.4 --wp=6.8
  *
  * Writes:
- *   tests/phpunit/test-results/php8.1-wp6.8/junit.xml
- *   tests/phpunit/test-results/php8.1-wp6.8/dashboard.html
+ *   tests/phpunit/test-results/php8.4-wp6.8/junit.xml
+ *   tests/phpunit/test-results/php8.4-wp6.8/dashboard.html
  *
  * Runs `wp-env destroy` before starting, so each combination gets a genuinely
  * clean WordPress install rather than the new core version's files sitting on
@@ -71,7 +71,7 @@ run( 'node', [
 	`--wp=${ args.wp }`,
 	'--destroy',
 ] );
-run( 'npx', [ 'wp-env', 'start' ] );
+run( 'node', [ 'scripts/wp-env-start.js' ] );
 
 let exitCode = 0;
 try {

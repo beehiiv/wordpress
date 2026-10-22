@@ -30,13 +30,20 @@ jobs:
           grep -q "'BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER' !== \$token" includes/OAuth/Config.php
 
   lint:
-    name: Lint
+    name: Lint (${{ matrix.compatibility }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        php: ["7.4", "8.0", "8.1", "8.2", "8.3", "8.4", "8.5"]
+        include:
+          - { compatibility: "7.4", php: "8.4.27" }
+          - { compatibility: "8.0", php: "8.4.27" }
+          - { compatibility: "8.1", php: "8.4.27" }
+          - { compatibility: "8.2", php: "8.2.35" }
+          - { compatibility: "8.3", php: "8.3.36" }
+          - { compatibility: "8.4", php: "8.4.27" }
+          - { compatibility: "8.5", php: "8.5.12" }
 
     steps:
       - name: Checkout
@@ -48,12 +55,17 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - name: Setup PHP
+      - name: Setup patched PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@v2
+        env:
+          update: "true"
         with:
           php-version: ${{ matrix.php }}
           tools: composer:v2
           coverage: none
+
+      - name: Verify host PHP security version
+        run: node scripts/check-php-version.js
 
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress
@@ -67,5 +79,5 @@ jobs:
       - name: Lint CSS
         run: npm run lint:css
 
-      - name: Lint PHP
-        run: npm run lint:php
+      - name: Check PHP ${{ matrix.compatibility }}+ static compatibility
+        run: npm run lint:php -- --runtime-set testVersion "${{ matrix.compatibility }}-"
