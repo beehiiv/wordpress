@@ -38,6 +38,16 @@ final class Config {
 	private const REGISTRATION_TOKEN = 'BEEHIIV_REGISTRATION_TOKEN_PLACEHOLDER';
 
 	/**
+	 * Constant WordPress VIP defines before the plugin loads, holding a config array.
+	 *
+	 * Derived from the integration slug in `vip-manifest.yaml`. Supported key:
+	 * `api_base_url` (optional URL; empty or invalid values are ignored).
+	 *
+	 * @since 1.1.0
+	 */
+	public const CONSTANT_NAME = 'VIP_BEEHIIV_CONFIG';
+
+	/**
 	 * WP-config.php constant for registration token override.
 	 *
 	 * @since 1.0.0
@@ -114,7 +124,74 @@ final class Config {
 	 */
 	public static function get_api_base_url(): string {
 
+		$vip_url = self::sanitize_vip_url( self::get_vip_config()['api_base_url'] ?? '' );
+
+		if ( '' !== $vip_url ) {
+			return $vip_url;
+		}
+
 		return self::get_url_constant( self::API_BASE_URL_CONST, self::DEFAULT_API_BASE_URL );
+	}
+
+	/**
+	 * Config array WordPress VIP defines, or an empty array when absent or invalid.
+	 *
+	 * Missing or malformed config is a normal state, never an error: callers
+	 * fall back to the wp-config constant and then the production default.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function get_vip_config(): array {
+
+		if ( ! defined( self::CONSTANT_NAME ) ) {
+			return [];
+		}
+
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- Defined by the VIP platform.
+		return self::parse_vip_config( constant( self::CONSTANT_NAME ) );
+	}
+
+	/**
+	 * Normalize a raw VIP config value to an array.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param mixed $raw Raw value of the VIP config constant.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function parse_vip_config( $raw ): array {
+
+		return is_array( $raw ) ? $raw : [];
+	}
+
+	/**
+	 * Return a usable http(s) URL from a VIP config value, or an empty string.
+	 *
+	 * A missing key, a non-string value, a blank string and a non-http(s) URL
+	 * are all treated the same: unset.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param mixed $value Raw config value.
+	 *
+	 * @return string
+	 */
+	public static function sanitize_vip_url( $value ): string {
+
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+
+		$url = trim( $value );
+
+		if ( '' === $url || ! in_array( wp_parse_url( $url, PHP_URL_SCHEME ), [ 'http', 'https' ], true ) ) {
+			return '';
+		}
+
+		return untrailingslashit( $url );
 	}
 
 	/**
