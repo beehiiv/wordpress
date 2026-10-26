@@ -12,8 +12,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Single source of truth for which WordPress blocks are included in newsletters.
  *
- * Layout blocks such as `core/group` and `core/columns` are not supported. They
- * and all of their inner blocks are omitted from the newsletter payload.
+ * Layout blocks such as `core/group` are not supported. They and all of their
+ * inner blocks are omitted from the newsletter payload. `core/columns` is supported,
+ * but only up to 3 columns; see `BlockConverter::convert_columns_block_to_blocks()`.
  *
  * @since 1.0.0
  */
@@ -34,6 +35,7 @@ final class SupportedBlocks {
 		'core/pullquote',
 		'core/embed',
 		'core/media-text',
+		'core/columns',
 		'core/buttons',
 		'core/separator',
 		'beehiiv/advertisement',
@@ -46,6 +48,7 @@ final class SupportedBlocks {
 	 */
 	public const NESTED_ONLY = [
 		'core/button',
+		'core/column',
 		'core/list-item',
 	];
 
