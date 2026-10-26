@@ -342,7 +342,7 @@ final class BlockConverter {
 		$block_background_color = FormattedTextParser::resolve_paragraph_block_background_color( $inner_html, $attrs );
 		$parsed                 = FormattedTextParser::parse( $inline_html, $block_text_color );
 
-		if ( '' === trim( $parsed['plaintext'] ) ) {
+		if ( '' === preg_replace( '/[\s\x{00A0}]+/u', '', $parsed['plaintext'] ) ) {
 			return [];
 		}
 
