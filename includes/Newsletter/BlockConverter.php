@@ -694,7 +694,8 @@ final class BlockConverter {
 	 * Maps attrs.head into rows[0] with headerRow when the Header section is enabled
 	 * in the block editor. attrs.body supplies remaining rows. When attrs are empty
 	 * (common for query-sourced table attributes in PHP parse_blocks), rows are read
-	 * from innerHTML instead. The table is omitted when every cell is empty.
+	 * from innerHTML instead. The table is omitted when every cell is empty. A block
+	 * background colour is sent as `visual_settings.background_color`.
 	 * Footer rows are omitted; beehiiv has no table footer support.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
@@ -751,11 +752,21 @@ final class BlockConverter {
 			return [];
 		}
 
-		return [
+		$table_block = [
 			'type'      => 'table',
 			'rows'      => $rows,
 			'headerRow' => $header_row,
 		];
+
+		$background_color = FormattedTextParser::resolve_table_block_background_color( $inner_html, $attrs );
+
+		if ( null !== $background_color && '' !== $background_color ) {
+			$table_block['visual_settings'] = [
+				'background_color' => $background_color,
+			];
+		}
+
+		return $table_block;
 	}
 
 	/**
