@@ -148,9 +148,19 @@ export default function NewsletterTemplateSelect( {
 		}
 
 		if ( value && ! opts.some( ( option ) => option.value === value ) ) {
+			// Only call it unavailable once the list has loaded with templates in it,
+			// so a slow or failed fetch does not mislabel a good template.
+			const isUnavailable = ! isLoading && templates.length > 0;
+
 			opts.push( {
 				value,
-				label: value,
+				label: isUnavailable
+					? sprintf(
+							/* translators: %s: post template ID */
+							__( '%s (unavailable)', 'beehiiv' ),
+							value
+					  )
+					: value,
 			} );
 		}
 
@@ -170,6 +180,7 @@ export default function NewsletterTemplateSelect( {
 		selectedValue,
 		defaultPostTemplateId,
 		requireChoice,
+		isLoading,
 	] );
 
 	const getHelpText = () => {
@@ -184,6 +195,21 @@ export default function NewsletterTemplateSelect( {
 			return __(
 				'Choose a post template before sending this post to beehiiv.',
 				'beehiiv'
+			);
+		}
+
+		if ( ! value && defaultPostTemplateId ) {
+			const defaultTemplate = templates.find(
+				( item ) => item?.id === defaultPostTemplateId
+			);
+
+			return sprintf(
+				/* translators: %s: default post template name */
+				__(
+					'This post uses the default template, "%s", unless you choose another.',
+					'beehiiv'
+				),
+				defaultTemplate?.name || defaultPostTemplateId
 			);
 		}
 
@@ -204,6 +230,7 @@ export default function NewsletterTemplateSelect( {
 
 	return (
 		<div className="beehiiv-newsletter-template">
+			{ isLoading && <Spinner /> }
 			<SelectControl
 				label={ __( 'Post template', 'beehiiv' ) }
 				value={ selectedValue }

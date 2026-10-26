@@ -526,7 +526,8 @@ test.describe( 'US-007: required template prompt', () => {
 		const sidebar = await openSidebarFor( page, id );
 		const errorNotice = sidebar
 			.locator( '.components-notice.is-error' )
-			.filter( { hasText: REQUIRED_MESSAGE } );
+			.filter( { hasText: REQUIRED_MESSAGE } )
+			.first();
 		await expect( errorNotice ).toBeVisible();
 	} );
 
@@ -586,5 +587,48 @@ test.describe( 'US-007: required template prompt', () => {
 		await expect( sidebar.getByLabel( 'Post template' ) ).toHaveValue(
 			DEFAULT_TEMPLATE
 		);
+	} );
+
+	test( 'publish panel: opens with a spaced error notice when a template is still required', async ( {
+		page,
+	} ) => {
+		seed( { requireTemplate: true } );
+		const id = createPost( 'QA E2E nts publish panel' );
+		await loginAsAdmin( page );
+		await openPostEditor( page, id );
+
+		await page
+			.getByRole( 'button', { name: 'Publish', exact: true } )
+			.first()
+			.click();
+
+		// The panel opens by itself, so the warning is visible without expanding it.
+		const notice = page
+			.locator( '.editor-post-publish-panel' )
+			.locator( '.components-notice.is-error' )
+			.filter( { hasText: REQUIRED_MESSAGE } );
+		await expect( notice ).toBeVisible( { timeout: 20000 } );
+		await expect( notice ).toHaveCSS( 'margin-top', '12px' );
+	} );
+
+	test( 'publish panel: no required-template error once a template is chosen', async ( {
+		page,
+	} ) => {
+		seed( { requireTemplate: true } );
+		const id = createPost( 'QA E2E nts publish panel chosen', {
+			meta: { [ META.template ]: OTHER_TEMPLATE },
+		} );
+		await loginAsAdmin( page );
+		await openPostEditor( page, id );
+
+		await page
+			.getByRole( 'button', { name: 'Publish', exact: true } )
+			.first()
+			.click();
+
+		await expect(
+			page.locator( '.editor-post-publish-panel' )
+		).toBeVisible( { timeout: 20000 } );
+		await expect( page.getByText( REQUIRED_MESSAGE ) ).toHaveCount( 0 );
 	} );
 } );

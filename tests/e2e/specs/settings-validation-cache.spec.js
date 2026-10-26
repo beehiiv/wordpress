@@ -206,6 +206,8 @@ test.describe( 'Settings validation & cache management', () => {
 		expect( baseline ).toEqual( {
 			publication_id: 'qa-e2e-pub-baseline',
 			post_template_id: 'qa-e2e-tmpl-baseline',
+			// The required-template setting is off unless its box is checked.
+			require_template_choice: false,
 		} );
 
 		// Submit `beehiiv_settings` as a flat (non-bracketed) field, so PHP
