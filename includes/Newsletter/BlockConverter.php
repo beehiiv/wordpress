@@ -1046,8 +1046,9 @@ final class BlockConverter {
 	 * Convert a core/media-text block to a beehiiv columns block.
 	 *
 	 * Maps the media side to an image column and the content side to converted
-	 * inner blocks. Blocks with video media are omitted entirely. Respects media
-	 * position, column widths, vertical alignment, and mobile stacking.
+	 * inner blocks. Blocks with video media, or with no valid image, are omitted
+	 * entirely. Respects media position, column widths, vertical alignment, and
+	 * mobile stacking.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<string, mixed>
@@ -1067,7 +1068,12 @@ final class BlockConverter {
 		$media_width     = MediaTextBlockConverter::resolve_media_width( $attrs, $inner_html );
 		$content_width   = max( 1, min( 100, 100 - $media_width ) );
 
-		$media_blocks   = self::convert_media_text_media_blocks( $attrs, $inner_html );
+		$media_blocks = self::convert_media_text_media_blocks( $attrs, $inner_html );
+
+		if ( empty( $media_blocks ) ) {
+			return [];
+		}
+
 		$content_blocks = self::convert_layout_block_inner_blocks( $inner_blocks );
 
 		if ( empty( $content_blocks ) && '' !== $inner_html ) {
