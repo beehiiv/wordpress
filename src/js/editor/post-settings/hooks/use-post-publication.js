@@ -16,6 +16,7 @@ import { useEditorPublications } from './use-editor-publications';
  * @property {boolean}                           isDefaultPublication   Whether the effective publication is the default.
  * @property {boolean}                           isFallback             Whether the saved publication is no longer connected.
  * @property {boolean}                           missingPublication     Whether no publication can be used yet.
+ * @property {boolean}                           requireChoice          Whether an editor must choose this post's template.
  * @property {boolean}                           missingTemplate        Whether the post still needs a template.
  * @property {boolean}                           isPostReady            Whether the post has a publication and a template.
  */
@@ -25,8 +26,11 @@ import { useEditorPublications } from './use-editor-publications';
  * @return {PostPublication} Per-post publication state.
  */
 export function usePostPublication( beehiivMeta ) {
-	const { defaultPublicationId, defaultPostTemplateId } =
-		useBeehiivEditorConfig();
+	const {
+		defaultPublicationId,
+		defaultPostTemplateId,
+		requireTemplateChoice,
+	} = useBeehiivEditorConfig();
 	const publications = useEditorPublications().filter( ( item ) => item?.id );
 	const storedPublicationId = beehiivMeta?.beehiivPublicationId || '';
 	const templateId = beehiivMeta?.beehiivPostTemplateId || '';
@@ -45,10 +49,21 @@ export function usePostPublication( beehiivMeta ) {
 		!! effectivePublicationId &&
 		effectivePublicationId === defaultPublicationId;
 
+	// With the required-template setting on, a never-sent post has no automatic template.
+	const requireChoice =
+		requireTemplateChoice && ! beehiivMeta?.newsletterAlreadySent;
+
 	// On fallback the server uses the default template only.
-	const hasTemplate = isFallback
-		? !! defaultPostTemplateId
-		: !! templateId || ( isDefaultPublication && !! defaultPostTemplateId );
+	let hasTemplate;
+	if ( requireChoice ) {
+		hasTemplate = ! isFallback && !! templateId;
+	} else if ( isFallback ) {
+		hasTemplate = !! defaultPostTemplateId;
+	} else {
+		hasTemplate =
+			!! templateId ||
+			( isDefaultPublication && !! defaultPostTemplateId );
+	}
 
 	return {
 		publications,
@@ -57,6 +72,7 @@ export function usePostPublication( beehiivMeta ) {
 		effectivePublicationId,
 		isDefaultPublication,
 		isFallback,
+		requireChoice,
 		missingPublication: ! effectivePublicationId,
 		missingTemplate: !! effectivePublicationId && ! hasTemplate,
 		isPostReady: !! effectivePublicationId && hasTemplate,
