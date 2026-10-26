@@ -300,8 +300,41 @@ test( 'Require editors to choose a post template: full walkthrough', async ( {
 	);
 
 	// 3. Publishing without a template is blocked --------------------------------
-	await caption( page, '3/4 · Publish without choosing a template', 1500 );
-	await publish( page );
+	await caption(
+		page,
+		'3/4 · Click Publish without choosing a template',
+		1500
+	);
+	await glideClick(
+		page,
+		page.locator( '.editor-post-publish-panel__toggle' )
+	);
+	const prePublish = page.locator( '.editor-post-publish-panel' );
+	await expect( prePublish ).toBeVisible();
+	const prePublishNotice = prePublish
+		.locator( '.components-notice.is-error' )
+		.filter( { hasText: REQUIRED_MESSAGE } )
+		.first();
+	await expect( prePublishNotice ).toBeVisible();
+	await point( page, prePublishNotice, 800 );
+	await caption(
+		page,
+		'The pre-publish panel already warns the editor with an error notice: choose a post template before sending',
+		6000
+	);
+	await caption( page, 'Publish anyway', 1200 );
+	await glideClick(
+		page,
+		prePublish.locator( '.editor-post-publish-button' )
+	);
+	await page.waitForFunction(
+		() =>
+			window.wp.data
+				.select( 'core/editor' )
+				.getCurrentPostAttribute( 'status' ) === 'publish',
+		null,
+		{ timeout: 20000 }
+	);
 	sidebar = await openSidebarFor( page, ids.first, false );
 	const errorNotice = sidebar
 		.locator( '.components-notice.is-error' )
@@ -312,7 +345,7 @@ test( 'Require editors to choose a post template: full walkthrough', async ( {
 	await point( page, errorNotice, 800 );
 	await caption(
 		page,
-		'The send is blocked with an error notice, even though a default template exists. Nothing is sent to beehiiv (AC-013, AC-017)',
+		'The post publishes in WordPress, but the send is blocked with an error notice, even though a default template exists. Nothing is sent to beehiiv (AC-013, AC-017)',
 		6000
 	);
 
