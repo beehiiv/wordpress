@@ -275,6 +275,43 @@ test( 'Email preview in the post editor: full walkthrough', async ( {
 		6000
 	);
 
+	// 2b. Desktop and Mobile views ---------------------------------------------------
+	const deviceFrame = modal( page ).locator(
+		'.beehiiv-email-preview__device'
+	);
+	const deviceButton = ( name ) =>
+		modal( page ).getByRole( 'button', { name, exact: true } );
+	await expect( deviceButton( 'Desktop' ) ).toHaveAttribute(
+		'aria-pressed',
+		'true'
+	);
+	const desktopWidth = ( await deviceFrame.boundingBox() ).width;
+	await caption(
+		page,
+		'The modal also has a Mobile view. Click Mobile',
+		1500
+	);
+	await glideClick( page, deviceButton( 'Mobile' ) );
+	await expect( deviceButton( 'Mobile' ) ).toHaveAttribute(
+		'aria-pressed',
+		'true'
+	);
+	await expect( deviceFrame ).toHaveClass( /is-mobile/ );
+	await expect( frame.locator( 'h1' ) ).toBeVisible();
+	const mobileWidth = ( await deviceFrame.boundingBox() ).width;
+	expect( mobileWidth ).toBeLessThanOrEqual( 448 );
+	expect( mobileWidth ).toBeLessThan( desktopWidth );
+	await caption(
+		page,
+		'Mobile view: the same email in a phone-width frame, so the editor sees how it reads on a phone',
+		6500
+	);
+	await caption( page, 'Switch back to Desktop', 1200 );
+	await glideClick( page, deviceButton( 'Desktop' ) );
+	await expect( deviceFrame ).toHaveClass( /is-desktop/ );
+	await expect( frame.locator( 'h1' ) ).toBeVisible();
+	await caption( page, 'Back on the Desktop view', 2000 );
+
 	// 3. The preview is view-only -------------------------------------------------
 	const sandbox = await emailFrame( page ).getAttribute( 'sandbox' );
 	expect( sandbox ).not.toBeNull();
