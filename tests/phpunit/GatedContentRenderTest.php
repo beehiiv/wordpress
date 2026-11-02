@@ -144,4 +144,27 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 	public function test_stray_divider_prints_nothing(): void {
 		$this->assertSame( '', trim( do_blocks( $this->divider() ) ) );
 	}
+
+	/**
+	 * AC-030 / AC-031: the card takes optional hex colors. Anything else is dropped.
+	 */
+	public function test_card_colors_are_applied_and_sanitized(): void {
+		$html = $this->render_gate(
+			$this->p( 'ONE' ) . $this->p( 'TWO' ),
+			'form_1',
+			',"cardBackgroundColor":"#112233","cardTextColor":"#ffffff"'
+		);
+
+		$this->assertStringContainsString( 'background-color:#112233', $html );
+		$this->assertStringContainsString( 'color:#ffffff', $html );
+
+		GatedContent::reset();
+		$html = $this->render_gate(
+			$this->p( 'ONE' ) . $this->p( 'TWO' ),
+			'form_1',
+			',"cardBackgroundColor":"red;x:y","cardTextColor":"javascript:1"'
+		);
+
+		$this->assertStringNotContainsString( 'style="', explode( 'beehiiv-gated-content__card', $html )[1] ?? '' );
+	}
 }

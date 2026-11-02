@@ -4,6 +4,7 @@ import { useSelect, useDispatch } from '@wordpress/data';
 import {
 	InnerBlocks,
 	InspectorControls,
+	PanelColorSettings,
 	useBlockProps,
 } from '@wordpress/block-editor';
 import { PanelBody, TextControl, TextareaControl } from '@wordpress/components';
@@ -11,7 +12,8 @@ import { PanelBody, TextControl, TextareaControl } from '@wordpress/components';
 const DIVIDER_BLOCK = 'beehiiv/gated-content-divider';
 
 export default function Edit( { attributes, setAttributes, clientId } ) {
-	const { formId, headline, text } = attributes;
+	const { formId, headline, text, cardBackgroundColor, cardTextColor } =
+		attributes;
 
 	const dividerIds = useSelect(
 		( select ) =>
@@ -77,6 +79,26 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 						) }
 					/>
 				</PanelBody>
+				<PanelColorSettings
+					title={ __( 'Gate card colors', 'beehiiv' ) }
+					initialOpen={ false }
+					colorSettings={ [
+						{
+							label: __( 'Background', 'beehiiv' ),
+							value: cardBackgroundColor,
+							onChange: ( value ) =>
+								setAttributes( {
+									cardBackgroundColor: value || '',
+								} ),
+						},
+						{
+							label: __( 'Text', 'beehiiv' ),
+							value: cardTextColor,
+							onChange: ( value ) =>
+								setAttributes( { cardTextColor: value || '' } ),
+						},
+					] }
+				/>
 			</InspectorControls>
 
 			<div { ...blockProps }>

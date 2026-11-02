@@ -122,12 +122,26 @@ final class GatedContent {
 			]
 		);
 
+		// Optional per-block card colors. Anything that is not a hex color is dropped.
+		$card_bg    = isset( $attributes['cardBackgroundColor'] ) ? sanitize_hex_color( $attributes['cardBackgroundColor'] ) : '';
+		$card_color = isset( $attributes['cardTextColor'] ) ? sanitize_hex_color( $attributes['cardTextColor'] ) : '';
+		$card_style = '';
+
+		if ( $card_bg ) {
+			$card_style .= 'background-color:' . $card_bg . ';';
+		}
+
+		if ( $card_color ) {
+			$card_style .= 'color:' . $card_color . ';--beehiiv-gate-card-color:' . $card_color . ';';
+		}
+
 		$card = sprintf(
-			'<div class="beehiiv-gated-content__card"><h2 class="beehiiv-gated-content__headline">%1$s</h2>'
+			'<div class="beehiiv-gated-content__card"%4$s><h2 class="beehiiv-gated-content__headline">%1$s</h2>'
 			. '<p class="beehiiv-gated-content__text">%2$s</p>%3$s</div>',
 			esc_html( $headline ),
 			esc_html( $text ),
-			$form_script
+			$form_script,
+			'' !== $card_style ? ' style="' . esc_attr( $card_style ) . '"' : ''
 		);
 
 		$gate = sprintf(

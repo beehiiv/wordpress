@@ -58,7 +58,7 @@
 	}
 
 	.beehiiv-gated-content__text {
-		color: #50575e;
+		color: var(--beehiiv-gate-card-color, #50575e);
 		font-size: 1.125rem;
 		margin: 0 0 1.25rem;
 	}

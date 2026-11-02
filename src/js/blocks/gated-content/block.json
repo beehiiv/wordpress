@@ -25,6 +25,14 @@
 		"text": {
 			"type": "string",
 			"default": ""
+		},
+		"cardBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"cardTextColor": {
+			"type": "string",
+			"default": ""
 		}
 	},
 	"render": "file:./render.php",
