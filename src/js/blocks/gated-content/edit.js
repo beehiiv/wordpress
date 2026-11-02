@@ -7,11 +7,20 @@ import {
 	PanelColorSettings,
 	useBlockProps,
 } from '@wordpress/block-editor';
-import { PanelBody, TextControl, TextareaControl } from '@wordpress/components';
+import {
+	Notice,
+	PanelBody,
+	TextControl,
+	TextareaControl,
+} from '@wordpress/components';
+
+import { useBeehiivEditorConfig } from '../../editor/post-settings/hooks/use-beehiiv-editor-config';
+import renderSettingsLinkMessage from '../../editor/post-settings/utils/render-settings-link-message';
 
 const DIVIDER_BLOCK = 'beehiiv/gated-content-divider';
 
 export default function Edit( { attributes, setAttributes, clientId } ) {
+	const { settingsUrl, hasPublication } = useBeehiivEditorConfig();
 	const { formId, headline, text, cardBackgroundColor, cardTextColor } =
 		attributes;
 
@@ -45,6 +54,17 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 					title={ __( 'Gate settings', 'beehiiv' ) }
 					initialOpen={ true }
 				>
+					{ settingsUrl && ! hasPublication && (
+						<Notice status="error" isDismissible={ false }>
+							{ renderSettingsLinkMessage(
+								__(
+									'No beehiiv publication is set. Choose one in <a>beehiiv settings</a>.',
+									'beehiiv'
+								),
+								settingsUrl
+							) }
+						</Notice>
+					) }
 					<TextControl
 						label={ __( 'Subscribe form ID', 'beehiiv' ) }
 						value={ formId }
