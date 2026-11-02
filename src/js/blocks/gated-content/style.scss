@@ -1,0 +1,82 @@
+// Minimal styles. Themes can override every rule below.
+.wp-block-beehiiv-gated-content {
+
+	.beehiiv-gated-content__gate {
+		display: grid;
+		position: relative;
+	}
+
+	.beehiiv-gated-content__locked,
+	.beehiiv-gated-content__card {
+		grid-area: 1 / 1;
+	}
+
+	.beehiiv-gated-content__locked {
+		filter: blur(6px);
+		max-height: 24rem;
+		overflow: hidden;
+		pointer-events: none;
+		position: relative;
+		user-select: none;
+
+		&::after {
+			background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff);
+			bottom: 0;
+			content: "";
+			height: 40%;
+			left: 0;
+			position: absolute;
+			right: 0;
+		}
+	}
+
+	.beehiiv-gated-content__card {
+		align-self: start;
+		background: #fff;
+		border-radius: 8px;
+		box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+		justify-self: center;
+		margin: 1.5rem 0 0;
+		max-width: 100%;
+		padding: 1.5rem;
+		position: relative;
+		transition: opacity 0.3s ease;
+		width: 32rem;
+		z-index: 2;
+	}
+
+	.beehiiv-gated-content__headline {
+		margin-top: 0;
+	}
+
+	.beehiiv-gated-content__gate.is-unlocked {
+
+		.beehiiv-gated-content__locked {
+			filter: none;
+			max-height: none;
+			pointer-events: auto;
+			user-select: auto;
+
+			&::after {
+				display: none;
+			}
+		}
+
+		.beehiiv-gated-content__card {
+			opacity: 0;
+			pointer-events: none;
+		}
+
+		.beehiiv-gated-content__card.is-hidden {
+			display: none;
+		}
+	}
+}
+
+@media (max-width: 600px) {
+
+	.wp-block-beehiiv-gated-content .beehiiv-gated-content__card {
+		padding: 1rem;
+		width: 100%;
+	}
+}
