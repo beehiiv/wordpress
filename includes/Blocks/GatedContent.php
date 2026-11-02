@@ -67,6 +67,10 @@ final class GatedContent {
 		$split   = false;
 		$count   = 0;
 
+		// Work out once, before looping. The inner block list shares one cursor,
+		// so scanning it again inside the loop below would restart the loop forever.
+		$has_divider = self::has_divider( $block );
+
 		foreach ( $block->inner_blocks as $inner_block ) {
 			if ( self::DIVIDER_NAME === $inner_block->name ) {
 				// Only the first divider counts. A divider never prints anything.
@@ -76,7 +80,7 @@ final class GatedContent {
 
 			$html = $inner_block->render();
 
-			if ( $split || ( 0 < $count && ! self::has_divider( $block ) ) ) {
+			if ( $split || ( 0 < $count && ! $has_divider ) ) {
 				$locked[] = $html;
 			} else {
 				$preview[] = $html;
