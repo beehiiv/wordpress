@@ -29,6 +29,7 @@ final class Options {
 		'post_template_id' => '',
 		'gate_headline'    => '',
 		'gate_text'        => '',
+		'gate_form_id'     => '',
 		'gate_cookie_days' => '',
 	];
 
@@ -120,7 +121,7 @@ final class Options {
 	 * built-in default. The fallback is applied here, on read, and is never
 	 * written back to the stored option.
 	 *
-	 * @return array{headline: string, text: string, cookie_days: int}
+	 * @return array{headline: string, text: string, form_id: string, cookie_days: int}
 	 * @since 1.2.0
 	 */
 	public static function get_gate_settings(): array {
@@ -132,6 +133,7 @@ final class Options {
 		return [
 			'headline'    => '' !== $headline ? $headline : self::default_gate_headline(),
 			'text'        => '' !== $text ? $text : self::default_gate_text(),
+			'form_id'     => trim( (string) $settings['gate_form_id'] ),
 			'cookie_days' => self::resolve_gate_cookie_days( $settings['gate_cookie_days'] ),
 		];
 	}
@@ -194,7 +196,8 @@ final class Options {
 		}
 
 		// Plain text only: tags are removed and surrounding whitespace trimmed.
-		foreach ( [ 'gate_headline', 'gate_text' ] as $key ) {
+		// The form ID has no built-in default: blank means no site-wide form.
+		foreach ( [ 'gate_headline', 'gate_text', 'gate_form_id' ] as $key ) {
 			if ( isset( $input[ $key ] ) ) {
 				$current[ $key ] = trim( sanitize_text_field( (string) $input[ $key ] ) );
 			}

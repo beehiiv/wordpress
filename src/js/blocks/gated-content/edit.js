@@ -20,7 +20,8 @@ import renderSettingsLinkMessage from '../../editor/post-settings/utils/render-s
 const DIVIDER_BLOCK = 'beehiiv/gated-content-divider';
 
 export default function Edit( { attributes, setAttributes, clientId } ) {
-	const { settingsUrl, hasPublication } = useBeehiivEditorConfig();
+	const { settingsUrl, hasPublication, gateFormId } =
+		useBeehiivEditorConfig();
 	const { formId, headline, text, cardBackgroundColor, cardTextColor } =
 		attributes;
 
@@ -68,11 +69,12 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 					<TextControl
 						label={ __( 'Subscribe form ID', 'beehiiv' ) }
 						value={ formId }
+						placeholder={ gateFormId }
 						onChange={ ( value ) =>
 							setAttributes( { formId: value.trim() } )
 						}
 						help={ __(
-							'Form must be Inline and set to Show a success message, not Redirect.',
+							'Leave blank to use the default form ID from the beehiiv settings page. Form must be Inline and set to Show a success message, not Redirect.',
 							'beehiiv'
 						) }
 					/>

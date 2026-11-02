@@ -180,4 +180,20 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'data-beehiiv-gate', $first );
 		$this->assertStringContainsString( 'data-beehiiv-gate', $second );
 	}
+
+	/**
+	 * A block with no form ID of its own uses the default form ID from settings.
+	 */
+	public function test_blank_form_id_uses_settings_default(): void {
+		update_option( Config::OPTION_NAME, Options::sanitize( array( 'gate_form_id' => 'default_form' ) ) );
+
+		$html = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ), '' );
+
+		$this->assertStringContainsString( 'data-form-id="default_form"', $html );
+
+		GatedContent::reset();
+		$html = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ), 'own_form' );
+
+		$this->assertStringContainsString( 'data-form-id="own_form"', $html );
+	}
 }

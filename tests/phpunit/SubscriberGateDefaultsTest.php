@@ -178,4 +178,18 @@ class SubscriberGateDefaultsTest extends WP_UnitTestCase {
 		$this->assertSame( '', $saved['post_template_id'] );
 		$this->assertArrayNotHasKey( Options::PUBLICATION_SECTION_FLAG, $saved );
 	}
+
+	/**
+	 * The default form ID is plain text, trimmed, and blank when unset.
+	 */
+	public function test_default_form_id_is_trimmed_plain_text(): void {
+		$this->assertSame( '', Options::get_gate_settings()['form_id'] );
+
+		update_option(
+			Config::OPTION_NAME,
+			Options::sanitize( array( 'gate_form_id' => '  <b>form_1</b>  ' ) )
+		);
+
+		$this->assertSame( 'form_1', Options::get_gate_settings()['form_id'] );
+	}
 }

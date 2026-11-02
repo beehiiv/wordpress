@@ -135,6 +135,15 @@ final class Registrar {
 		);
 
 		add_settings_field(
+			'beehiiv_gate_form_id',
+			__( 'Default subscribe form ID', 'beehiiv' ),
+			[ self::class, 'render_gate_form_id_field' ],
+			$page_slug,
+			self::GATE_SETTINGS_SECTION_ID,
+			[ 'label_for' => 'beehiiv_gate_form_id' ]
+		);
+
+		add_settings_field(
 			'beehiiv_gate_cookie_days',
 			__( 'Unlock cookie lifetime', 'beehiiv' ),
 			[ self::class, 'render_gate_cookie_days_field' ],
@@ -209,6 +218,33 @@ final class Registrar {
 					Options::default_gate_text()
 				)
 			);
+			?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Default subscribe form ID field.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function render_gate_form_id_field(): void {
+		$settings = Options::get();
+		?>
+		<input
+			type="text"
+			id="beehiiv_gate_form_id"
+			class="regular-text"
+			name="<?php echo esc_attr( Config::OPTION_NAME . '[gate_form_id]' ); ?>"
+			value="<?php echo esc_attr( (string) $settings['gate_form_id'] ); ?>"
+		/>
+		<p class="description">
+			<?php
+			esc_html_e( 'Used by every gated content block that has no form ID of its own.', 'beehiiv' );
+			echo ' ';
+			esc_html_e( 'Paste the form ID from your beehiiv embed code (the value of data-beehiiv-form).', 'beehiiv' );
+			echo ' ';
+			esc_html_e( 'The form must be Inline and set to Show a success message, not Redirect.', 'beehiiv' );
 			?>
 		</p>
 		<?php

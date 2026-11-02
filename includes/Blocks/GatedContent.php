@@ -94,7 +94,9 @@ final class GatedContent {
 
 		$post_id   = $block->context['postId'] ?? get_the_ID();
 		$signature = md5( (string) wp_json_encode( [ $post_id, $block->parsed_block ] ) );
-		$form_id   = isset( $attributes['formId'] ) ? sanitize_text_field( $attributes['formId'] ) : '';
+		$defaults  = Options::get_gate_settings();
+		$form_id   = isset( $attributes['formId'] ) ? trim( sanitize_text_field( $attributes['formId'] ) ) : '';
+		$form_id   = '' !== $form_id ? $form_id : $defaults['form_id'];
 
 		// Nothing to gate, no form to unlock with, logged-in user, or a second
 		// gate on the page: show the content in full.
@@ -113,7 +115,6 @@ final class GatedContent {
 
 		self::$gate_owner = $signature;
 
-		$defaults = Options::get_gate_settings();
 		$headline = isset( $attributes['headline'] ) ? trim( sanitize_text_field( $attributes['headline'] ) ) : '';
 		$text     = isset( $attributes['text'] ) ? trim( sanitize_text_field( $attributes['text'] ) ) : '';
 		$headline = '' !== $headline ? $headline : $defaults['headline'];
