@@ -20,7 +20,8 @@
 		user-select: none;
 
 		&::after {
-			background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff);
+			// Themes with a dark or tinted page can set --beehiiv-gate-fade.
+			background: linear-gradient(to bottom, transparent, var(--beehiiv-gate-fade, #fff));
 			bottom: 0;
 			content: "";
 			height: 40%;
@@ -70,6 +71,13 @@
 		.beehiiv-gated-content__card.is-hidden {
 			display: none;
 		}
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.wp-block-beehiiv-gated-content .beehiiv-gated-content__card {
+		transition: none;
 	}
 }
 

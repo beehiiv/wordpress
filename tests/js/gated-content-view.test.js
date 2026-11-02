@@ -82,4 +82,15 @@ describe( 'gated content view', () => {
 		expect( gate().classList.contains( 'is-unlocked' ) ).toBe( true );
 		expect( locked().hasAttribute( 'aria-hidden' ) ).toBe( false );
 	} );
+
+	it( 'hides the card at once for a returning reader', () => {
+		document.cookie = 'beehiiv_gate_unlocked=1; Path=/';
+		load();
+
+		expect(
+			document
+				.querySelector( '.beehiiv-gated-content__card' )
+				.classList.contains( 'is-hidden' )
+		).toBe( true );
+	} );
 } );

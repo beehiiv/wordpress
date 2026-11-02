@@ -22,7 +22,7 @@ function setCookie( name, days ) {
 	document.cookie = `${ name }=1; Max-Age=${ maxAge }; Path=/; SameSite=Lax${ secure }`;
 }
 
-function unlock( gate ) {
+function unlock( gate, immediate = false ) {
 	const locked = gate.querySelector( '.beehiiv-gated-content__locked' );
 	const card = gate.querySelector( '.beehiiv-gated-content__card' );
 
@@ -33,7 +33,10 @@ function unlock( gate ) {
 		locked.removeAttribute( 'inert' );
 	}
 
-	if ( card ) {
+	if ( card && immediate ) {
+		// Returning reader: remove the card now so the gate does not linger.
+		card.classList.add( 'is-hidden' );
+	} else if ( card ) {
 		window.setTimeout( () => card.classList.add( 'is-hidden' ), 300 );
 	}
 }
@@ -47,7 +50,7 @@ if ( gate ) {
 	const formId = gate.dataset.formId;
 
 	if ( hasCookie( cookieName ) ) {
-		unlock( gate );
+		unlock( gate, true );
 	} else {
 		window.addEventListener( 'message', ( event ) => {
 			if (
