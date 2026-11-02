@@ -41,29 +41,41 @@ function unlock( gate, immediate = false ) {
 	}
 }
 
-// Only the first gate on a page counts.
-const gate = document.querySelector( '[data-beehiiv-gate]' );
+function init() {
+	// Only the first gate on a page counts.
+	const gate = document.querySelector( '[data-beehiiv-gate]' );
 
-if ( gate ) {
+	if ( ! gate ) {
+		return;
+	}
+
 	const cookieName = gate.dataset.cookieName;
 	const cookieDays = parseInt( gate.dataset.cookieDays, 10 ) || 30;
 	const formId = gate.dataset.formId;
 
 	if ( hasCookie( cookieName ) ) {
 		unlock( gate, true );
-	} else {
-		window.addEventListener( 'message', ( event ) => {
-			if (
-				! ALLOWED_ORIGINS.includes( event.origin ) ||
-				! event.data ||
-				event.data.type !== SUBMITTED_TYPE ||
-				String( event.data.externalEmbedId ) !== formId
-			) {
-				return;
-			}
-
-			setCookie( cookieName, cookieDays );
-			unlock( gate );
-		} );
+		return;
 	}
+
+	window.addEventListener( 'message', ( event ) => {
+		if (
+			! ALLOWED_ORIGINS.includes( event.origin ) ||
+			! event.data ||
+			event.data.type !== SUBMITTED_TYPE ||
+			String( event.data.externalEmbedId ) !== formId
+		) {
+			return;
+		}
+
+		setCookie( cookieName, cookieDays );
+		unlock( gate );
+	} );
+}
+
+// Block themes can print this script in the head, before the gate exists.
+if ( document.readyState === 'loading' ) {
+	document.addEventListener( 'DOMContentLoaded', init );
+} else {
+	init();
 }

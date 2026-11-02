@@ -93,4 +93,23 @@ describe( 'gated content view', () => {
 				.classList.contains( 'is-hidden' )
 		).toBe( true );
 	} );
+
+	it( 'still works when the script runs before the gate is in the page', () => {
+		document.body.innerHTML = '';
+		Object.defineProperty( document, 'readyState', {
+			configurable: true,
+			get: () => 'loading',
+		} );
+		load();
+
+		document.body.innerHTML = GATE_HTML;
+		document.dispatchEvent( new Event( 'DOMContentLoaded' ) );
+		post( {
+			type: 'BEEHIIV_SUBSCRIBER_FORM_SUBMITTED',
+			externalEmbedId: 'form_1',
+		} );
+		delete document.readyState;
+
+		expect( gate().classList.contains( 'is-unlocked' ) ).toBe( true );
+	} );
 } );

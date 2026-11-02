@@ -12,8 +12,8 @@
 	}
 
 	.beehiiv-gated-content__locked {
-		filter: blur(6px);
-		max-height: 24rem;
+		filter: blur(8px);
+		max-height: 30rem;
 		overflow: hidden;
 		pointer-events: none;
 		position: relative;
@@ -21,33 +21,46 @@
 
 		&::after {
 			// Themes with a dark or tinted page can set --beehiiv-gate-fade.
-			background: linear-gradient(to bottom, transparent, var(--beehiiv-gate-fade, #fff));
+			background: linear-gradient(to bottom, transparent, var(--beehiiv-gate-fade, #fff) 85%);
 			bottom: 0;
 			content: "";
-			height: 40%;
+			height: 60%;
 			left: 0;
 			position: absolute;
 			right: 0;
 		}
 	}
 
+	// The card sits over the bottom of the blurred, faded content.
 	.beehiiv-gated-content__card {
-		align-self: start;
+		align-self: end;
 		background: #fff;
-		border-radius: 8px;
-		box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+		border: 1px solid #e5e5e5;
+		border-radius: 16px;
+		box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
+		box-sizing: border-box;
 		justify-self: center;
-		margin: 1.5rem 0 0;
+		margin: 0;
 		max-width: 100%;
-		padding: 1.5rem;
+		padding: 2rem;
 		position: relative;
+		text-align: center;
 		transition: opacity 0.3s ease;
-		width: 32rem;
+		width: 44rem;
 		z-index: 2;
 	}
 
 	.beehiiv-gated-content__headline {
-		margin-top: 0;
+		font-size: 1.75rem;
+		font-weight: 700;
+		line-height: 1.2;
+		margin: 0 0 0.5rem;
+	}
+
+	.beehiiv-gated-content__text {
+		color: #50575e;
+		font-size: 1.125rem;
+		margin: 0 0 1.25rem;
 	}
 
 	.beehiiv-gated-content__gate.is-unlocked {
@@ -84,7 +97,7 @@
 @media (max-width: 600px) {
 
 	.wp-block-beehiiv-gated-content .beehiiv-gated-content__card {
-		padding: 1rem;
+		padding: 1.25rem;
 		width: 100%;
 	}
 }
