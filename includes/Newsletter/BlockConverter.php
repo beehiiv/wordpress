@@ -38,7 +38,11 @@ defined( 'ABSPATH' ) || exit;
  * - `core/more` — snippet newsletters only; beehiiv Read More `button` via `convert_more_block()`
  * - `beehiiv/advertisement` — beehiiv `advertisement` block via `convert_advertisement_block()`
  *
- * Layout blocks (`core/group`, `core/columns`, etc.) are skipped at the top level.
+ * - `core/group` — `convert_group_block()` (beehiiv `section` block holding the converted inner
+ *   blocks; only for posts whose first sync used sections, see `PostSettingsBuilder`)
+ *
+ * Other layout blocks (`core/columns`, etc.) are skipped at the top level, and so is
+ * `core/group` for posts first synced before section support.
  * `convert_columns_block()` exists for internal reuse (e.g. `core/media-text`) and is
  * not wired into the main block walk yet. Snippet mode stops at `core/more`.
  *
@@ -49,11 +53,13 @@ final class BlockConverter {
 	/**
 	 * Convert a WordPress post's blocks to beehiiv blocks.
 	 *
-	 * @param WP_Post $post_object Post object.
+	 * @param WP_Post $post_object   Post object.
+	 * @param bool    $convert_groups Whether `core/group` blocks become beehiiv sections. When false,
+	 *                                Group blocks are omitted.
 	 * @return array<int, array<string, mixed>>
 	 * @since 1.0.0
 	 */
-	public static function convert_supported_blocks( WP_Post $post_object ): array {
+	public static function convert_supported_blocks( WP_Post $post_object, bool $convert_groups = false ): array {
 		$beehiiv_blocks = [];
 		$wp_blocks      = parse_blocks( $post_object->post_content );
 
@@ -73,7 +79,8 @@ final class BlockConverter {
 		$converted_blocks = self::convert_blocks(
 			$wp_blocks,
 			$post_object,
-			$is_send_newsletter_snippet
+			$is_send_newsletter_snippet,
+			$convert_groups
 		);
 
 		return array_values(
@@ -89,13 +96,15 @@ final class BlockConverter {
 	 * @param array<int, array<string, mixed>> $wp_blocks                  Parsed blocks.
 	 * @param WP_Post                          $post_object                Post object.
 	 * @param bool                             $is_send_newsletter_snippet Whether snippet mode is enabled.
+	 * @param bool                             $convert_groups             Whether Group blocks become sections.
 	 * @return array<int, array<string, mixed>>
 	 * @since 1.0.0
 	 */
 	private static function convert_blocks(
 		array $wp_blocks,
 		WP_Post $post_object,
-		bool $is_send_newsletter_snippet
+		bool $is_send_newsletter_snippet,
+		bool $convert_groups = false
 	): array {
 		$beehiiv_blocks = [];
 
@@ -109,6 +118,16 @@ final class BlockConverter {
 			if ( $is_send_newsletter_snippet && 'core/more' === $block_name ) {
 				$beehiiv_blocks[] = self::convert_more_block( (string) get_permalink( $post_object ) );
 				break;
+			}
+
+			if ( 'core/group' === $block_name ) {
+				$section_block = $convert_groups ? self::convert_group_block( $wp_block, $post_object ) : [];
+
+				if ( ! empty( $section_block ) ) {
+					$beehiiv_blocks[] = $section_block;
+				}
+
+				continue;
 			}
 
 			if ( ! SupportedBlocks::is_supported( $block_name, $is_send_newsletter_snippet ) ) {
@@ -135,6 +154,38 @@ final class BlockConverter {
 		}
 
 		return $beehiiv_blocks;
+	}
+
+	/**
+	 * Convert a core/group block to a beehiiv section block.
+	 *
+	 * The Group's inner blocks are converted with the same rules as top-level blocks and
+	 * placed in the section in their original order. A nested Group becomes a nested
+	 * section. Section settings are left at beehiiv defaults. Returns an empty array when
+	 * no inner block converts, so no empty section is sent. Snippet-only blocks are
+	 * omitted inside a section.
+	 *
+	 * @param array<string, mixed> $wp_block    Parsed core/group block.
+	 * @param WP_Post              $post_object Post object.
+	 * @return array<string, mixed>
+	 * @since x.x.x
+	 */
+	private static function convert_group_block( array $wp_block, WP_Post $post_object ): array {
+		$inner_blocks = self::convert_blocks(
+			$wp_block['innerBlocks'] ?? [],
+			$post_object,
+			false,
+			true
+		);
+
+		if ( empty( $inner_blocks ) ) {
+			return [];
+		}
+
+		return [
+			'type'   => 'section',
+			'blocks' => $inner_blocks,
+		];
 	}
 
 	/**

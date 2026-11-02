@@ -12,8 +12,10 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Single source of truth for which WordPress blocks are included in newsletters.
  *
- * Layout blocks such as `core/group` and `core/columns` are not supported. They
- * and all of their inner blocks are omitted from the newsletter payload.
+ * `core/group` is supported as a beehiiv section for posts first synced with section
+ * support; see `BlockConverter::convert_group_block()`. Other layout blocks such as
+ * `core/columns` are not supported. They and all of their inner blocks are omitted
+ * from the newsletter payload.
  *
  * @since 1.0.0
  */
@@ -34,6 +36,7 @@ final class SupportedBlocks {
 		'core/pullquote',
 		'core/embed',
 		'core/media-text',
+		'core/group',
 		'core/buttons',
 		'core/separator',
 		'beehiiv/advertisement',
