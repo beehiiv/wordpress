@@ -145,6 +145,7 @@ class SubscriberGateDefaultsTest extends WP_UnitTestCase {
 
 		$after_publication_save = Options::sanitize(
 			array(
+				Options::PUBLICATION_SECTION_FLAG => '1',
 				'publication_id'   => 'pub_2',
 				'post_template_id' => '',
 			)
@@ -152,5 +153,29 @@ class SubscriberGateDefaultsTest extends WP_UnitTestCase {
 		$this->assertSame( 'pub_2', $after_publication_save['publication_id'] );
 		$this->assertSame( '', $after_publication_save['post_template_id'] );
 		$this->assertSame( 'Custom', $after_publication_save['gate_headline'] );
+	}
+
+	/**
+	 * A shown Publication section that posts no template clears the stored template.
+	 */
+	public function test_shown_publication_section_clears_missing_fields(): void {
+		update_option(
+			Config::OPTION_NAME,
+			array(
+				'publication_id'   => 'pub_1',
+				'post_template_id' => 'tpl_gone',
+			)
+		);
+
+		$saved = Options::sanitize(
+			array(
+				Options::PUBLICATION_SECTION_FLAG => '1',
+				'publication_id'                  => 'pub_1',
+			)
+		);
+
+		$this->assertSame( 'pub_1', $saved['publication_id'] );
+		$this->assertSame( '', $saved['post_template_id'] );
+		$this->assertArrayNotHasKey( Options::PUBLICATION_SECTION_FLAG, $saved );
 	}
 }

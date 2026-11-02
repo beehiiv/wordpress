@@ -256,6 +256,11 @@ final class Registrar {
 	 * @since 1.0.0
 	 */
 	public static function render_page_settings_description(): void {
+		printf(
+			'<input type="hidden" name="%s" value="1" />',
+			esc_attr( Config::OPTION_NAME . '[' . Options::PUBLICATION_SECTION_FLAG . ']' )
+		);
+
 		echo '<p>' . esc_html__(
 			'Default beehiiv publication and post template for newsletters sent from this site.',
 			'beehiiv'

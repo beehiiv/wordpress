@@ -167,4 +167,17 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 
 		$this->assertStringNotContainsString( 'style="', explode( 'beehiiv-gated-content__card', $html )[1] ?? '' );
 	}
+
+	/**
+	 * A repeat render of the same post (SEO, excerpt) must not consume the one-gate slot.
+	 */
+	public function test_repeat_render_of_same_gate_still_gates(): void {
+		$inner = $this->p( 'ONE' ) . $this->p( 'TWO' );
+
+		$first  = $this->render_gate( $inner );
+		$second = $this->render_gate( $inner );
+
+		$this->assertStringContainsString( 'data-beehiiv-gate', $first );
+		$this->assertStringContainsString( 'data-beehiiv-gate', $second );
+	}
 }

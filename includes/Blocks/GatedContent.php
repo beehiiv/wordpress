@@ -38,11 +38,14 @@ final class GatedContent {
 	public const COOKIE_NAME = 'beehiiv_gate_unlocked';
 
 	/**
-	 * Whether a gate has already been rendered on this page.
+	 * Signature of the gate that owns this page, or empty when none has rendered yet.
 	 *
-	 * @var bool
+	 * Rendering the same block again (an SEO or excerpt pass) matches the owner
+	 * and still shows the gate. A different gated block is a second gate.
+	 *
+	 * @var string
 	 */
-	private static $gate_rendered = false;
+	private static $gate_owner = '';
 
 	/**
 	 * Forget which gate was rendered (new page / tests).
@@ -50,7 +53,7 @@ final class GatedContent {
 	 * @since 1.2.0
 	 */
 	public static function reset(): void {
-		self::$gate_rendered = false;
+		self::$gate_owner = '';
 	}
 
 	/**
@@ -89,7 +92,9 @@ final class GatedContent {
 			++$count;
 		}
 
-		$form_id = isset( $attributes['formId'] ) ? sanitize_text_field( $attributes['formId'] ) : '';
+		$post_id   = $block->context['postId'] ?? get_the_ID();
+		$signature = md5( (string) wp_json_encode( [ $post_id, $block->parsed_block ] ) );
+		$form_id   = isset( $attributes['formId'] ) ? sanitize_text_field( $attributes['formId'] ) : '';
 
 		// Nothing to gate, no form to unlock with, logged-in user, or a second
 		// gate on the page: show the content in full.
@@ -97,7 +102,7 @@ final class GatedContent {
 			empty( $locked )
 			|| '' === $form_id
 			|| is_user_logged_in()
-			|| self::$gate_rendered
+			|| ( '' !== self::$gate_owner && self::$gate_owner !== $signature )
 		) {
 			return sprintf(
 				'<div %s>%s</div>',
@@ -106,7 +111,7 @@ final class GatedContent {
 			);
 		}
 
-		self::$gate_rendered = true;
+		self::$gate_owner = $signature;
 
 		$defaults = Options::get_gate_settings();
 		$headline = isset( $attributes['headline'] ) ? trim( sanitize_text_field( $attributes['headline'] ) ) : '';

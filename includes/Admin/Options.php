@@ -33,6 +33,13 @@ final class Options {
 	];
 
 	/**
+	 * Form key that the Publication section posts when it is shown.
+	 *
+	 * @var string
+	 */
+	public const PUBLICATION_SECTION_FLAG = '_publication_section';
+
+	/**
 	 * Lowest unlock cookie lifetime, in days.
 	 *
 	 * @var int
@@ -175,9 +182,14 @@ final class Options {
 			return $current;
 		}
 
-		foreach ( [ 'publication_id', 'post_template_id' ] as $key ) {
-			if ( isset( $input[ $key ] ) ) {
-				$current[ $key ] = sanitize_text_field( (string) $input[ $key ] );
+		// The Publication section marks itself in the submission. When it was shown,
+		// a missing field means it was cleared or not offered, so it resets to blank,
+		// as before. When it was hidden, the stored values stay.
+		if ( ! empty( $input[ self::PUBLICATION_SECTION_FLAG ] ) ) {
+			foreach ( [ 'publication_id', 'post_template_id' ] as $key ) {
+				$current[ $key ] = isset( $input[ $key ] )
+					? sanitize_text_field( (string) $input[ $key ] )
+					: '';
 			}
 		}
 
