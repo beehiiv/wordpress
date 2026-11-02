@@ -51,6 +51,7 @@
 	}
 
 	.beehiiv-gated-content__headline {
+		color: var(--beehiiv-gate-card-color, inherit);
 		font-size: 1.75rem;
 		font-weight: 700;
 		line-height: 1.2;
