@@ -52,8 +52,14 @@
 		z-index: 2;
 	}
 
+	// The headline and text wrap inside the card. They must not widen it, so the
+	// card width comes from the form iframe and the minimum width only.
+	.beehiiv-gated-content__headline,
+	.beehiiv-gated-content__text {
+		contain: inline-size;
+	}
+
 	.beehiiv-gated-content__headline {
-		color: inherit;
 		font-size: 1.75rem;
 		font-weight: 700;
 		line-height: 1.2;
@@ -61,7 +67,6 @@
 	}
 
 	.beehiiv-gated-content__text {
-		color: inherit;
 		opacity: 0.8;
 		font-size: 1.125rem;
 		margin: 0 0 1.25rem;
