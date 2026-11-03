@@ -7,6 +7,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
+use Beehiiv\Admin\Registrar;
 use Beehiiv\API\Resources\Workspace;
 use Beehiiv\Config;
 use Beehiiv\Connection\Manager;
@@ -76,13 +77,18 @@ if ( $beehiiv_is_connected ) {
 
 	<?php require Config::ADMIN_VIEWS_DIR . 'connection.php'; ?>
 
-	<?php if ( $beehiiv_can_write_posts ) : ?>
-		<form action="options.php" method="post">
-			<?php
-			settings_fields( Config::SETTINGS_GROUP );
+	<form action="options.php" method="post">
+		<?php
+		settings_fields( Config::SETTINGS_GROUP );
+
+		// The Publication section needs a connection that can send posts.
+		// The Subscriber gating section shows for every administrator.
+		if ( $beehiiv_can_write_posts ) {
 			do_settings_sections( Config::PLUGIN_SLUG );
-			submit_button( __( 'Save settings', 'beehiiv' ) );
-			?>
-		</form>
-	<?php endif; ?>
+		}
+
+		do_settings_sections( Registrar::GATE_SETTINGS_PAGE );
+		submit_button( __( 'Save settings', 'beehiiv' ) );
+		?>
+	</form>
 </div>

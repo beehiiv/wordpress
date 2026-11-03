@@ -27,7 +27,39 @@ final class Options {
 	private const DEFAULTS = [
 		'publication_id'   => '',
 		'post_template_id' => '',
+		'gate_headline'    => '',
+		'gate_text'        => '',
+		'gate_form_id'     => '',
+		'gate_cookie_days' => '',
 	];
+
+	/**
+	 * Form key that the Publication section posts when it is shown.
+	 *
+	 * @var string
+	 */
+	public const PUBLICATION_SECTION_FLAG = '_publication_section';
+
+	/**
+	 * Lowest unlock cookie lifetime, in days.
+	 *
+	 * @var int
+	 */
+	public const GATE_COOKIE_DAYS_MIN = 1;
+
+	/**
+	 * Highest unlock cookie lifetime, in days.
+	 *
+	 * @var int
+	 */
+	public const GATE_COOKIE_DAYS_MAX = 365;
+
+	/**
+	 * Built-in unlock cookie lifetime, in days.
+	 *
+	 * @var int
+	 */
+	public const GATE_COOKIE_DAYS_DEFAULT = 30;
 
 	/**
 	 * Register the option with the Settings API.
@@ -63,33 +95,102 @@ final class Options {
 	}
 
 	/**
+	 * Gate defaults with every fallback applied.
+	 *
+	 * A blank headline or text stays empty, and the gate card leaves it out.
+	 * An invalid cookie lifetime falls back to the default on read; the
+	 * fallback is never written back to the stored option.
+	 *
+	 * @return array{headline: string, text: string, form_id: string, cookie_days: int}
+	 * @since 1.2.0
+	 */
+	public static function get_gate_settings(): array {
+		$settings = self::get();
+
+		return [
+			'headline'    => trim( (string) $settings['gate_headline'] ),
+			'text'        => trim( (string) $settings['gate_text'] ),
+			'form_id'     => trim( (string) $settings['gate_form_id'] ),
+			'cookie_days' => self::resolve_gate_cookie_days( $settings['gate_cookie_days'] ),
+		];
+	}
+
+	/**
+	 * Resolve a stored cookie lifetime to a whole number of days from 1 to 365.
+	 *
+	 * Anything else (blank, text, decimal, zero, negative, over 365) becomes 30.
+	 *
+	 * @param mixed $value Stored or submitted value.
+	 * @return int
+	 * @since 1.2.0
+	 */
+	public static function resolve_gate_cookie_days( $value ): int {
+		if ( is_int( $value ) ) {
+			$value = (string) $value;
+		}
+
+		if ( ! is_string( $value ) || ! preg_match( '/^\s*\d+\s*$/', $value ) ) {
+			return self::GATE_COOKIE_DAYS_DEFAULT;
+		}
+
+		$days = (int) trim( $value );
+
+		if ( $days < self::GATE_COOKIE_DAYS_MIN || $days > self::GATE_COOKIE_DAYS_MAX ) {
+			return self::GATE_COOKIE_DAYS_DEFAULT;
+		}
+
+		return $days;
+	}
+
+	/**
 	 * Sanitize settings before saving.
+	 *
+	 * The settings form posts the Publication fields and the Subscriber gating
+	 * fields together, and the Publication fields are absent when that section
+	 * is hidden. Only keys present in the submission change; every other stored
+	 * value is kept.
 	 *
 	 * @param mixed $input Raw option value from the form.
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
 	public static function sanitize( $input ): array {
+		$current = self::get();
+
 		if ( ! is_array( $input ) ) {
-			return self::get();
+			return $current;
 		}
 
-		$publication_id   = isset( $input['publication_id'] )
-			? sanitize_text_field( (string) $input['publication_id'] )
-			: '';
-		$post_template_id = isset( $input['post_template_id'] )
-			? sanitize_text_field( (string) $input['post_template_id'] )
-			: '';
+		// The Publication section marks itself in the submission. When it was shown,
+		// a missing field means it was cleared or not offered, so it resets to blank,
+		// as before. When it was hidden, the stored values stay.
+		if ( ! empty( $input[ self::PUBLICATION_SECTION_FLAG ] ) ) {
+			foreach ( [ 'publication_id', 'post_template_id' ] as $key ) {
+				$current[ $key ] = isset( $input[ $key ] )
+					? sanitize_text_field( (string) $input[ $key ] )
+					: '';
+			}
+		}
+
+		// Plain text only: tags are removed and surrounding whitespace trimmed.
+		// The form ID has no built-in default: blank means no site-wide form.
+		foreach ( [ 'gate_headline', 'gate_text', 'gate_form_id' ] as $key ) {
+			if ( isset( $input[ $key ] ) ) {
+				$current[ $key ] = trim( sanitize_text_field( (string) $input[ $key ] ) );
+			}
+		}
+
+		// Stored as submitted (digits only); the 1 to 365 rule applies on read.
+		if ( isset( $input['gate_cookie_days'] ) ) {
+			$current['gate_cookie_days'] = sanitize_text_field( (string) $input['gate_cookie_days'] );
+		}
 
 		// Saving settings clears the cached template list for the selected
 		// publication so the dropdown reflects any beehiiv-side changes.
-		if ( '' !== $publication_id ) {
-			Cache::delete_post_templates( $publication_id );
+		if ( '' !== $current['publication_id'] ) {
+			Cache::delete_post_templates( $current['publication_id'] );
 		}
 
-		return [
-			'publication_id'   => $publication_id,
-			'post_template_id' => $post_template_id,
-		];
+		return $current;
 	}
 }

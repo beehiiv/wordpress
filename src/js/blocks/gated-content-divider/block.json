@@ -1,0 +1,20 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "beehiiv/gated-content-divider",
+	"version": "1.0.0",
+	"title": "beehiiv Gate Divider",
+	"category": "beehiiv-blocks",
+	"icon": "minus",
+	"description": "Marks where the preview ends inside a beehiiv Gated Content block.",
+	"keywords": [ "beehiiv", "gate", "divider" ],
+	"textdomain": "beehiiv",
+	"parent": [ "beehiiv/gated-content" ],
+	"supports": {
+		"html": false,
+		"anchor": true,
+		"reusable": false
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css"
+}
