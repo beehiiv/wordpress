@@ -20,8 +20,8 @@
 		user-select: none;
 
 		&::after {
-			// Themes with a dark or tinted page can set --beehiiv-gate-fade.
-			background: linear-gradient(to bottom, transparent, var(--beehiiv-gate-fade, #fff) 85%);
+			// The fade follows the theme's base color. Set --beehiiv-gate-fade to override it.
+			background: linear-gradient(to bottom, transparent, var(--beehiiv-gate-fade, var(--wp--preset--color--base, #fff)) 85%);
 			bottom: 0;
 			content: "";
 			height: 60%;
@@ -34,8 +34,8 @@
 	// The card sits over the bottom of the blurred, faded content.
 	.beehiiv-gated-content__card {
 		align-self: end;
-		background: #fff;
-		border: 1px solid #e5e5e5;
+		background: var(--beehiiv-gate-fade, var(--wp--preset--color--base, #fff));
+		border: 1px solid color-mix(in srgb, currentcolor 15%, transparent);
 		border-radius: 16px;
 		box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
 		box-sizing: border-box;
@@ -61,7 +61,8 @@
 	}
 
 	.beehiiv-gated-content__text {
-		color: var(--beehiiv-gate-card-color, #50575e);
+		color: var(--beehiiv-gate-card-color, inherit);
+		opacity: 0.8;
 		font-size: 1.125rem;
 		margin: 0 0 1.25rem;
 	}
