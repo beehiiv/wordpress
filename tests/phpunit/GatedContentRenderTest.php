@@ -80,6 +80,15 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The starter template's empty paragraphs are not content: nothing to gate.
+	 */
+	public function test_empty_starter_paragraphs_do_not_create_a_gate(): void {
+		$html = $this->render_gate( $this->p( '' ) . $this->divider() . $this->p( '' ) );
+
+		$this->assertStringNotContainsString( 'beehiiv-gated-content__gate', $html );
+	}
+
+	/**
 	 * Blank headline and text leave no empty heading or paragraph in the card.
 	 */
 	public function test_blank_headline_and_text_are_not_rendered(): void {

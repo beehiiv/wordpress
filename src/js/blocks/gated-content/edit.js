@@ -19,6 +19,14 @@ import renderSettingsLinkMessage from '../../editor/post-settings/utils/render-s
 
 const DIVIDER_BLOCK = 'beehiiv/gated-content-divider';
 
+// A new gated block starts with a preview paragraph, the divider, and a gated
+// paragraph, so editors can see the divider is a block they can move.
+const TEMPLATE = [
+	[ 'core/paragraph' ],
+	[ DIVIDER_BLOCK ],
+	[ 'core/paragraph' ],
+];
+
 export default function Edit( { attributes, setAttributes, clientId } ) {
 	const { settingsUrl, hasPublication, gateFormId } =
 		useBeehiivEditorConfig();
@@ -125,6 +133,7 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 
 			<div { ...blockProps }>
 				<InnerBlocks
+					template={ TEMPLATE }
 					renderAppender={ InnerBlocks.ButtonBlockAppender }
 				/>
 			</div>
