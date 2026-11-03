@@ -85,7 +85,7 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 							setAttributes( { headline: value } )
 						}
 						help={ __(
-							'Leave blank to use the default from the beehiiv settings page.',
+							'Leave blank to use the default from the beehiiv settings page. If that is blank too, no headline is shown.',
 							'beehiiv'
 						) }
 					/>
@@ -96,7 +96,7 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 							setAttributes( { text: value } )
 						}
 						help={ __(
-							'Leave blank to use the default from the beehiiv settings page.',
+							'Leave blank to use the default from the beehiiv settings page. If that is blank too, no text is shown.',
 							'beehiiv'
 						) }
 					/>

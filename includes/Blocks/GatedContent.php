@@ -141,13 +141,20 @@ final class GatedContent {
 			$card_style .= 'color:' . $card_color . ';--beehiiv-gate-card-color:' . $card_color . ';';
 		}
 
+		// A blank headline or text is left out of the card.
+		$headline_html = '' !== $headline
+			? '<h2 class="beehiiv-gated-content__headline">' . esc_html( $headline ) . '</h2>'
+			: '';
+		$text_html     = '' !== $text
+			? '<p class="beehiiv-gated-content__text">' . esc_html( $text ) . '</p>'
+			: '';
+
 		$card = sprintf(
-			'<div class="beehiiv-gated-content__card"%4$s><h2 class="beehiiv-gated-content__headline">%1$s</h2>'
-			. '<p class="beehiiv-gated-content__text">%2$s</p>%3$s</div>',
-			esc_html( $headline ),
-			esc_html( $text ),
-			$form_script,
-			'' !== $card_style ? ' style="' . esc_attr( $card_style ) . '"' : ''
+			'<div class="beehiiv-gated-content__card"%1$s>%2$s%3$s%4$s</div>',
+			'' !== $card_style ? ' style="' . esc_attr( $card_style ) . '"' : '',
+			$headline_html,
+			$text_html,
+			$form_script
 		);
 
 		$gate = sprintf(

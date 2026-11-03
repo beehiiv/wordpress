@@ -181,15 +181,7 @@ final class Registrar {
 			value="<?php echo esc_attr( (string) $settings['gate_headline'] ); ?>"
 		/>
 		<p class="description">
-			<?php
-			echo esc_html(
-				sprintf(
-					/* translators: %s: built-in default gate headline. */
-					__( 'Plain text. Leave blank to use "%s".', 'beehiiv' ),
-					Options::default_gate_headline()
-				)
-			);
-			?>
+			<?php esc_html_e( 'Plain text. Leave blank to show no headline.', 'beehiiv' ); ?>
 		</p>
 		<?php
 	}
@@ -210,15 +202,7 @@ final class Registrar {
 			value="<?php echo esc_attr( (string) $settings['gate_text'] ); ?>"
 		/>
 		<p class="description">
-			<?php
-			echo esc_html(
-				sprintf(
-					/* translators: %s: built-in default gate text. */
-					__( 'Plain text. Leave blank to use "%s".', 'beehiiv' ),
-					Options::default_gate_text()
-				)
-			);
-			?>
+			<?php esc_html_e( 'Plain text. Leave blank to show no text.', 'beehiiv' ); ?>
 		</p>
 		<?php
 	}

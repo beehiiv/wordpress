@@ -76,8 +76,18 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'data-form-id="form_1"', $html );
 		$this->assertStringContainsString( 'data-beehiiv-form="form_1"', $html );
 		$this->assertStringContainsString( 'aria-hidden="true" inert', $html );
-		$this->assertStringContainsString( 'Subscribe to keep reading', $html );
 		$this->assertStringContainsString( 'data-cookie-days="30"', $html );
+	}
+
+	/**
+	 * Blank headline and text leave no empty heading or paragraph in the card.
+	 */
+	public function test_blank_headline_and_text_are_not_rendered(): void {
+		$html = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ) );
+
+		$this->assertStringNotContainsString( 'beehiiv-gated-content__headline', $html );
+		$this->assertStringNotContainsString( 'beehiiv-gated-content__text', $html );
+		$this->assertStringContainsString( 'beehiiv-gated-content__card', $html );
 	}
 
 	/**

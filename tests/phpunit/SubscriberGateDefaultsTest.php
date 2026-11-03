@@ -18,7 +18,7 @@ class SubscriberGateDefaultsTest extends WP_UnitTestCase {
 	/**
 	 * AC-013 / AC-014: settings saved before the feature read as the built-in defaults.
 	 */
-	public function test_legacy_settings_read_built_in_defaults(): void {
+	public function test_legacy_settings_read_empty_headline_and_text(): void {
 		update_option(
 			Config::OPTION_NAME,
 			array(
@@ -29,16 +29,16 @@ class SubscriberGateDefaultsTest extends WP_UnitTestCase {
 
 		$gate = Options::get_gate_settings();
 
-		$this->assertSame( 'Subscribe to keep reading', $gate['headline'] );
-		$this->assertSame( 'Enter your email to unlock the full story and get our newsletter.', $gate['text'] );
+		$this->assertSame( '', $gate['headline'] );
+		$this->assertSame( '', $gate['text'] );
 		$this->assertSame( 30, $gate['cookie_days'] );
 		$this->assertSame( 'pub_1', Options::get()['publication_id'] );
 	}
 
 	/**
-	 * AC-004: blank or whitespace-only values read as the default and are not stored as it.
+	 * AC-004: blank or whitespace-only values stay empty.
 	 */
-	public function test_blank_values_fall_back_on_read_not_on_save(): void {
+	public function test_blank_values_stay_empty(): void {
 		$saved = Options::sanitize(
 			array(
 				'gate_headline' => '   ',
@@ -52,8 +52,8 @@ class SubscriberGateDefaultsTest extends WP_UnitTestCase {
 		update_option( Config::OPTION_NAME, $saved );
 
 		$gate = Options::get_gate_settings();
-		$this->assertSame( 'Subscribe to keep reading', $gate['headline'] );
-		$this->assertSame( 'Enter your email to unlock the full story and get our newsletter.', $gate['text'] );
+		$this->assertSame( '', $gate['headline'] );
+		$this->assertSame( '', $gate['text'] );
 	}
 
 	/**

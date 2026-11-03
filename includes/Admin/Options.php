@@ -95,31 +95,11 @@ final class Options {
 	}
 
 	/**
-	 * Built-in default gate headline.
-	 *
-	 * @return string
-	 * @since 1.2.0
-	 */
-	public static function default_gate_headline(): string {
-		return __( 'Subscribe to keep reading', 'beehiiv' );
-	}
-
-	/**
-	 * Built-in default gate text.
-	 *
-	 * @return string
-	 * @since 1.2.0
-	 */
-	public static function default_gate_text(): string {
-		return __( 'Enter your email to unlock the full story and get our newsletter.', 'beehiiv' );
-	}
-
-	/**
 	 * Gate defaults with every fallback applied.
 	 *
-	 * A blank, whitespace-only, missing or invalid saved value reads as the
-	 * built-in default. The fallback is applied here, on read, and is never
-	 * written back to the stored option.
+	 * A blank headline or text stays empty, and the gate card leaves it out.
+	 * An invalid cookie lifetime falls back to the default on read; the
+	 * fallback is never written back to the stored option.
 	 *
 	 * @return array{headline: string, text: string, form_id: string, cookie_days: int}
 	 * @since 1.2.0
@@ -127,12 +107,9 @@ final class Options {
 	public static function get_gate_settings(): array {
 		$settings = self::get();
 
-		$headline = trim( (string) $settings['gate_headline'] );
-		$text     = trim( (string) $settings['gate_text'] );
-
 		return [
-			'headline'    => '' !== $headline ? $headline : self::default_gate_headline(),
-			'text'        => '' !== $text ? $text : self::default_gate_text(),
+			'headline'    => trim( (string) $settings['gate_headline'] ),
+			'text'        => trim( (string) $settings['gate_text'] ),
 			'form_id'     => trim( (string) $settings['gate_form_id'] ),
 			'cookie_days' => self::resolve_gate_cookie_days( $settings['gate_cookie_days'] ),
 		];
