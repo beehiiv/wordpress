@@ -33,6 +33,11 @@ final class GatedContent {
 	public const COOKIE_NAME = 'beehiiv_gate_unlocked';
 
 	/**
+	 * Beehiiv form loader script.
+	 */
+	private const LOADER_SRC = 'https://subscribe-forms.beehiiv.com/v3/loader.js';
+
+	/**
 	 * Render the block.
 	 *
 	 * @param array<string, mixed> $attributes Block attributes.
@@ -110,23 +115,24 @@ final class GatedContent {
 			? '<p class="beehiiv-gated-content__text">' . esc_html( $text ) . '</p>'
 			: '';
 
-		// The beehiiv form loader is added by view.js, only for readers who are still locked.
 		$card = sprintf(
-			'<div class="beehiiv-gated-content__card"%1$s>%2$s%3$s</div>',
+			'<div class="beehiiv-gated-content__card"%1$s>%2$s%3$s%4$s</div>',
 			'' !== $card_style ? ' style="' . esc_attr( $card_style ) . '"' : '',
 			$headline_html,
-			$text_html
+			$text_html,
+			self::get_boot_script( $form_id )
 		);
 
 		$gate = sprintf(
 			'<div class="beehiiv-gated-content__gate" data-beehiiv-gate data-form-id="%1$s" '
-			. 'data-cookie-name="%2$s" data-cookie-days="%3$d">%4$s'
+			. 'data-cookie-name="%2$s" data-cookie-days="%3$d" data-unlocked-message="%6$s">%4$s'
 			. '<div class="beehiiv-gated-content__locked" aria-hidden="true" inert>%5$s</div></div>',
 			esc_attr( $form_id ),
 			esc_attr( self::COOKIE_NAME ),
 			(int) $defaults['cookie_days'],
 			$card,
-			implode( '', $locked )
+			implode( '', $locked ),
+			esc_attr__( 'Content unlocked.', 'beehiiv' )
 		);
 
 		return sprintf(
@@ -135,6 +141,30 @@ final class GatedContent {
 			implode( '', $preview ),
 			$gate
 		);
+	}
+
+	/**
+	 * Inline script that runs as the card is parsed, before the first paint.
+	 *
+	 * A reader who already has the unlock cookie gets the gate opened at once, so
+	 * the blurred content never flashes, and the form loader is never requested.
+	 * Everyone else gets the form loader right away, with no wait for view.js.
+	 *
+	 * @param string $form_id Beehiiv form ID.
+	 * @return string
+	 */
+	private static function get_boot_script( string $form_id ): string {
+		$cookie = wp_json_encode( self::COOKIE_NAME );
+		$src    = wp_json_encode( self::LOADER_SRC );
+		$form   = wp_json_encode( $form_id );
+
+		$js = '(function(s){var c=s.parentNode,g=c.parentNode;'
+			. 'if(document.cookie.split("; ").some(function(p){return p.split("=")[0]===' . $cookie . '})){'
+			. 'g.classList.add("is-unlocked");c.classList.add("is-hidden");return;}'
+			. 'var l=document.createElement("script");l.async=true;l.src=' . $src . ';'
+			. 'l.setAttribute("data-beehiiv-form",' . $form . ');c.appendChild(l);})(document.currentScript);';
+
+		return wp_get_inline_script_tag( $js );
 	}
 
 	/**

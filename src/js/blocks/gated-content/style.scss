@@ -34,7 +34,7 @@
 	// The card sits over the bottom of the blurred, faded content.
 	.beehiiv-gated-content__card {
 		align-self: end;
-		background: var(--beehiiv-gate-fade, var(--wp--preset--color--base, #fff));
+		background: var(--beehiiv-gate-card-bg, var(--wp--preset--color--base, #fff));
 		border: 1px solid color-mix(in srgb, currentcolor 15%, transparent);
 		border-radius: 16px;
 		box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
@@ -42,6 +42,8 @@
 		justify-self: center;
 		margin: 0;
 		max-width: 100%;
+		// Room for the form, so the card does not jump when the form loads.
+		min-height: 14rem;
 		min-width: min( 100%, 500px );
 		padding: 2rem;
 		position: relative;
@@ -67,9 +69,9 @@
 	}
 
 	.beehiiv-gated-content__text {
-		opacity: 0.8;
 		font-size: 1.125rem;
 		margin: 0 0 1.25rem;
+		opacity: 0.8;
 	}
 
 	.beehiiv-gated-content__gate.is-unlocked {

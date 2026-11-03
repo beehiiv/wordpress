@@ -71,7 +71,11 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 		$html = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ) );
 
 		$this->assertStringContainsString( 'data-form-id="form_1"', $html );
-		$this->assertStringNotContainsString( 'loader.js', $html );
+		// The inline boot script opens the gate for returning readers and starts the form loader.
+		$this->assertStringContainsString( 'loader.js', $html );
+		$this->assertStringContainsString( '"beehiiv_gate_unlocked"', $html );
+		$this->assertStringContainsString( '"form_1"', $html );
+		$this->assertStringContainsString( 'data-unlocked-message', $html );
 		$this->assertStringContainsString( 'aria-hidden="true" inert', $html );
 		$this->assertStringContainsString( 'data-cookie-days="30"', $html );
 	}
@@ -183,6 +187,30 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( '<p class="beehiiv-gated-content__headline">Join</p>', $html );
 		$this->assertStringNotContainsString( '<h2', $html );
+	}
+
+	/**
+	 * Only the first divider splits the content; later dividers print nothing and change nothing.
+	 */
+	public function test_second_divider_is_ignored(): void {
+		$html = $this->render_gate(
+			$this->p( 'ONE' ) . $this->divider() . $this->p( 'TWO' ) . $this->divider() . $this->p( 'THREE' )
+		);
+
+		$this->assertMatchesRegularExpression( '/ONE.*beehiiv-gated-content__gate/s', $html );
+		$this->assertMatchesRegularExpression( '/beehiiv-gated-content__locked[^>]*>.*TWO.*THREE/s', $html );
+	}
+
+	/**
+	 * Two gated blocks with different forms each keep their own form ID.
+	 */
+	public function test_gates_with_different_forms_keep_their_own_form_id(): void {
+		$first  = $this->render_gate( $this->p( 'A1' ) . $this->p( 'A2' ), 'form_1' );
+		$second = $this->render_gate( $this->p( 'B1' ) . $this->p( 'B2' ), 'form_2' );
+
+		$this->assertStringContainsString( '"form_1"', $first );
+		$this->assertStringNotContainsString( '"form_2"', $first );
+		$this->assertStringContainsString( '"form_2"', $second );
 	}
 
 	/**

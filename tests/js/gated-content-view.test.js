@@ -58,22 +58,30 @@ describe( 'gated content view', () => {
 		);
 	} );
 
-	it( 'adds the form loader only while the gate is locked', () => {
+	it( 'moves focus to the content and announces the unlock', () => {
+		jest.useFakeTimers();
+		document.querySelector(
+			'[data-beehiiv-gate]'
+		).dataset.unlockedMessage = 'Content unlocked.';
 		load();
-		const script = document.querySelector(
-			'.beehiiv-gated-content__card script'
+		post( {
+			type: 'BEEHIIV_SUBSCRIBER_FORM_SUBMITTED',
+			externalEmbedId: 'form_1',
+		} );
+		jest.advanceTimersByTime( 100 );
+
+		expect( document.activeElement ).toBe( locked() );
+		expect( document.querySelector( '[role="status"]' ).textContent ).toBe(
+			'Content unlocked.'
 		);
+		jest.useRealTimers();
+	} );
 
-		expect( script ).not.toBeNull();
-		expect( script.dataset.beehiivForm ).toBe( 'form_1' );
-
-		document.body.innerHTML = GATE_HTML;
+	it( 'does not announce for a returning reader', () => {
 		document.cookie = 'beehiiv_gate_unlocked=1; Path=/';
 		load();
 
-		expect(
-			document.querySelector( '.beehiiv-gated-content__card script' )
-		).toBeNull();
+		expect( document.querySelector( '[role="status"]' ) ).toBeNull();
 	} );
 
 	it( 'accepts the legacy embed origin', () => {

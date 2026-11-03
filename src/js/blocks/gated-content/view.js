@@ -3,13 +3,14 @@
  *
  * Unlocks every gate on the page when one of the gates' beehiiv forms is
  * submitted, and removes the gates when the unlock cookie is already present.
+ * The server prints a small inline script in each card that opens the gate
+ * for returning readers before the first paint and starts the form loader.
  */
 const ALLOWED_ORIGINS = [
 	'https://subscribe-forms.beehiiv.com',
 	'https://embeds.beehiiv.com',
 ];
 const SUBMITTED_TYPE = 'BEEHIIV_SUBSCRIBER_FORM_SUBMITTED';
-const LOADER_SRC = 'https://subscribe-forms.beehiiv.com/v3/loader.js';
 
 function hasCookie( name ) {
 	return document.cookie
@@ -23,6 +24,28 @@ function setCookie( name, days ) {
 	document.cookie = `${ name }=1; Max-Age=${ maxAge }; Path=/; SameSite=Lax${ secure }`;
 }
 
+// Tell assistive technology the content is open, and move focus to it. The card
+// that held focus is about to disappear.
+function announce( gate, locked ) {
+	const message = gate.dataset.unlockedMessage;
+
+	if ( message ) {
+		const status = document.createElement( 'p' );
+		status.className = 'screen-reader-text';
+		status.setAttribute( 'role', 'status' );
+		gate.appendChild( status );
+		// Set the text after the node is in the page so the change is announced.
+		window.setTimeout( () => {
+			status.textContent = message;
+		}, 50 );
+	}
+
+	if ( locked ) {
+		locked.setAttribute( 'tabindex', '-1' );
+		locked.focus( { preventScroll: true } );
+	}
+}
+
 function unlock( gate, immediate = false ) {
 	const locked = gate.querySelector( '.beehiiv-gated-content__locked' );
 	const card = gate.querySelector( '.beehiiv-gated-content__card' );
@@ -34,28 +57,16 @@ function unlock( gate, immediate = false ) {
 		locked.removeAttribute( 'inert' );
 	}
 
+	if ( ! immediate ) {
+		announce( gate, locked );
+	}
+
 	if ( card && immediate ) {
 		// Returning reader: remove the card now so the gate does not linger.
 		card.classList.add( 'is-hidden' );
 	} else if ( card ) {
 		window.setTimeout( () => card.classList.add( 'is-hidden' ), 300 );
 	}
-}
-
-// The beehiiv loader puts the form next to its own script tag. It is added
-// here, not in the page, so readers who are already unlocked never load it.
-function loadForm( gate ) {
-	const card = gate.querySelector( '.beehiiv-gated-content__card' );
-
-	if ( ! card || ! gate.dataset.formId ) {
-		return;
-	}
-
-	const script = document.createElement( 'script' );
-	script.async = true;
-	script.src = LOADER_SRC;
-	script.dataset.beehiivForm = gate.dataset.formId;
-	card.appendChild( script );
 }
 
 function init() {
@@ -76,8 +87,6 @@ function init() {
 	if ( ! gates.length ) {
 		return;
 	}
-
-	gates.forEach( loadForm );
 
 	window.addEventListener( 'message', ( event ) => {
 		if (
