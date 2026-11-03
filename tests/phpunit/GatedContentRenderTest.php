@@ -57,7 +57,11 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 						'cardBackgroundColor' => [ 'type' => 'string', 'default' => '' ],
 						'cardTextColor'       => [ 'type' => 'string', 'default' => '' ],
 					],
-					'render_callback' => [ \Beehiiv\Blocks\GatedContent::class, 'render' ],
+					// WordPress calls ( $attributes, $content, $block ). The plugin's render.php
+					// passes only the attributes and the block on to the renderer.
+					'render_callback' => static function ( $attributes, $content, $block ) {
+						return \Beehiiv\Blocks\GatedContent::render( $attributes, $block );
+					},
 				]
 			);
 			$this->registered_here[] = 'beehiiv/gated-content';
