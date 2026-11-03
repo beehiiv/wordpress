@@ -83,11 +83,6 @@ final class GatedContent {
 
 			$html = $inner_block->render();
 
-			// The starter template adds empty paragraphs. They do not count as content.
-			if ( 1 === preg_match( '#^\s*(<p[^>]*>(\s|&nbsp;|<br\s*/?>)*</p>)?\s*$#i', $html ) ) {
-				continue;
-			}
-
 			if ( $split || ( 0 < $count && ! $has_divider ) ) {
 				$locked[] = $html;
 			} else {
