@@ -58,6 +58,24 @@ describe( 'gated content view', () => {
 		);
 	} );
 
+	it( 'adds the form loader only while the gate is locked', () => {
+		load();
+		const script = document.querySelector(
+			'.beehiiv-gated-content__card script'
+		);
+
+		expect( script ).not.toBeNull();
+		expect( script.dataset.beehiivForm ).toBe( 'form_1' );
+
+		document.body.innerHTML = GATE_HTML;
+		document.cookie = 'beehiiv_gate_unlocked=1; Path=/';
+		load();
+
+		expect(
+			document.querySelector( '.beehiiv-gated-content__card script' )
+		).toBeNull();
+	} );
+
 	it( 'accepts the legacy embed origin', () => {
 		load();
 		post(

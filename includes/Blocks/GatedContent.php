@@ -23,11 +23,6 @@ defined( 'ABSPATH' ) || exit;
 final class GatedContent {
 
 	/**
-	 * Gated content block name.
-	 */
-	public const BLOCK_NAME = 'beehiiv/gated-content';
-
-	/**
 	 * Divider block name.
 	 */
 	public const DIVIDER_NAME = 'beehiiv/gated-content-divider';
@@ -94,14 +89,6 @@ final class GatedContent {
 		$headline = '' !== $headline ? $headline : $defaults['headline'];
 		$text     = '' !== $text ? $text : $defaults['text'];
 
-		$form_script = wp_get_script_tag(
-			[
-				'src'               => 'https://subscribe-forms.beehiiv.com/v3/loader.js',
-				'async'             => true,
-				'data-beehiiv-form' => $form_id,
-			]
-		);
-
 		// Optional per-block card colors. Anything that is not a hex color is dropped.
 		$card_bg    = isset( $attributes['cardBackgroundColor'] ) ? sanitize_hex_color( $attributes['cardBackgroundColor'] ) : '';
 		$card_color = isset( $attributes['cardTextColor'] ) ? sanitize_hex_color( $attributes['cardTextColor'] ) : '';
@@ -112,23 +99,24 @@ final class GatedContent {
 		}
 
 		if ( $card_color ) {
-			$card_style .= 'color:' . $card_color . ';--beehiiv-gate-card-color:' . $card_color . ';';
+			$card_style .= 'color:' . $card_color . ';';
 		}
 
 		// A blank headline or text is left out of the card.
+		$level         = max( 2, min( 6, (int) ( $attributes['headingLevel'] ?? 2 ) ) );
 		$headline_html = '' !== $headline
-			? '<h2 class="beehiiv-gated-content__headline">' . esc_html( $headline ) . '</h2>'
+			? sprintf( '<h%1$d class="beehiiv-gated-content__headline">%2$s</h%1$d>', $level, esc_html( $headline ) )
 			: '';
 		$text_html     = '' !== $text
 			? '<p class="beehiiv-gated-content__text">' . esc_html( $text ) . '</p>'
 			: '';
 
+		// The beehiiv form loader is added by view.js, only for readers who are still locked.
 		$card = sprintf(
-			'<div class="beehiiv-gated-content__card"%1$s>%2$s%3$s%4$s</div>',
+			'<div class="beehiiv-gated-content__card"%1$s>%2$s%3$s</div>',
 			'' !== $card_style ? ' style="' . esc_attr( $card_style ) . '"' : '',
 			$headline_html,
-			$text_html,
-			$form_script
+			$text_html
 		);
 
 		$gate = sprintf(

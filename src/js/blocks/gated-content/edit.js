@@ -1,6 +1,4 @@
 import { __ } from '@wordpress/i18n';
-import { useEffect } from '@wordpress/element';
-import { useSelect, useDispatch } from '@wordpress/data';
 import {
 	InnerBlocks,
 	InspectorControls,
@@ -10,6 +8,7 @@ import {
 import {
 	Notice,
 	PanelBody,
+	SelectControl,
 	TextControl,
 	TextareaControl,
 } from '@wordpress/components';
@@ -27,28 +26,17 @@ const TEMPLATE = [
 	[ 'core/paragraph' ],
 ];
 
-export default function Edit( { attributes, setAttributes, clientId } ) {
+export default function Edit( { attributes, setAttributes } ) {
 	const { settingsUrl, hasPublication, gateFormId } =
 		useBeehiivEditorConfig();
-	const { formId, headline, text, cardBackgroundColor, cardTextColor } =
-		attributes;
-
-	const dividerIds = useSelect(
-		( select ) =>
-			select( 'core/block-editor' )
-				.getBlocks( clientId )
-				.filter( ( block ) => block.name === DIVIDER_BLOCK )
-				.map( ( block ) => block.clientId ),
-		[ clientId ]
-	);
-	const { removeBlocks } = useDispatch( 'core/block-editor' );
-
-	// A gated block holds at most one divider. Keep the first one.
-	useEffect( () => {
-		if ( dividerIds.length > 1 ) {
-			removeBlocks( dividerIds.slice( 1 ) );
-		}
-	}, [ dividerIds, removeBlocks ] );
+	const {
+		formId,
+		headline,
+		headingLevel,
+		text,
+		cardBackgroundColor,
+		cardTextColor,
+	} = attributes;
 
 	const blockProps = useBlockProps();
 
@@ -93,6 +81,21 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 							'beehiiv'
 						) }
 					/>
+					<SelectControl
+						label={ __( 'Headline level', 'beehiiv' ) }
+						value={ headingLevel }
+						options={ [ 2, 3, 4, 5, 6 ].map( ( level ) => ( {
+							label: `H${ level }`,
+							value: level,
+						} ) ) }
+						onChange={ ( value ) =>
+							setAttributes( { headingLevel: Number( value ) } )
+						}
+						help={ __(
+							'Pick the level that fits the heading order of your page.',
+							'beehiiv'
+						) }
+					/>
 					<TextareaControl
 						label={ __( 'Text', 'beehiiv' ) }
 						value={ text }
@@ -104,6 +107,12 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 							'beehiiv'
 						) }
 					/>
+					<p className="description">
+						{ __(
+							'Gated content stays in the page source. Use gating to prompt a subscription, not to protect private content.',
+							'beehiiv'
+						) }
+					</p>
 				</PanelBody>
 				<PanelColorSettings
 					title={ __( 'Gate card colors', 'beehiiv' ) }

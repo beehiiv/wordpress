@@ -9,6 +9,7 @@ const ALLOWED_ORIGINS = [
 	'https://embeds.beehiiv.com',
 ];
 const SUBMITTED_TYPE = 'BEEHIIV_SUBSCRIBER_FORM_SUBMITTED';
+const LOADER_SRC = 'https://subscribe-forms.beehiiv.com/v3/loader.js';
 
 function hasCookie( name ) {
 	return document.cookie
@@ -41,36 +42,65 @@ function unlock( gate, immediate = false ) {
 	}
 }
 
+// The beehiiv loader puts the form next to its own script tag. It is added
+// here, not in the page, so readers who are already unlocked never load it.
+function loadForm( gate ) {
+	const card = gate.querySelector( '.beehiiv-gated-content__card' );
+
+	if ( ! card || ! gate.dataset.formId ) {
+		return;
+	}
+
+	const script = document.createElement( 'script' );
+	script.async = true;
+	script.src = LOADER_SRC;
+	script.dataset.beehiivForm = gate.dataset.formId;
+	card.appendChild( script );
+}
+
 function init() {
 	const gates = Array.from(
 		document.querySelectorAll( '[data-beehiiv-gate]' )
 	);
 
-	if ( ! gates.length ) {
-		return;
-	}
+	// The unlock cookie is site-wide, so one cookie unlocks every gate.
+	const unlocked = gates.some( ( gate ) =>
+		hasCookie( gate.dataset.cookieName )
+	);
 
-	// The cookie is site-wide, so every gate shares the same name and lifetime.
-	const cookieName = gates[ 0 ].dataset.cookieName;
-	if ( hasCookie( cookieName ) ) {
+	if ( unlocked ) {
 		gates.forEach( ( gate ) => unlock( gate, true ) );
 		return;
 	}
 
-	const cookieDays = parseInt( gates[ 0 ].dataset.cookieDays, 10 ) || 30;
-	const formIds = gates.map( ( gate ) => gate.dataset.formId );
+	if ( ! gates.length ) {
+		return;
+	}
+
+	gates.forEach( loadForm );
 
 	window.addEventListener( 'message', ( event ) => {
 		if (
 			! ALLOWED_ORIGINS.includes( event.origin ) ||
 			! event.data ||
-			event.data.type !== SUBMITTED_TYPE ||
-			! formIds.includes( String( event.data.externalEmbedId ) )
+			event.data.type !== SUBMITTED_TYPE
 		) {
 			return;
 		}
 
-		setCookie( cookieName, cookieDays );
+		const source = gates.find(
+			( gate ) =>
+				gate.dataset.formId === String( event.data.externalEmbedId )
+		);
+
+		if ( ! source ) {
+			return;
+		}
+
+		setCookie(
+			source.dataset.cookieName,
+			parseInt( source.dataset.cookieDays, 10 ) || 30
+		);
 		gates.forEach( ( gate ) => unlock( gate ) );
 	} );
 }

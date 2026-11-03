@@ -163,6 +163,10 @@ final class Registrar {
 			'Defaults for gated content blocks. A gated content block can override the headline and text.',
 			'beehiiv'
 		) . '</p>';
+		echo '<p>' . esc_html__(
+			'Gated content stays in the page source. Use gating to prompt a subscription, not to protect private content.',
+			'beehiiv'
+		) . '</p>';
 	}
 
 	/**
@@ -302,7 +306,6 @@ final class Registrar {
 			id="beehiiv_publication_id"
 			class="beehiiv-settings-select"
 			name="<?php echo esc_attr( $name ); ?>"
-			required
 		>
 			<option value="" <?php selected( $selected, '' ); ?>>
 				<?php esc_html_e( 'Select a publication', 'beehiiv' ); ?>

@@ -8,7 +8,6 @@
  */
 
 use Beehiiv\Admin\Options;
-use Beehiiv\Blocks\GatedContent;
 use Beehiiv\Config;
 
 /**
@@ -72,7 +71,7 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 		$html = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ) );
 
 		$this->assertStringContainsString( 'data-form-id="form_1"', $html );
-		$this->assertStringContainsString( 'data-beehiiv-form="form_1"', $html );
+		$this->assertStringNotContainsString( 'loader.js', $html );
 		$this->assertStringContainsString( 'aria-hidden="true" inert', $html );
 		$this->assertStringContainsString( 'data-cookie-days="30"', $html );
 	}
@@ -175,16 +174,16 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * A repeat render of the same post (SEO, excerpt) must not consume the one-gate slot.
+	 * The headline level is configurable and limited to h2 to h6.
 	 */
-	public function test_repeat_render_of_same_gate_still_gates(): void {
-		$inner = $this->p( 'ONE' ) . $this->p( 'TWO' );
+	public function test_headline_level_is_clamped(): void {
+		update_option( Config::OPTION_NAME, Options::sanitize( array( 'gate_headline' => 'Join' ) ) );
 
-		$first  = $this->render_gate( $inner );
-		$second = $this->render_gate( $inner );
+		$h3 = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ), 'form_1', ',"headingLevel":3' );
+		$h1 = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ), 'form_1', ',"headingLevel":1' );
 
-		$this->assertStringContainsString( 'data-beehiiv-gate', $first );
-		$this->assertStringContainsString( 'data-beehiiv-gate', $second );
+		$this->assertStringContainsString( '<h3 class="beehiiv-gated-content__headline">Join</h3>', $h3 );
+		$this->assertStringContainsString( '<h2 class="beehiiv-gated-content__headline">Join</h2>', $h1 );
 	}
 
 	/**
