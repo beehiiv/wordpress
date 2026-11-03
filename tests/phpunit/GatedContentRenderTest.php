@@ -15,6 +15,13 @@ use Beehiiv\Config;
  */
 class GatedContentRenderTest extends WP_UnitTestCase {
 
+	/**
+	 * Block names registered by this class for the current test.
+	 *
+	 * @var string[]
+	 */
+	private $registered_here = [];
+
 	public function set_up(): void {
 		parent::set_up();
 		wp_set_current_user( 0 );
@@ -23,11 +30,12 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 	}
 
 	public function tear_down(): void {
-		foreach ( [ 'beehiiv/gated-content', 'beehiiv/gated-content-divider' ] as $name ) {
-			if ( WP_Block_Type_Registry::get_instance()->is_registered( $name ) ) {
-				unregister_block_type( $name );
-			}
+		// Remove only the blocks this class registered, never the plugin's own.
+		foreach ( $this->registered_here as $name ) {
+			unregister_block_type( $name );
 		}
+
+		$this->registered_here = [];
 
 		parent::tear_down();
 	}
@@ -52,6 +60,7 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 					'render_callback' => [ \Beehiiv\Blocks\GatedContent::class, 'render' ],
 				]
 			);
+			$this->registered_here[] = 'beehiiv/gated-content';
 		}
 
 		if ( ! $registry->is_registered( 'beehiiv/gated-content-divider' ) ) {
@@ -62,6 +71,7 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 					'render_callback' => '__return_empty_string',
 				]
 			);
+			$this->registered_here[] = 'beehiiv/gated-content-divider';
 		}
 	}
 

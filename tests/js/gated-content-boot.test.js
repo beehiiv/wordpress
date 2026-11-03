@@ -22,12 +22,14 @@ function run( cookie ) {
 
 	document.body.innerHTML = `
 		<div class="gate" data-cookie-name="beehiiv_gate_unlocked" data-form-id="form_1">
-			<div class="card"></div>
+			<div class="beehiiv-gated-content__card"></div>
+			<div class="beehiiv-gated-content__locked" aria-hidden="true" inert></div>
 		</div>`;
 
+	// The script sits at the end of the gate, after the locked content.
 	const script = document.createElement( 'script' );
 	script.textContent = BOOT_JS;
-	document.querySelector( '.card' ).appendChild( script );
+	document.querySelector( '.gate' ).appendChild( script );
 }
 
 describe( 'gated content boot script', () => {
@@ -38,7 +40,7 @@ describe( 'gated content boot script', () => {
 	it( 'adds the form loader for a locked reader', () => {
 		run();
 		const loader = document.querySelector(
-			'.card script[data-beehiiv-form]'
+			'.beehiiv-gated-content__card script[data-beehiiv-form]'
 		);
 
 		expect( loader ).not.toBeNull();
@@ -57,11 +59,17 @@ describe( 'gated content boot script', () => {
 		expect( document.querySelector( '.gate' ).classList ).toContain(
 			'is-unlocked'
 		);
-		expect( document.querySelector( '.card' ).classList ).toContain(
-			'is-hidden'
+		const locked = document.querySelector(
+			'.beehiiv-gated-content__locked'
 		);
+
+		// The boot script also clears the attributes that hide the content.
+		expect( locked.hasAttribute( 'aria-hidden' ) ).toBe( false );
+		expect( locked.hasAttribute( 'inert' ) ).toBe( false );
 		expect(
-			document.querySelector( '.card script[data-beehiiv-form]' )
+			document.querySelector(
+				'.beehiiv-gated-content__card script[data-beehiiv-form]'
+			)
 		).toBeNull();
 	} );
 } );

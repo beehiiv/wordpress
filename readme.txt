@@ -26,6 +26,7 @@ Write once in WordPress, publish to your site, and queue the same post for deliv
 * Manage newsletter settings from the block editor
 * Add a newsletter signup form to your website
 * Include sponsored content in your newsletters
+* Gate part of a post behind a beehiiv subscribe form with the Gated Content block
 
 = Supported blocks =
 
@@ -92,6 +93,10 @@ It is used to authenticate your account, sync publication settings, publish Word
 
 When you connect your account, the plugin exchanges OAuth credentials with beehiiv. When you send a post as a newsletter, post content and related newsletter settings are sent to the beehiiv API. The subscribe form loads beehiiv’s form script so visitors can join your publication.
 
+= Cookie =
+
+The Gated Content block sets one first-party cookie, `beehiiv_gate_unlocked`, in a reader's browser after they subscribe through the block's form. It keeps the content unlocked on later visits. It holds no personal data. You choose how long it lasts (1 to 365 days, 30 by default) in the beehiiv settings. Add it to your privacy policy or cookie notice if you use the block.
+
 Terms of Use: [beehiiv.com/tou](https://www.beehiiv.com/tou)
 Privacy Policy: [beehiiv.com/privacy](https://www.beehiiv.com/privacy)
 
@@ -144,6 +149,13 @@ It is visible in the editor but does not render on the front end of your site.
 
 
 == Changelog ==
+
+= 1.2.0 =
+* Added a Gated Content block. It shows a preview, then blurs and locks the rest of the content until the reader subscribes through a beehiiv form.
+* Added a Gate Divider block to mark where the preview ends inside a Gated Content block.
+* Added a "Subscriber gating" section to the beehiiv settings page for the default headline, text, subscribe form ID and unlock cookie lifetime.
+* Added an optional background and text color for the gate card.
+* Logged-in users always see the full content.
 
 = 1.1.0 =
 * Added a newsletter title and subtitle for each post, used as the email subject line and subtitle on beehiiv.

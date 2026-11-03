@@ -31,6 +31,11 @@
 		}
 	}
 
+	// Moved to when the content unlocks; the container itself is not a control.
+	.beehiiv-gated-content__locked:focus {
+		outline: none;
+	}
+
 	// The card sits over the bottom of the blurred, faded content.
 	.beehiiv-gated-content__card {
 		align-self: end;
@@ -46,7 +51,6 @@
 		padding: 2rem;
 		position: relative;
 		text-align: center;
-		transition: opacity 0.3s ease;
 		// The card follows the width of the beehiiv form inside it.
 		width: fit-content;
 		z-index: 2;
@@ -90,20 +94,31 @@
 			}
 		}
 
+		// Fade out, then leave the layout. Browsers without discrete transitions
+		// skip the fade and hide the card at once.
 		.beehiiv-gated-content__card {
+			display: none;
 			opacity: 0;
 			pointer-events: none;
+			transition: opacity 0.3s ease, display 0.3s allow-discrete;
 		}
+	}
 
-		.beehiiv-gated-content__card.is-hidden {
-			display: none;
-		}
+	// Visually hidden status message for assistive technology.
+	.beehiiv-gated-content__status {
+		clip-path: inset(50%);
+		height: 1px;
+		margin: -1px;
+		overflow: hidden;
+		position: absolute;
+		white-space: nowrap;
+		width: 1px;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
 
-	.wp-block-beehiiv-gated-content .beehiiv-gated-content__card {
+	.wp-block-beehiiv-gated-content .beehiiv-gated-content__gate.is-unlocked .beehiiv-gated-content__card {
 		transition: none;
 	}
 }

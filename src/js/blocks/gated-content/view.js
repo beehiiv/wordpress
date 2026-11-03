@@ -31,7 +31,7 @@ function announce( gate, locked ) {
 
 	if ( message ) {
 		const status = document.createElement( 'p' );
-		status.className = 'screen-reader-text';
+		status.className = 'beehiiv-gated-content__status';
 		status.setAttribute( 'role', 'status' );
 		gate.appendChild( status );
 		// Set the text after the node is in the page so the change is announced.
@@ -46,9 +46,9 @@ function announce( gate, locked ) {
 	}
 }
 
-function unlock( gate, immediate = false ) {
+// The card fade and removal are CSS only, driven by the is-unlocked class.
+function unlock( gate, announceUnlock = false ) {
 	const locked = gate.querySelector( '.beehiiv-gated-content__locked' );
-	const card = gate.querySelector( '.beehiiv-gated-content__card' );
 
 	gate.classList.add( 'is-unlocked' );
 
@@ -57,15 +57,8 @@ function unlock( gate, immediate = false ) {
 		locked.removeAttribute( 'inert' );
 	}
 
-	if ( ! immediate ) {
+	if ( announceUnlock ) {
 		announce( gate, locked );
-	}
-
-	if ( card && immediate ) {
-		// Returning reader: remove the card now so the gate does not linger.
-		card.classList.add( 'is-hidden' );
-	} else if ( card ) {
-		window.setTimeout( () => card.classList.add( 'is-hidden' ), 300 );
 	}
 }
 
@@ -74,13 +67,14 @@ function init() {
 		document.querySelectorAll( '[data-beehiiv-gate]' )
 	);
 
-	// The unlock cookie is site-wide, so one cookie unlocks every gate.
+	// The unlock cookie is site-wide, so one cookie unlocks every gate. The
+	// inline boot script already did this; this covers pages where it was blocked.
 	const unlocked = gates.some( ( gate ) =>
 		hasCookie( gate.dataset.cookieName )
 	);
 
 	if ( unlocked ) {
-		gates.forEach( ( gate ) => unlock( gate, true ) );
+		gates.forEach( ( gate ) => unlock( gate ) );
 		return;
 	}
 
@@ -88,7 +82,7 @@ function init() {
 		return;
 	}
 
-	window.addEventListener( 'message', ( event ) => {
+	const onMessage = ( event ) => {
 		if (
 			! ALLOWED_ORIGINS.includes( event.origin ) ||
 			! event.data ||
@@ -110,8 +104,13 @@ function init() {
 			source.dataset.cookieName,
 			parseInt( source.dataset.cookieDays, 10 ) || 30
 		);
-		gates.forEach( ( gate ) => unlock( gate ) );
-	} );
+
+		// Unlock once. Only the gate that was submitted takes focus and announces.
+		window.removeEventListener( 'message', onMessage );
+		gates.forEach( ( gate ) => unlock( gate, gate === source ) );
+	};
+
+	window.addEventListener( 'message', onMessage );
 }
 
 // Block themes can print this script in the head, before the gate exists.

@@ -125,15 +125,50 @@ describe( 'gated content view', () => {
 		expect( locked().hasAttribute( 'aria-hidden' ) ).toBe( false );
 	} );
 
-	it( 'hides the card at once for a returning reader', () => {
-		document.cookie = 'beehiiv_gate_unlocked=1; Path=/';
+	it( 'unlocks once: a repeat message does not announce or refocus again', () => {
+		jest.useFakeTimers();
+		gate().dataset.unlockedMessage = 'Content unlocked.';
 		load();
+		const msg = {
+			type: 'BEEHIIV_SUBSCRIBER_FORM_SUBMITTED',
+			externalEmbedId: 'form_1',
+		};
+		post( msg );
+		post( msg );
+		jest.advanceTimersByTime( 100 );
 
-		expect(
-			document
-				.querySelector( '.beehiiv-gated-content__card' )
-				.classList.contains( 'is-hidden' )
-		).toBe( true );
+		expect( document.querySelectorAll( '[role="status"]' ) ).toHaveLength(
+			1
+		);
+		jest.useRealTimers();
+	} );
+
+	it( 'moves focus and announces only for the gate that was submitted', () => {
+		jest.useFakeTimers();
+		document.body.innerHTML =
+			GATE_HTML +
+			GATE_HTML.replace( 'form_1', 'form_2' ).replace(
+				'<div class="beehiiv-gated-content__gate"',
+				'<div class="beehiiv-gated-content__gate" data-second'
+			);
+		document.querySelectorAll( '[data-beehiiv-gate]' ).forEach( ( g ) => {
+			g.dataset.unlockedMessage = 'Content unlocked.';
+		} );
+		load();
+		post( {
+			type: 'BEEHIIV_SUBSCRIBER_FORM_SUBMITTED',
+			externalEmbedId: 'form_1',
+		} );
+		jest.advanceTimersByTime( 100 );
+
+		const [ first ] = document.querySelectorAll( '[data-beehiiv-gate]' );
+		expect( document.querySelectorAll( '[role="status"]' ) ).toHaveLength(
+			1
+		);
+		expect( document.activeElement ).toBe(
+			first.querySelector( '.beehiiv-gated-content__locked' )
+		);
+		jest.useRealTimers();
 	} );
 
 	it( 'still works when the script runs before the gate is in the page', () => {

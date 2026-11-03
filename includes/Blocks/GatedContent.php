@@ -33,17 +33,20 @@ final class GatedContent {
 	public const COOKIE_NAME = 'beehiiv_gate_unlocked';
 
 	/**
-	 * Boot script source. Runs inside the card while the page is parsed.
+	 * Boot script source. Runs at the end of the gate while the page is parsed.
 	 *
 	 * Keep it free of PHP values. It reads everything from the gate's data attributes.
 	 */
 	private const BOOT_JS = <<<'JS'
 (function (s) {
-var c = s.parentNode, g = c.parentNode, d = g.dataset;
+var g = s.parentNode, d = g.dataset;
+var c = g.querySelector(".beehiiv-gated-content__card");
+var k = g.querySelector(".beehiiv-gated-content__locked");
 var unlocked = document.cookie.split("; ").some(function (p) { return p.split("=")[0] === d.cookieName; });
 if (unlocked) {
 g.classList.add("is-unlocked");
-c.classList.add("is-hidden");
+k.removeAttribute("aria-hidden");
+k.removeAttribute("inert");
 return;
 }
 var l = document.createElement("script");
@@ -133,23 +136,23 @@ JS;
 			: '';
 
 		$card = sprintf(
-			'<div class="beehiiv-gated-content__card"%1$s>%2$s%3$s%4$s</div>',
+			'<div class="beehiiv-gated-content__card"%1$s>%2$s%3$s</div>',
 			'' !== $card_style ? ' style="' . esc_attr( $card_style ) . '"' : '',
 			$headline_html,
-			$text_html,
-			self::get_boot_script()
+			$text_html
 		);
 
 		$gate = sprintf(
 			'<div class="beehiiv-gated-content__gate" data-beehiiv-gate data-form-id="%1$s" '
 			. 'data-cookie-name="%2$s" data-cookie-days="%3$d" data-unlocked-message="%6$s">%4$s'
-			. '<div class="beehiiv-gated-content__locked" aria-hidden="true" inert>%5$s</div></div>',
+			. '<div class="beehiiv-gated-content__locked" aria-hidden="true" inert>%5$s</div>%7$s</div>',
 			esc_attr( $form_id ),
 			esc_attr( self::COOKIE_NAME ),
 			(int) $defaults['cookie_days'],
 			$card,
 			implode( '', $locked ),
-			esc_attr__( 'Content unlocked.', 'beehiiv' )
+			esc_attr__( 'Content unlocked.', 'beehiiv' ),
+			self::get_boot_script()
 		);
 
 		return sprintf(
@@ -161,11 +164,12 @@ JS;
 	}
 
 	/**
-	 * Inline script that runs as the card is parsed, before the first paint.
+	 * Inline script that runs at the end of the gate, before view.js.
 	 *
 	 * A reader who already has the unlock cookie gets the gate opened at once, so
-	 * the blurred content never flashes, and the form loader is never requested.
-	 * Everyone else gets the form loader right away, with no wait for view.js.
+	 * the blurred content does not wait for view.js, and the form loader is never
+	 * requested. Everyone else gets the form loader right away, with no wait for
+	 * view.js. The script sits after the locked content so it can open that too.
 	 *
 	 * The script is the same for every gate. It reads the cookie name and form ID
 	 * from the gate's own data attributes, so no value is written into the script.
