@@ -42,11 +42,13 @@
 		justify-self: center;
 		margin: 0;
 		max-width: 100%;
+		min-width: min( 100%, 20rem );
 		padding: 2rem;
 		position: relative;
 		text-align: center;
 		transition: opacity 0.3s ease;
-		width: 44rem;
+		// The card follows the width of the beehiiv form inside it.
+		width: fit-content;
 		z-index: 2;
 	}
 
