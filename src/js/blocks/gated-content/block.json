@@ -26,10 +26,6 @@
 			"type": "string",
 			"default": ""
 		},
-		"headingLevel": {
-			"type": "number",
-			"default": 2
-		},
 		"cardBackgroundColor": {
 			"type": "string",
 			"default": ""

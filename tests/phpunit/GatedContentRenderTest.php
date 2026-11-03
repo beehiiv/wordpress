@@ -174,16 +174,15 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The headline level is configurable and limited to h2 to h6.
+	 * The headline is a styled paragraph, not a heading.
 	 */
-	public function test_headline_level_is_clamped(): void {
+	public function test_headline_is_a_paragraph(): void {
 		update_option( Config::OPTION_NAME, Options::sanitize( array( 'gate_headline' => 'Join' ) ) );
 
-		$h3 = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ), 'form_1', ',"headingLevel":3' );
-		$h1 = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ), 'form_1', ',"headingLevel":1' );
+		$html = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ) );
 
-		$this->assertStringContainsString( '<h3 class="beehiiv-gated-content__headline">Join</h3>', $h3 );
-		$this->assertStringContainsString( '<h2 class="beehiiv-gated-content__headline">Join</h2>', $h1 );
+		$this->assertStringContainsString( '<p class="beehiiv-gated-content__headline">Join</p>', $html );
+		$this->assertStringNotContainsString( '<h2', $html );
 	}
 
 	/**

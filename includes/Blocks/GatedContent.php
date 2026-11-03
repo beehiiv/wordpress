@@ -103,9 +103,8 @@ final class GatedContent {
 		}
 
 		// A blank headline or text is left out of the card.
-		$level         = max( 2, min( 6, (int) ( $attributes['headingLevel'] ?? 2 ) ) );
 		$headline_html = '' !== $headline
-			? sprintf( '<h%1$d class="beehiiv-gated-content__headline">%2$s</h%1$d>', $level, esc_html( $headline ) )
+			? '<p class="beehiiv-gated-content__headline">' . esc_html( $headline ) . '</p>'
 			: '';
 		$text_html     = '' !== $text
 			? '<p class="beehiiv-gated-content__text">' . esc_html( $text ) . '</p>'

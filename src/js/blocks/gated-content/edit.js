@@ -8,7 +8,6 @@ import {
 import {
 	Notice,
 	PanelBody,
-	SelectControl,
 	TextControl,
 	TextareaControl,
 } from '@wordpress/components';
@@ -29,14 +28,8 @@ const TEMPLATE = [
 export default function Edit( { attributes, setAttributes } ) {
 	const { settingsUrl, hasPublication, gateFormId } =
 		useBeehiivEditorConfig();
-	const {
-		formId,
-		headline,
-		headingLevel,
-		text,
-		cardBackgroundColor,
-		cardTextColor,
-	} = attributes;
+	const { formId, headline, text, cardBackgroundColor, cardTextColor } =
+		attributes;
 
 	const blockProps = useBlockProps();
 
@@ -78,21 +71,6 @@ export default function Edit( { attributes, setAttributes } ) {
 						}
 						help={ __(
 							'Leave blank to use the default from the beehiiv settings page. If that is blank too, no headline is shown.',
-							'beehiiv'
-						) }
-					/>
-					<SelectControl
-						label={ __( 'Headline level', 'beehiiv' ) }
-						value={ headingLevel }
-						options={ [ 2, 3, 4, 5, 6 ].map( ( level ) => ( {
-							label: `H${ level }`,
-							value: level,
-						} ) ) }
-						onChange={ ( value ) =>
-							setAttributes( { headingLevel: Number( value ) } )
-						}
-						help={ __(
-							'Pick the level that fits the heading order of your page.',
 							'beehiiv'
 						) }
 					/>
