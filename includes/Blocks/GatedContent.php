@@ -38,25 +38,6 @@ final class GatedContent {
 	public const COOKIE_NAME = 'beehiiv_gate_unlocked';
 
 	/**
-	 * Signature of the gate that owns this page, or empty when none has rendered yet.
-	 *
-	 * Rendering the same block again (an SEO or excerpt pass) matches the owner
-	 * and still shows the gate. A different gated block is a second gate.
-	 *
-	 * @var string
-	 */
-	private static $gate_owner = '';
-
-	/**
-	 * Forget which gate was rendered (new page / tests).
-	 *
-	 * @since 1.2.0
-	 */
-	public static function reset(): void {
-		self::$gate_owner = '';
-	}
-
-	/**
 	 * Render the block.
 	 *
 	 * @param array<string, mixed> $attributes Block attributes.
@@ -92,19 +73,16 @@ final class GatedContent {
 			++$count;
 		}
 
-		$post_id   = $block->context['postId'] ?? get_the_ID();
-		$signature = md5( (string) wp_json_encode( [ $post_id, $block->parsed_block ] ) );
-		$defaults  = Options::get_gate_settings();
-		$form_id   = isset( $attributes['formId'] ) ? trim( sanitize_text_field( $attributes['formId'] ) ) : '';
-		$form_id   = '' !== $form_id ? $form_id : $defaults['form_id'];
+		$defaults = Options::get_gate_settings();
+		$form_id  = isset( $attributes['formId'] ) ? trim( sanitize_text_field( $attributes['formId'] ) ) : '';
+		$form_id  = '' !== $form_id ? $form_id : $defaults['form_id'];
 
-		// Nothing to gate, no form to unlock with, logged-in user, or a second
-		// gate on the page: show the content in full.
+		// Nothing to gate, no form to unlock with, or a logged-in user: show the
+		// content in full.
 		if (
 			empty( $locked )
 			|| '' === $form_id
 			|| is_user_logged_in()
-			|| ( '' !== self::$gate_owner && self::$gate_owner !== $signature )
 		) {
 			return sprintf(
 				'<div %s>%s</div>',
@@ -112,8 +90,6 @@ final class GatedContent {
 				implode( '', array_merge( $preview, $locked ) )
 			);
 		}
-
-		self::$gate_owner = $signature;
 
 		$headline = isset( $attributes['headline'] ) ? trim( sanitize_text_field( $attributes['headline'] ) ) : '';
 		$text     = isset( $attributes['text'] ) ? trim( sanitize_text_field( $attributes['text'] ) ) : '';

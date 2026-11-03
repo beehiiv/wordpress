@@ -18,7 +18,6 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 
 	public function set_up(): void {
 		parent::set_up();
-		GatedContent::reset();
 		wp_set_current_user( 0 );
 		delete_option( Config::OPTION_NAME );
 	}
@@ -125,15 +124,15 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-025: only the first gated block counts.
+	 * AC-025: every gated block on a page renders its own gate and form.
 	 */
-	public function test_only_first_gate_counts(): void {
+	public function test_each_gated_block_renders_its_own_gate(): void {
 		$first  = $this->render_gate( $this->p( 'A1' ) . $this->p( 'A2' ) );
 		$second = $this->render_gate( $this->p( 'B1' ) . $this->p( 'B2' ), 'form_2' );
 
-		$this->assertStringContainsString( 'beehiiv-gated-content__gate', $first );
-		$this->assertStringNotContainsString( 'beehiiv-gated-content__gate', $second );
-		$this->assertStringContainsString( 'B2', $second );
+		$this->assertStringContainsString( 'data-form-id="form_1"', $first );
+		$this->assertStringContainsString( 'data-form-id="form_2"', $second );
+		$this->assertStringContainsString( 'beehiiv-gated-content__gate', $second );
 	}
 
 	/**
@@ -143,7 +142,6 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 		$no_form = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ), '' );
 		$this->assertStringNotContainsString( 'beehiiv-gated-content__gate', $no_form );
 
-		GatedContent::reset();
 		$only_preview = $this->render_gate( $this->p( 'ONE' ) );
 		$this->assertStringNotContainsString( 'beehiiv-gated-content__gate', $only_preview );
 	}
@@ -168,7 +166,6 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'background-color:#112233', $html );
 		$this->assertStringContainsString( 'color:#ffffff', $html );
 
-		GatedContent::reset();
 		$html = $this->render_gate(
 			$this->p( 'ONE' ) . $this->p( 'TWO' ),
 			'form_1',
@@ -201,7 +198,6 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'data-form-id="default_form"', $html );
 
-		GatedContent::reset();
 		$html = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ), 'own_form' );
 
 		$this->assertStringContainsString( 'data-form-id="own_form"', $html );

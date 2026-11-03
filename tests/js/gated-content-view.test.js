@@ -42,6 +42,22 @@ describe( 'gated content view', () => {
 		expect( document.cookie ).toContain( 'beehiiv_gate_unlocked=1' );
 	} );
 
+	it( 'unlocks every gate when any gate form is submitted', () => {
+		document.body.innerHTML =
+			GATE_HTML + GATE_HTML.replace( 'form_1', 'form_2' );
+		load();
+		post( {
+			type: 'BEEHIIV_SUBSCRIBER_FORM_SUBMITTED',
+			externalEmbedId: 'form_2',
+		} );
+
+		const gates = document.querySelectorAll( '[data-beehiiv-gate]' );
+		expect( gates ).toHaveLength( 2 );
+		gates.forEach( ( g ) =>
+			expect( g.classList.contains( 'is-unlocked' ) ).toBe( true )
+		);
+	} );
+
 	it( 'accepts the legacy embed origin', () => {
 		load();
 		post(

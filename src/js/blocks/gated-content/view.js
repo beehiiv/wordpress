@@ -1,8 +1,8 @@
 /**
  * Front-end behavior for the beehiiv Gated Content block.
  *
- * Unlocks the first gate on the page when its own beehiiv form is submitted,
- * and removes the gate when the unlock cookie is already present.
+ * Unlocks every gate on the page when one of the gates' beehiiv forms is
+ * submitted, and removes the gates when the unlock cookie is already present.
  */
 const ALLOWED_ORIGINS = [
 	'https://subscribe-forms.beehiiv.com',
@@ -42,34 +42,36 @@ function unlock( gate, immediate = false ) {
 }
 
 function init() {
-	// Only the first gate on a page counts.
-	const gate = document.querySelector( '[data-beehiiv-gate]' );
+	const gates = Array.from(
+		document.querySelectorAll( '[data-beehiiv-gate]' )
+	);
 
-	if ( ! gate ) {
+	if ( ! gates.length ) {
 		return;
 	}
 
-	const cookieName = gate.dataset.cookieName;
-	const cookieDays = parseInt( gate.dataset.cookieDays, 10 ) || 30;
-	const formId = gate.dataset.formId;
-
+	// The cookie is site-wide, so every gate shares the same name and lifetime.
+	const cookieName = gates[ 0 ].dataset.cookieName;
 	if ( hasCookie( cookieName ) ) {
-		unlock( gate, true );
+		gates.forEach( ( gate ) => unlock( gate, true ) );
 		return;
 	}
+
+	const cookieDays = parseInt( gates[ 0 ].dataset.cookieDays, 10 ) || 30;
+	const formIds = gates.map( ( gate ) => gate.dataset.formId );
 
 	window.addEventListener( 'message', ( event ) => {
 		if (
 			! ALLOWED_ORIGINS.includes( event.origin ) ||
 			! event.data ||
 			event.data.type !== SUBMITTED_TYPE ||
-			String( event.data.externalEmbedId ) !== formId
+			! formIds.includes( String( event.data.externalEmbedId ) )
 		) {
 			return;
 		}
 
 		setCookie( cookieName, cookieDays );
-		unlock( gate );
+		gates.forEach( ( gate ) => unlock( gate ) );
 	} );
 }
 
