@@ -42,8 +42,6 @@
 		justify-self: center;
 		margin: 0;
 		max-width: 100%;
-		// Room for the form, so the card does not jump when the form loads.
-		min-height: 14rem;
 		min-width: min( 100%, 500px );
 		padding: 2rem;
 		position: relative;
@@ -52,6 +50,11 @@
 		// The card follows the width of the beehiiv form inside it.
 		width: fit-content;
 		z-index: 2;
+	}
+
+	// Room for the form until its iframe arrives, so the card does not jump.
+	.beehiiv-gated-content__card:not(:has(iframe)) {
+		min-height: 14rem;
 	}
 
 	// The headline and text wrap inside the card. They must not widen it, so the

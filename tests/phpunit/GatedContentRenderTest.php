@@ -73,8 +73,8 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( 'data-form-id="form_1"', $html );
 		// The inline boot script opens the gate for returning readers and starts the form loader.
 		$this->assertStringContainsString( 'loader.js', $html );
-		$this->assertStringContainsString( '"beehiiv_gate_unlocked"', $html );
-		$this->assertStringContainsString( '"form_1"', $html );
+		$this->assertStringContainsString( 'data-cookie-name="beehiiv_gate_unlocked"', $html );
+		$this->assertStringContainsString( 'data-form-id="form_1"', $html );
 		$this->assertStringContainsString( 'data-unlocked-message', $html );
 		$this->assertStringContainsString( 'aria-hidden="true" inert', $html );
 		$this->assertStringContainsString( 'data-cookie-days="30"', $html );
@@ -208,9 +208,9 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 		$first  = $this->render_gate( $this->p( 'A1' ) . $this->p( 'A2' ), 'form_1' );
 		$second = $this->render_gate( $this->p( 'B1' ) . $this->p( 'B2' ), 'form_2' );
 
-		$this->assertStringContainsString( '"form_1"', $first );
-		$this->assertStringNotContainsString( '"form_2"', $first );
-		$this->assertStringContainsString( '"form_2"', $second );
+		$this->assertStringContainsString( 'data-form-id="form_1"', $first );
+		$this->assertStringNotContainsString( 'data-form-id="form_2"', $first );
+		$this->assertStringContainsString( 'data-form-id="form_2"', $second );
 	}
 
 	/**

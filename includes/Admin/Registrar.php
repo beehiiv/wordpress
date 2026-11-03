@@ -164,7 +164,7 @@ final class Registrar {
 			'beehiiv'
 		) . '</p>';
 		echo '<p>' . esc_html__(
-			'Gated content stays in the page source. Use gating to prompt a subscription, not to protect private content.',
+			'Gated content stays in the page source. Gating prompts a subscription; it does not protect content.',
 			'beehiiv'
 		) . '</p>';
 	}

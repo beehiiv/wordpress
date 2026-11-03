@@ -33,9 +33,26 @@ final class GatedContent {
 	public const COOKIE_NAME = 'beehiiv_gate_unlocked';
 
 	/**
-	 * Beehiiv form loader script.
+	 * Boot script source. Runs inside the card while the page is parsed.
+	 *
+	 * Keep it free of PHP values. It reads everything from the gate's data attributes.
 	 */
-	private const LOADER_SRC = 'https://subscribe-forms.beehiiv.com/v3/loader.js';
+	private const BOOT_JS = <<<'JS'
+(function (s) {
+var c = s.parentNode, g = c.parentNode, d = g.dataset;
+var unlocked = document.cookie.split("; ").some(function (p) { return p.split("=")[0] === d.cookieName; });
+if (unlocked) {
+g.classList.add("is-unlocked");
+c.classList.add("is-hidden");
+return;
+}
+var l = document.createElement("script");
+l.async = true;
+l.src = "https://subscribe-forms.beehiiv.com/v3/loader.js";
+l.setAttribute("data-beehiiv-form", d.formId);
+c.appendChild(l);
+})(document.currentScript);
+JS;
 
 	/**
 	 * Render the block.
@@ -95,8 +112,8 @@ final class GatedContent {
 		$text     = '' !== $text ? $text : $defaults['text'];
 
 		// Optional per-block card colors. Anything that is not a hex color is dropped.
-		$card_bg    = isset( $attributes['cardBackgroundColor'] ) ? sanitize_hex_color( $attributes['cardBackgroundColor'] ) : '';
-		$card_color = isset( $attributes['cardTextColor'] ) ? sanitize_hex_color( $attributes['cardTextColor'] ) : '';
+		$card_bg    = sanitize_hex_color( (string) ( $attributes['cardBackgroundColor'] ?? '' ) );
+		$card_color = sanitize_hex_color( (string) ( $attributes['cardTextColor'] ?? '' ) );
 		$card_style = '';
 
 		if ( $card_bg ) {
@@ -120,7 +137,7 @@ final class GatedContent {
 			'' !== $card_style ? ' style="' . esc_attr( $card_style ) . '"' : '',
 			$headline_html,
 			$text_html,
-			self::get_boot_script( $form_id )
+			self::get_boot_script()
 		);
 
 		$gate = sprintf(
@@ -150,21 +167,14 @@ final class GatedContent {
 	 * the blurred content never flashes, and the form loader is never requested.
 	 * Everyone else gets the form loader right away, with no wait for view.js.
 	 *
-	 * @param string $form_id Beehiiv form ID.
+	 * The script is the same for every gate. It reads the cookie name and form ID
+	 * from the gate's own data attributes, so no value is written into the script.
+	 * tests/js/gated-content-boot.test.js reads BOOT_JS from this file.
+	 *
 	 * @return string
 	 */
-	private static function get_boot_script( string $form_id ): string {
-		$cookie = wp_json_encode( self::COOKIE_NAME );
-		$src    = wp_json_encode( self::LOADER_SRC );
-		$form   = wp_json_encode( $form_id );
-
-		$js = '(function(s){var c=s.parentNode,g=c.parentNode;'
-			. 'if(document.cookie.split("; ").some(function(p){return p.split("=")[0]===' . $cookie . '})){'
-			. 'g.classList.add("is-unlocked");c.classList.add("is-hidden");return;}'
-			. 'var l=document.createElement("script");l.async=true;l.src=' . $src . ';'
-			. 'l.setAttribute("data-beehiiv-form",' . $form . ');c.appendChild(l);})(document.currentScript);';
-
-		return wp_get_inline_script_tag( $js );
+	private static function get_boot_script(): string {
+		return wp_get_inline_script_tag( self::BOOT_JS );
 	}
 
 	/**
