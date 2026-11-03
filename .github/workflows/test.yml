@@ -82,7 +82,8 @@ jobs:
 
   e2e:
     name: E2E tests
-    runs-on: ubuntu-latest
+    # Playwright does not support Chromium on Ubuntu 26.04 yet. Pin the runner.
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
 
     steps:

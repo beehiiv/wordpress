@@ -19,6 +19,50 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 		parent::set_up();
 		wp_set_current_user( 0 );
 		delete_option( Config::OPTION_NAME );
+		$this->register_test_blocks();
+	}
+
+	public function tear_down(): void {
+		foreach ( [ 'beehiiv/gated-content', 'beehiiv/gated-content-divider' ] as $name ) {
+			if ( WP_Block_Type_Registry::get_instance()->is_registered( $name ) ) {
+				unregister_block_type( $name );
+			}
+		}
+
+		parent::tear_down();
+	}
+
+	/**
+	 * Register the blocks without the build folder, which CI does not create for PHPUnit.
+	 */
+	private function register_test_blocks(): void {
+		$registry = WP_Block_Type_Registry::get_instance();
+
+		if ( ! $registry->is_registered( 'beehiiv/gated-content' ) ) {
+			register_block_type(
+				'beehiiv/gated-content',
+				[
+					'attributes'      => [
+						'formId'              => [ 'type' => 'string', 'default' => '' ],
+						'headline'            => [ 'type' => 'string', 'default' => '' ],
+						'text'                => [ 'type' => 'string', 'default' => '' ],
+						'cardBackgroundColor' => [ 'type' => 'string', 'default' => '' ],
+						'cardTextColor'       => [ 'type' => 'string', 'default' => '' ],
+					],
+					'render_callback' => [ \Beehiiv\Blocks\GatedContent::class, 'render' ],
+				]
+			);
+		}
+
+		if ( ! $registry->is_registered( 'beehiiv/gated-content-divider' ) ) {
+			register_block_type(
+				'beehiiv/gated-content-divider',
+				[
+					'parent'          => [ 'beehiiv/gated-content' ],
+					'render_callback' => '__return_empty_string',
+				]
+			);
+		}
 	}
 
 	/**
