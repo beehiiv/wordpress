@@ -49,7 +49,6 @@ final class GatedContent {
 		$preview = [];
 		$locked  = [];
 		$split   = false;
-		$count   = 0;
 
 		// Work out once, before looping. The inner block list shares one cursor,
 		// so scanning it again inside the loop below would restart the loop forever.
@@ -64,13 +63,12 @@ final class GatedContent {
 
 			$html = $inner_block->render();
 
-			if ( $split || ( 0 < $count && ! $has_divider ) ) {
+			// With no divider, the whole block is gated.
+			if ( $split || ! $has_divider ) {
 				$locked[] = $html;
 			} else {
 				$preview[] = $html;
 			}
-
-			++$count;
 		}
 
 		$defaults = Options::get_gate_settings();

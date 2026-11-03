@@ -2,20 +2,4 @@
 	border: 2px dotted #e0e0e0;
 	border-radius: 6px;
 	padding: 16px 18px;
-
-	// With no divider, the first block is the preview. Mark where the wall falls.
-	&.beehiiv-gated-content--no-divider
-		> .block-editor-inner-blocks
-		> .block-editor-block-list__layout
-		> .wp-block:first-child:not(:last-child)::after {
-		border-bottom: 2px dashed #757575;
-		color: #50575e;
-		content: "Preview ends here. Content below is gated.";
-		display: block;
-		font-size: 12px;
-		margin-top: 1.5em;
-		padding-bottom: 4px;
-		text-align: center;
-		text-transform: uppercase;
-	}
 }

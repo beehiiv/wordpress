@@ -45,14 +45,13 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-007: with no divider, the first inner block is the preview.
+	 * AC-007: with no divider, the whole block is gated and there is no preview.
 	 */
-	public function test_first_block_is_preview_without_divider(): void {
+	public function test_whole_block_is_gated_without_divider(): void {
 		$html = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ) . $this->p( 'THREE' ) );
 
-		$this->assertMatchesRegularExpression( '/ONE.*beehiiv-gated-content__gate/s', $html );
-		$this->assertMatchesRegularExpression( '/beehiiv-gated-content__locked[^>]*>.*TWO.*THREE/s', $html );
-		$this->assertDoesNotMatchRegularExpression( '/beehiiv-gated-content__locked[^>]*>[^<]*<p>ONE/s', $html );
+		$this->assertMatchesRegularExpression( '/beehiiv-gated-content__locked[^>]*>.*ONE.*TWO.*THREE/s', $html );
+		$this->assertDoesNotMatchRegularExpression( '/ONE.*beehiiv-gated-content__gate/s', $html );
 	}
 
 	/**

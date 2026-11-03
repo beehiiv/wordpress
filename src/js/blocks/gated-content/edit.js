@@ -50,11 +50,7 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 		}
 	}, [ dividerIds, removeBlocks ] );
 
-	const blockProps = useBlockProps( {
-		className: dividerIds.length
-			? 'beehiiv-gated-content--has-divider'
-			: 'beehiiv-gated-content--no-divider',
-	} );
+	const blockProps = useBlockProps();
 
 	return (
 		<>
