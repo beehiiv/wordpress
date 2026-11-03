@@ -3,13 +3,14 @@
  * @jest-environment jsdom
  */
 
-const GATE_HTML = `
+const gateHtml = ( formId ) => `
 	<div class="wp-block-beehiiv-gated-content">
-		<div class="beehiiv-gated-content__gate" data-beehiiv-gate data-form-id="form_1" data-cookie-name="beehiiv_gate_unlocked" data-cookie-days="14">
+		<div class="beehiiv-gated-content__gate" data-beehiiv-gate data-form-id="${ formId }" data-cookie-name="beehiiv_gate_unlocked" data-cookie-days="14">
 			<div class="beehiiv-gated-content__card"></div>
 			<div class="beehiiv-gated-content__locked" aria-hidden="true" inert></div>
 		</div>
 	</div>`;
+const GATE_HTML = gateHtml( 'form_1' );
 
 function load() {
 	jest.resetModules();
@@ -43,8 +44,7 @@ describe( 'gated content view', () => {
 	} );
 
 	it( 'unlocks every gate when any gate form is submitted', () => {
-		document.body.innerHTML =
-			GATE_HTML + GATE_HTML.replace( 'form_1', 'form_2' );
+		document.body.innerHTML = gateHtml( 'form_1' ) + gateHtml( 'form_2' );
 		load();
 		post( {
 			type: 'BEEHIIV_SUBSCRIBER_FORM_SUBMITTED',
@@ -145,12 +145,7 @@ describe( 'gated content view', () => {
 
 	it( 'moves focus and announces only for the gate that was submitted', () => {
 		jest.useFakeTimers();
-		document.body.innerHTML =
-			GATE_HTML +
-			GATE_HTML.replace( 'form_1', 'form_2' ).replace(
-				'<div class="beehiiv-gated-content__gate"',
-				'<div class="beehiiv-gated-content__gate" data-second'
-			);
+		document.body.innerHTML = gateHtml( 'form_1' ) + gateHtml( 'form_2' );
 		document.querySelectorAll( '[data-beehiiv-gate]' ).forEach( ( g ) => {
 			g.dataset.unlockedMessage = 'Content unlocked.';
 		} );
