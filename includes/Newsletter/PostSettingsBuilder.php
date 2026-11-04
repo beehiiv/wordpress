@@ -94,7 +94,10 @@ final class PostSettingsBuilder {
 			);
 		}
 
-		$beehiiv_blocks = BlockConverter::convert_supported_blocks( $post_object );
+		$beehiiv_blocks = BlockConverter::convert_supported_blocks(
+			$post_object,
+			self::should_convert_groups( $post_id )
+		);
 
 		if ( empty( $beehiiv_blocks ) ) {
 			return new WP_Error(
@@ -262,6 +265,27 @@ final class PostSettingsBuilder {
 		}
 
 		return $update['payload'];
+	}
+
+	/**
+	 * Whether Group blocks become beehiiv sections for this post.
+	 *
+	 * A post that has no beehiiv post yet is on its first sync, so Groups convert. After
+	 * that, only a post whose first sync converted them keeps converting them; a post
+	 * synced before section support keeps omitting Groups so its beehiiv layout does not change.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since x.x.x
+	 */
+	private static function should_convert_groups( int $post_id ): bool {
+		$beehiiv_post_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true );
+
+		if ( ! is_string( $beehiiv_post_id ) || '' === trim( $beehiiv_post_id ) ) {
+			return true;
+		}
+
+		return (bool) get_post_meta( $post_id, Meta::BEEHIIV_GROUP_SECTIONS, true );
 	}
 
 	/**
