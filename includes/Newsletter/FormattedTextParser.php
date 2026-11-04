@@ -270,6 +270,32 @@ final class FormattedTextParser {
 	}
 
 	/**
+	 * Resolve a table block's background colour from attrs or saved HTML.
+	 *
+	 * Reads the `<table>` tag first, then the `<figure>` wrapper.
+	 *
+	 * @param string               $inner_html Saved table HTML.
+	 * @param array<string, mixed> $attrs      Parsed block attrs.
+	 * @return string|null
+	 * @since 1.2.0
+	 */
+	public static function resolve_table_block_background_color( string $inner_html, array $attrs ): ?string {
+		$from_attrs = self::resolve_block_background_color_from_attrs( $attrs );
+
+		if ( null !== $from_attrs ) {
+			return $from_attrs;
+		}
+
+		$from_table = self::resolve_wrapper_color_from_html_tag( $inner_html, 'table', 'background' );
+
+		if ( null !== $from_table ) {
+			return $from_table;
+		}
+
+		return self::resolve_wrapper_color_from_html_tag( $inner_html, 'figure', 'background' );
+	}
+
+	/**
 	 * Walk HTML and collect formatted text segments.
 	 *
 	 * @param string      $html               Inline HTML.
