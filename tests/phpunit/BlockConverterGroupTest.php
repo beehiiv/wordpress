@@ -111,21 +111,33 @@ class BlockConverterGroupTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-010: a Group inside a Group becomes a nested section.
+	 * AC-010: a Group inside a Group is omitted, because a beehiiv section cannot hold a section.
 	 */
-	public function test_nested_group_becomes_nested_section(): void {
+	public function test_nested_group_is_omitted_with_its_content(): void {
 		$inner = $this->group( $this->paragraph( 'Deep' ) );
-		$post  = $this->create_post( $this->group( $this->paragraph( 'Top' ) . $inner ) );
+		$post  = $this->create_post( $this->group( $this->paragraph( 'Top' ) . $inner . $this->paragraph( 'Last' ) ) );
 
 		$blocks = BlockConverter::convert_supported_blocks( $post, true );
 
 		$this->assertCount( 1, $blocks );
 		$this->assertSame( 'section', $blocks[0]['type'] );
 		$this->assertSame(
-			array( 'paragraph', 'section' ),
+			array( 'paragraph', 'paragraph' ),
 			array_column( $blocks[0]['blocks'], 'type' )
 		);
-		$this->assertCount( 1, $blocks[0]['blocks'][1]['blocks'] );
+		$this->assertStringNotContainsString( 'Deep', wp_json_encode( $blocks ) );
+	}
+
+	/**
+	 * AC-010: no section is nested at any depth, and a Group holding only a nested Group sends nothing.
+	 */
+	public function test_no_section_is_nested_at_any_depth(): void {
+		$deep = $this->group( $this->group( $this->group( $this->paragraph( 'Deep' ) ) ) );
+		$post = $this->create_post( $this->paragraph( 'Kept' ) . $deep );
+
+		$blocks = BlockConverter::convert_supported_blocks( $post, true );
+
+		$this->assertSame( array( 'paragraph' ), array_column( $blocks, 'type' ) );
 	}
 
 	/**

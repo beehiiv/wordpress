@@ -39,7 +39,8 @@ defined( 'ABSPATH' ) || exit;
  * - `beehiiv/advertisement` — beehiiv `advertisement` block via `convert_advertisement_block()`
  *
  * - `core/group` — `convert_group_block()` (beehiiv `section` block holding the converted inner
- *   blocks; only for posts whose first sync used sections, see `PostSettingsBuilder`)
+ *   blocks; only for posts whose first sync used sections, see `PostSettingsBuilder`; a Group
+ *   inside a Group is omitted because beehiiv sections cannot hold sections)
  *
  * Other layout blocks (`core/columns`, etc.) are skipped at the top level, and so is
  * `core/group` for posts first synced before section support.
@@ -160,10 +161,11 @@ final class BlockConverter {
 	 * Convert a core/group block to a beehiiv section block.
 	 *
 	 * The Group's inner blocks are converted with the same rules as top-level blocks and
-	 * placed in the section in their original order. A nested Group becomes a nested
-	 * section. Section settings are left at beehiiv defaults. Returns an empty array when
-	 * no inner block converts, so no empty section is sent. Snippet-only blocks are
-	 * omitted inside a section.
+	 * placed in the section in their original order. A Group nested inside a Group is
+	 * omitted with its inner blocks, because a beehiiv section cannot hold another section
+	 * and sending one makes beehiiv reject the whole post. Section settings are left at
+	 * beehiiv defaults. Returns an empty array when no inner block converts, so no empty
+	 * section is sent. Snippet-only blocks are omitted inside a section.
 	 *
 	 * @param array<string, mixed> $wp_block    Parsed core/group block.
 	 * @param WP_Post              $post_object Post object.
@@ -175,7 +177,7 @@ final class BlockConverter {
 			$wp_block['innerBlocks'] ?? [],
 			$post_object,
 			false,
-			true
+			false
 		);
 
 		if ( empty( $inner_blocks ) ) {

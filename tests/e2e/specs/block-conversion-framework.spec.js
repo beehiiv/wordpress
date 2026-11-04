@@ -506,21 +506,23 @@ test.describe( 'US-006: Group blocks become sections', () => {
 		expect( section.blocks[ 2 ].plaintext ).toBe( 'Inside two' );
 	} );
 
-	test( 'AC-010: a Group nested in a Group becomes a nested section', async ( {
+	test( 'AC-010: a Group nested in a Group is omitted, so no section holds a section', async ( {
 		page,
 	} ) => {
 		const { blocks } = await sendNew(
 			page,
-			group( p( 'Outer text' ) + group( p( 'Nested text' ) ) )
+			group(
+				p( 'Outer text' ) +
+					group( p( 'Nested text' ) ) +
+					p( 'Last text' )
+			)
 		);
 		expect( types( blocks ) ).toEqual( [ 'section' ] );
 		expect( types( blocks[ 0 ].blocks ) ).toEqual( [
 			'paragraph',
-			'section',
+			'paragraph',
 		] );
-		const nested = blocks[ 0 ].blocks[ 1 ];
-		expect( types( nested.blocks ) ).toEqual( [ 'paragraph' ] );
-		expect( nested.blocks[ 0 ].plaintext ).toBe( 'Nested text' );
+		expect( JSON.stringify( blocks ) ).not.toContain( 'Nested text' );
 	} );
 
 	test( 'AC-011: sections use beehiiv defaults; Group background and padding are not carried over', async ( {
