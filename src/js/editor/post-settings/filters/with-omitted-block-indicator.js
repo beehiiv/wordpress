@@ -13,11 +13,15 @@ function useShowOmittedBlockIndicators( clientId ) {
 	const beehiivMeta = useBeehiivPostMeta();
 	const isOmittedBlock = useIsOmittedBlock( clientId );
 
-	return (
-		!! beehiivMeta?.sendToNewsletter &&
-		! beehiivMeta.newsletterAlreadySent &&
-		isOmittedBlock
-	);
+	// A linked newsletter that is still scheduled keeps syncing edits, so its
+	// omitted blocks are marked too. A sent newsletter no longer changes.
+	const isQueued =
+		!! beehiivMeta?.sendToNewsletter && ! beehiivMeta.newsletterAlreadySent;
+	const isScheduled =
+		!! beehiivMeta?.newsletterAlreadySent &&
+		! beehiivMeta.newsletterPublished;
+
+	return ( isQueued || isScheduled ) && isOmittedBlock;
 }
 
 // Higher order component to add a visual indicator to blocks that are omitted from the newsletter.

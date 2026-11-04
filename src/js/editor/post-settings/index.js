@@ -26,7 +26,10 @@ import PostSettingsNotice from './components/post-settings-notice';
 import SendNewsletterToggle from './components/send-newsletter-toggle';
 import TestEmailSend from './components/test-email-send';
 import IncompleteAdvertisementNotice from './components/incomplete-advertisement-notice';
-import { OmittedBlocksNoticeMessage } from './components/omitted-blocks-notice';
+import {
+	OmittedBlocksNotice,
+	OmittedBlocksNoticeMessage,
+} from './components/omitted-blocks-notice';
 import { useBeehiivEditorConfig } from './hooks/use-beehiiv-editor-config';
 import { useBeehiivPostMeta } from './hooks/use-beehiiv-post-meta';
 import { usePostPublication } from './hooks/use-post-publication';
@@ -214,6 +217,7 @@ function BeehiivPostSettingsPanel() {
 				<NewsletterLinkedNotice beehiivMeta={ beehiivMeta } />
 				{ newsletterAlreadySent && isNewsletterReady && (
 					<>
+						{ ! newsletterPublished && <OmittedBlocksNotice /> }
 						<NewsletterPublicationAndTemplate
 							beehiivMeta={ beehiivMeta }
 							postPublication={ postPublication }

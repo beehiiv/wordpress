@@ -548,6 +548,59 @@ test.describe( 'US-006: Group blocks become sections', () => {
 		);
 	} );
 
+	test( 'AC-010: a scheduled, linked post shows the omitted notice for a nested Group, and a sent one does not', async ( {
+		page,
+	} ) => {
+		seed();
+		const linked = ( scheduledAt ) => ( {
+			[ META.postId ]: 'post_qa_e2e_scheduled',
+			_beehiiv_publication_id: PUBLICATION_ID,
+			_beehiiv_post_template_id: TEMPLATE_ID,
+			_beehiiv_linked_publication_id: PUBLICATION_ID,
+			_beehiiv_linked_post_template_id: TEMPLATE_ID,
+			[ META.send ]: '',
+			_beehiiv_scheduled_at: scheduledAt,
+		} );
+		const content = group(
+			p( 'Outer text' ) + group( p( 'Nested text' ) )
+		);
+		const scheduledId = createPost( {
+			title: 'QA E2E scheduled nested group',
+			content,
+			status: 'publish',
+			meta: linked( '2031-01-01T10:00:00Z' ),
+		} );
+		const sentId = createPost( {
+			title: 'QA E2E sent nested group',
+			content,
+			status: 'publish',
+			meta: linked( '2020-01-01T10:00:00Z' ),
+		} );
+		await loginAsAdmin( page );
+
+		await openPostEditor( page, scheduledId );
+		await openBeehiivSidebar( page );
+		await expect(
+			page.locator( '.beehiiv-post-settings-notice__omitted' )
+		).toContainText( '1 block will be omitted from this newsletter.' );
+		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+		await expect( canvas.locator( '.beehiiv-omitted-block' ) ).toHaveCount(
+			1
+		);
+
+		await openPostEditor( page, sentId );
+		await openBeehiivSidebar( page );
+		await expect(
+			page.locator( '.beehiiv-post-settings-content' )
+		).toBeVisible();
+		await expect(
+			page.locator( '.beehiiv-post-settings-notice__omitted' )
+		).toHaveCount( 0 );
+		await expect( canvas.locator( '.beehiiv-omitted-block' ) ).toHaveCount(
+			0
+		);
+	} );
+
 	test( 'AC-010: the editor shows no omitted notice for a single, non-nested Group', async ( {
 		page,
 	} ) => {
