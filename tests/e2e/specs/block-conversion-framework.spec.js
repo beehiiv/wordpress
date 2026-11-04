@@ -1,6 +1,6 @@
 const { test, expect } = require( '@playwright/test' );
 const { loginAsAdmin } = require( '../utils/auth' );
-const { openPostEditor, openBeehiivSidebar } = require( '../utils/editor' );
+const { openPostEditor } = require( '../utils/editor' );
 const {
 	wpCli,
 	wpCliSafe,
@@ -245,6 +245,31 @@ async function sendNew( page, content, options = {} ) {
 	const created = creates( getLog() );
 	expect( created ).toHaveLength( 1 );
 	return { id, blocks: created[ 0 ].body.blocks, rest };
+}
+
+/**
+ * Opens or closes the beehiiv sidebar, whatever state the editor remembered.
+ *
+ * @param {import('@playwright/test').Page} page Editor page.
+ * @param {boolean}                         open Whether the sidebar should be open.
+ */
+async function setBeehiivSidebar( page, open ) {
+	const content = page.locator( '.beehiiv-post-settings-content' );
+	const remembered = await content
+		.waitFor( { state: 'visible', timeout: 3000 } )
+		.then( () => true )
+		.catch( () => false );
+	if ( remembered !== open ) {
+		await page
+			.getByRole( 'button', { name: 'beehiiv', exact: true } )
+			.first()
+			.click();
+	}
+	if ( open ) {
+		await expect( content ).toBeVisible();
+	} else {
+		await expect( content ).toBeHidden();
+	}
 }
 
 const p = ( text ) =>
@@ -537,12 +562,40 @@ test.describe( 'US-006: Group blocks become sections', () => {
 		} );
 		await loginAsAdmin( page );
 		await openPostEditor( page, id );
-		await openBeehiivSidebar( page );
+		await setBeehiivSidebar( page, true );
 
 		await expect(
 			page.locator( '.beehiiv-post-settings-notice__omitted' )
 		).toContainText( '1 block will be omitted from this newsletter.' );
 		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+		await expect( canvas.locator( '.beehiiv-omitted-block' ) ).toHaveCount(
+			1
+		);
+		// The class sits on the Group block itself; no wrapper element is added.
+		await expect(
+			canvas.locator(
+				'.wp-block-group .wp-block-group.beehiiv-omitted-block'
+			)
+		).toHaveCount( 1 );
+		await expect(
+			canvas.locator( '.beehiiv-omitted-block:not(.wp-block)' )
+		).toHaveCount( 0 );
+		// The hidden-eye icon is always drawn, without hovering the block.
+		const icon = await canvas
+			.locator( '.beehiiv-omitted-block' )
+			.evaluate( ( el ) => {
+				const style = window.getComputedStyle( el, '::after' );
+				return { content: style.content, opacity: style.opacity };
+			} );
+		expect( icon.content ).not.toBe( 'none' );
+		expect( icon.opacity ).toBe( '1' );
+
+		// Closing the beehiiv sidebar removes the marks from the canvas.
+		await setBeehiivSidebar( page, false );
+		await expect( canvas.locator( '.beehiiv-omitted-block' ) ).toHaveCount(
+			0
+		);
+		await setBeehiivSidebar( page, true );
 		await expect( canvas.locator( '.beehiiv-omitted-block' ) ).toHaveCount(
 			1
 		);
@@ -579,7 +632,7 @@ test.describe( 'US-006: Group blocks become sections', () => {
 		await loginAsAdmin( page );
 
 		await openPostEditor( page, scheduledId );
-		await openBeehiivSidebar( page );
+		await setBeehiivSidebar( page, true );
 		await expect(
 			page.locator( '.beehiiv-post-settings-notice__omitted' )
 		).toContainText( '1 block will be omitted from this newsletter.' );
@@ -589,7 +642,7 @@ test.describe( 'US-006: Group blocks become sections', () => {
 		);
 
 		await openPostEditor( page, sentId );
-		await openBeehiivSidebar( page );
+		await setBeehiivSidebar( page, true );
 		await expect(
 			page.locator( '.beehiiv-post-settings-content' )
 		).toBeVisible();
@@ -612,7 +665,7 @@ test.describe( 'US-006: Group blocks become sections', () => {
 		} );
 		await loginAsAdmin( page );
 		await openPostEditor( page, id );
-		await openBeehiivSidebar( page );
+		await setBeehiivSidebar( page, true );
 
 		await expect(
 			page.locator( '.beehiiv-post-settings-notice__text' )

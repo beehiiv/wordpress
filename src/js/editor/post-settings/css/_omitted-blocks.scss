@@ -12,41 +12,21 @@
 	box-sizing: border-box;
 	min-height: 24px;
 	position: relative;
-	width: 100%;
 
-	// Invisible hit area so the icon above the block stays hoverable.
-	&::before {
+	// Hidden-eye icon above the block's top right corner, drawn on the block itself.
+	&::after {
 		bottom: 100%;
-		content: "";
-		height: 24px;
+		color: beehiiv.$beehiiv-status-disconnected;
+		content: "\f530";
+		font-family: dashicons, sans-serif;
+		font-size: 16px;
+		height: 20px;
+		line-height: 18px;
+		pointer-events: none;
 		position: absolute;
-		right: 0;
-		width: 28px;
+		right: 2px;
+		width: 20px;
+		z-index: 30;
 	}
-}
-
-.editor-styles-wrapper .beehiiv-omitted-block__icon {
-	bottom: 100%;
-	color: beehiiv.$beehiiv-status-disconnected;
-	cursor: default;
-	display: block;
-	font-family: dashicons, sans-serif;
-	font-size: 16px;
-	height: 20px;
-	line-height: 18px;
-	opacity: 0;
-	pointer-events: auto;
-	position: absolute;
-	right: 2px;
-	transition: opacity 0.15s ease;
-	width: 20px;
-	z-index: 30;
-}
-
-.editor-styles-wrapper .beehiiv-omitted-block__icon:hover,
-.editor-styles-wrapper
-	.beehiiv-omitted-block:has(:hover)
-	.beehiiv-omitted-block__icon {
-	opacity: 1;
 }
 /* stylelint-enable selector-class-pattern */

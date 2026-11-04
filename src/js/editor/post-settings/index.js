@@ -36,11 +36,10 @@ import { usePostPublication } from './hooks/use-post-publication';
 
 import './filters/with-omitted-block-indicator';
 import './editor.scss';
+import { PLUGIN_NAME, SIDEBAR_NAME } from './constants';
 
 const sidebarIcon = <BeehiivSidebarIcon />;
 
-const PLUGIN_NAME = 'beehiiv-post-settings';
-const SIDEBAR_NAME = 'beehiiv-post-settings';
 const PRE_PUBLISH_PANEL_NAME = 'beehiiv-send-newsletter';
 
 function usePostPublishDate() {
