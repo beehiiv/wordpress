@@ -1,5 +1,6 @@
 const { test, expect } = require( '@playwright/test' );
 const { loginAsAdmin } = require( '../utils/auth' );
+const { openPostEditor, openBeehiivSidebar } = require( '../utils/editor' );
 const {
 	wpCli,
 	wpCliSafe,
@@ -523,6 +524,49 @@ test.describe( 'US-006: Group blocks become sections', () => {
 			'paragraph',
 		] );
 		expect( JSON.stringify( blocks ) ).not.toContain( 'Nested text' );
+	} );
+
+	test( 'AC-010: the editor notice counts a nested Group as omitted and marks it', async ( {
+		page,
+	} ) => {
+		seed();
+		const id = createPost( {
+			title: 'QA E2E nested group notice',
+			content: group( p( 'Outer text' ) + group( p( 'Nested text' ) ) ),
+			meta: { [ META.send ]: '1' },
+		} );
+		await loginAsAdmin( page );
+		await openPostEditor( page, id );
+		await openBeehiivSidebar( page );
+
+		await expect(
+			page.locator( '.beehiiv-post-settings-notice__omitted' )
+		).toContainText( '1 block will be omitted from this newsletter.' );
+		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+		await expect( canvas.locator( '.beehiiv-omitted-block' ) ).toHaveCount(
+			1
+		);
+	} );
+
+	test( 'AC-010: the editor shows no omitted notice for a single, non-nested Group', async ( {
+		page,
+	} ) => {
+		seed();
+		const id = createPost( {
+			title: 'QA E2E single group notice',
+			content: group( p( 'Only text' ) ),
+			meta: { [ META.send ]: '1' },
+		} );
+		await loginAsAdmin( page );
+		await openPostEditor( page, id );
+		await openBeehiivSidebar( page );
+
+		await expect(
+			page.locator( '.beehiiv-post-settings-notice__text' )
+		).toBeVisible();
+		await expect(
+			page.locator( '.beehiiv-post-settings-notice__omitted' )
+		).toHaveCount( 0 );
 	} );
 
 	test( 'AC-011: sections use beehiiv defaults; Group background and padding are not carried over', async ( {
