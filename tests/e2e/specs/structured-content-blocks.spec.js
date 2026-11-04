@@ -574,24 +574,24 @@ test.describe( 'US-006: top-level Columns blocks', () => {
 		expect( columnsBlocks( off )[ 0 ].stackOnMobile ).toBe( false );
 	} );
 
-	test( 'AC-017: a Columns block with more than 3 columns becomes top-level blocks', async ( {
+	test( 'AC-017: a Columns block with more than 3 columns is omitted', async ( {
 		page,
 	} ) => {
 		const four = await convert(
 			page,
-			columns( [
-				col( p( 'A' ) ),
-				col( p( 'B' ) ),
-				col( p( 'C' ) ),
-				col( p( 'D' ) ),
-			] )
+			p( 'Before' ) +
+				columns( [
+					col( p( 'A' ) ),
+					col( p( 'B' ) ),
+					col( p( 'C' ) ),
+					col( p( 'D' ) ),
+				] ) +
+				p( 'After' )
 		);
 		expect( columnsBlocks( four ) ).toHaveLength( 0 );
 		expect( four.map( ( b ) => b.plaintext ) ).toEqual( [
-			'A',
-			'B',
-			'C',
-			'D',
+			'Before',
+			'After',
 		] );
 
 		// Control: exactly 3 columns still converts to one columns block.

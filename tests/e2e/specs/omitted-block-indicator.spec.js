@@ -138,6 +138,16 @@ const p = ( text ) =>
 const code = ( text ) =>
 	`<!-- wp:code --><pre class="wp-block-code"><code>${ text }</code></pre><!-- /wp:code -->`;
 
+// A Columns block holds at most 3 columns; beehiiv leaves out a wider one.
+const columns = ( count ) =>
+	`<!-- wp:columns --><div class="wp-block-columns">${ Array.from(
+		{ length: count },
+		( _, i ) =>
+			`<!-- wp:column --><div class="wp-block-column">${ p(
+				`Column ${ i + 1 }`
+			) }</div><!-- /wp:column -->`
+	).join( '' ) }</div><!-- /wp:columns -->`;
+
 test.describe.configure( { timeout: 150 * 1000 } );
 
 test.beforeAll( async () => {
@@ -238,6 +248,46 @@ test.describe( 'Omitted block marks in the editor', () => {
 		);
 
 		await openPostEditor( page, sentId );
+		await setBeehiivSidebar( page, true );
+		await expect(
+			page.locator( '.beehiiv-post-settings-notice__omitted' )
+		).toHaveCount( 0 );
+		await expect( canvas.locator( '.beehiiv-omitted-block' ) ).toHaveCount(
+			0
+		);
+	} );
+
+	test( 'a Columns block with more than 3 columns is marked as omitted, and one with 3 is not', async ( {
+		page,
+	} ) => {
+		seed();
+		const wideId = createPost( {
+			title: 'QA E2E four columns',
+			content: p( 'Kept text' ) + columns( 4 ),
+			meta: { [ META.send ]: '1' },
+		} );
+		const narrowId = createPost( {
+			title: 'QA E2E three columns',
+			content: p( 'Kept text' ) + columns( 3 ),
+			meta: { [ META.send ]: '1' },
+		} );
+		await loginAsAdmin( page );
+		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+
+		await openPostEditor( page, wideId );
+		await setBeehiivSidebar( page, true );
+		await expect(
+			page.locator( '.beehiiv-post-settings-notice__omitted' )
+		).toContainText( '1 block will be omitted from this newsletter.' );
+		// Only the Columns block itself is marked, not its columns or their content.
+		await expect( canvas.locator( '.beehiiv-omitted-block' ) ).toHaveCount(
+			1
+		);
+		await expect(
+			canvas.locator( '.wp-block-columns.beehiiv-omitted-block' )
+		).toHaveCount( 1 );
+
+		await openPostEditor( page, narrowId );
 		await setBeehiivSidebar( page, true );
 		await expect(
 			page.locator( '.beehiiv-post-settings-notice__omitted' )

@@ -40,9 +40,9 @@ defined( 'ABSPATH' ) || exit;
  * - `beehiiv/advertisement` — beehiiv `advertisement` block via `convert_advertisement_block()`
  *
  * Layout blocks such as `core/group` are skipped at the top level. A `core/columns`
- * block with more than 3 columns, or one nested inside a column, is not converted to a
- * columns block. Its inner blocks are emitted at the top level instead. Snippet mode
- * stops at `core/more`.
+ * block with more than 3 columns is omitted. A `core/columns` block nested inside a
+ * column is not converted to a columns block; its inner blocks are emitted at the top
+ * level instead. Snippet mode stops at `core/more`.
  *
  * @since 1.0.0
  */
@@ -528,8 +528,7 @@ final class BlockConverter {
 	 * Convert a core/columns block to a beehiiv columns block.
 	 *
 	 * Returns an empty array when the block is not converted to a columns block,
-	 * including when it has more columns than beehiiv accepts. Use
-	 * `convert_columns_block_to_blocks()` to also get the fallback blocks.
+	 * including when it has more columns than beehiiv accepts.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<string, mixed>
@@ -549,9 +548,8 @@ final class BlockConverter {
 	 * Convert a core/columns block to beehiiv blocks.
 	 *
 	 * A block with up to 3 columns becomes one beehiiv columns block. A block with
-	 * more columns is not converted to a columns block. Each column's inner blocks
-	 * are emitted at the top level in order instead, and the row is never split. A
-	 * core/columns block nested inside a column is handled the same way: its inner
+	 * more columns is omitted entirely, and the row is never split. A core/columns
+	 * block nested inside a column is not converted to a columns block: its inner
 	 * blocks follow the outer columns block at the top level.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
@@ -585,7 +583,7 @@ final class BlockConverter {
 		}
 
 		if ( count( $column_blocks ) > ColumnsBlockConverter::MAX_COLUMNS ) {
-			return array_merge( array_merge( ...$converted_columns ), $nested_blocks );
+			return [];
 		}
 
 		$kept_blocks           = [];

@@ -7,6 +7,8 @@
 
 namespace Beehiiv\Newsletter;
 
+use Beehiiv\Newsletter\Converters\ColumnsBlockConverter;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -14,7 +16,8 @@ defined( 'ABSPATH' ) || exit;
  *
  * Layout blocks such as `core/group` are not supported. They and all of their
  * inner blocks are omitted from the newsletter payload. `core/columns` is supported,
- * but only up to 3 columns; see `BlockConverter::convert_columns_block_to_blocks()`.
+ * but a Columns block with more than 3 columns is omitted; see
+ * `BlockConverter::convert_columns_block_to_blocks()`.
  *
  * @since 1.0.0
  */
@@ -64,7 +67,7 @@ final class SupportedBlocks {
 	/**
 	 * Block support config for the block editor (localized to JavaScript).
 	 *
-	 * @return array<string, array<int, string>>
+	 * @return array<string, array<int, string>|int>
 	 * @since 1.0.0
 	 */
 	public static function get_editor_config(): array {
@@ -72,6 +75,7 @@ final class SupportedBlocks {
 			'supported'   => self::BLOCKS,
 			'nestedOnly'  => self::NESTED_ONLY,
 			'snippetOnly' => self::SNIPPET_ONLY,
+			'maxColumns'  => ColumnsBlockConverter::MAX_COLUMNS,
 		];
 	}
 

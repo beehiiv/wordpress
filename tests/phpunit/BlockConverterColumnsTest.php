@@ -207,25 +207,25 @@ class BlockConverterColumnsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-017: more than 3 columns fall back to top-level blocks, in order, with no columns block.
+	 * AC-017: more than 3 columns are omitted entirely, with no columns block and no top-level blocks.
 	 */
-	public function test_more_than_three_columns_fall_back_to_top_level_blocks(): void {
+	public function test_more_than_three_columns_are_omitted(): void {
 		$blocks = $this->convert(
-			$this->columns(
-				array(
-					$this->column( $this->paragraph( 'A' ) ),
-					$this->column( $this->paragraph( 'B' ) ),
-					$this->column( $this->paragraph( 'C' ) ),
-					$this->column( $this->paragraph( 'D' ) ),
+			$this->paragraph( 'Before' )
+				. $this->columns(
+					array(
+						$this->column( $this->paragraph( 'A' ) ),
+						$this->column( $this->paragraph( 'B' ) ),
+						$this->column( $this->paragraph( 'C' ) ),
+						$this->column( $this->paragraph( 'D' ) ),
+					)
 				)
-			)
+				. $this->paragraph( 'After' )
 		);
 
-		$this->assertCount( 4, $blocks );
-
-		foreach ( $blocks as $block ) {
-			$this->assertSame( 'paragraph', $block['type'] );
-		}
+		$this->assertCount( 2, $blocks );
+		$this->assertSame( 'Before', $blocks[0]['plaintext'] );
+		$this->assertSame( 'After', $blocks[1]['plaintext'] );
 	}
 
 	/**
