@@ -173,6 +173,10 @@ test.describe( 'Omitted block marks in the editor', () => {
 		await expect(
 			page.locator( '.beehiiv-post-settings-notice__omitted' )
 		).toContainText( '1 block will be omitted from this newsletter.' );
+		// It follows the send warning text, so there is a gap above it.
+		await expect(
+			page.locator( '.beehiiv-post-settings-notice__omitted' )
+		).toHaveCSS( 'margin-top', '10px' );
 		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
 		const marked = canvas.locator( '.beehiiv-omitted-block' );
 		await expect( marked ).toHaveCount( 1 );
@@ -225,6 +229,10 @@ test.describe( 'Omitted block marks in the editor', () => {
 		await expect(
 			page.locator( '.beehiiv-post-settings-notice__omitted' )
 		).toContainText( '1 block will be omitted from this newsletter.' );
+		// Alone in its notice, so no gap above it.
+		await expect(
+			page.locator( '.beehiiv-post-settings-notice__omitted' )
+		).toHaveCSS( 'margin-top', '0px' );
 		await expect( canvas.locator( '.beehiiv-omitted-block' ) ).toHaveCount(
 			1
 		);
