@@ -567,6 +567,10 @@ test.describe( 'US-006: Group blocks become sections', () => {
 		await expect(
 			page.locator( '.beehiiv-post-settings-notice__omitted' )
 		).toContainText( '1 block will be omitted from this newsletter.' );
+		// It follows the send warning text, so there is a gap above it.
+		await expect(
+			page.locator( '.beehiiv-post-settings-notice__omitted' )
+		).toHaveCSS( 'margin-top', '10px' );
 		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
 		await expect( canvas.locator( '.beehiiv-omitted-block' ) ).toHaveCount(
 			1
@@ -636,6 +640,10 @@ test.describe( 'US-006: Group blocks become sections', () => {
 		await expect(
 			page.locator( '.beehiiv-post-settings-notice__omitted' )
 		).toContainText( '1 block will be omitted from this newsletter.' );
+		// Alone in its notice, so no gap above it.
+		await expect(
+			page.locator( '.beehiiv-post-settings-notice__omitted' )
+		).toHaveCSS( 'margin-top', '0px' );
 		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
 		await expect( canvas.locator( '.beehiiv-omitted-block' ) ).toHaveCount(
 			1
