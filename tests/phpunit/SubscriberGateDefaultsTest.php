@@ -180,6 +180,32 @@ class SubscriberGateDefaultsTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The first save, with no option row yet, keeps the submitted publication fields.
+	 *
+	 * WordPress runs the sanitize callback twice then (update_option() and add_option()),
+	 * and the second run gets the first run's output, which has no section flag.
+	 */
+	public function test_first_save_keeps_the_publication_fields(): void {
+		// The sanitize callback only runs through update_option() once the setting is registered.
+		Options::register();
+		delete_option( Config::OPTION_NAME );
+
+		update_option(
+			Config::OPTION_NAME,
+			array(
+				Options::PUBLICATION_SECTION_FLAG => '1',
+				'publication_id'                  => 'pub_1',
+				'post_template_id'                => 'tpl_1',
+			)
+		);
+
+		$saved = Options::get();
+
+		$this->assertSame( 'pub_1', $saved['publication_id'] );
+		$this->assertSame( 'tpl_1', $saved['post_template_id'] );
+	}
+
+	/**
 	 * The default form ID is plain text, trimmed, and blank when unset.
 	 */
 	public function test_default_form_id_is_trimmed_plain_text(): void {

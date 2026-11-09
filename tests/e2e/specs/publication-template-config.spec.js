@@ -245,7 +245,11 @@ test.describe( 'Publication and Template Configuration', () => {
 		await page.goto( SETTINGS_PATH );
 
 		const select = page.locator( PUB_SELECT );
-		await expect( select ).toHaveAttribute( 'required', '' );
+
+		// The select is no longer `required`: the form also saves the
+		// Subscriber gating defaults, and a site with no publication must
+		// still be able to save those.
+		await expect( select ).not.toHaveAttribute( 'required' );
 
 		const firstOption = select.locator( 'option' ).first();
 		await expect( firstOption ).toHaveAttribute( 'value', '' );
@@ -523,7 +527,9 @@ test.describe( 'Publication and Template Configuration', () => {
 		await page.locator( '#submit' ).click();
 		await page.waitForURL( /page=beehiiv/ );
 
-		expect( readSettingsOption() ).toEqual( {
+		// The saved option also carries the gate defaults, so match only
+		// the two fields this form saves.
+		expect( readSettingsOption() ).toMatchObject( {
 			publication_id: pubId,
 			post_template_id: tplId,
 		} );

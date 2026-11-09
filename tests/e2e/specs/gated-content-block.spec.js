@@ -4,6 +4,7 @@ const {
 	wpCli,
 	ensurePluginActive,
 	ensurePrettyPermalinks,
+	ensureActiveTheme,
 } = require( '../utils/wp-cli' );
 
 /**
@@ -57,6 +58,7 @@ test.describe( 'Gated Content block', () => {
 	test.beforeAll( () => {
 		ensurePluginActive();
 		ensurePrettyPermalinks();
+		ensureActiveTheme();
 	} );
 
 	test.afterAll( () => {

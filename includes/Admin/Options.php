@@ -164,11 +164,19 @@ final class Options {
 		// The Publication section marks itself in the submission. When it was shown,
 		// a missing field means it was cleared or not offered, so it resets to blank,
 		// as before. When it was hidden, the stored values stay.
-		if ( ! empty( $input[ self::PUBLICATION_SECTION_FLAG ] ) ) {
-			foreach ( [ 'publication_id', 'post_template_id' ] as $key ) {
-				$current[ $key ] = isset( $input[ $key ] )
-					? sanitize_text_field( (string) $input[ $key ] )
-					: '';
+		//
+		// A submitted field is always applied, flag or not. WordPress runs this
+		// callback twice on the first save, when no option row exists yet (once in
+		// update_option() and again in add_option()). The second run receives the
+		// first run's output, which has no flag. Applying present fields keeps that
+		// second run from discarding them.
+		$publication_section_shown = ! empty( $input[ self::PUBLICATION_SECTION_FLAG ] );
+
+		foreach ( [ 'publication_id', 'post_template_id' ] as $key ) {
+			if ( isset( $input[ $key ] ) ) {
+				$current[ $key ] = sanitize_text_field( (string) $input[ $key ] );
+			} elseif ( $publication_section_shown ) {
+				$current[ $key ] = '';
 			}
 		}
 
