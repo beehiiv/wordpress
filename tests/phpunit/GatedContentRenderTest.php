@@ -202,7 +202,9 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 		$no_form = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ), '' );
 		$this->assertStringNotContainsString( 'beehiiv-gated-content__gate', $no_form );
 
-		$only_preview = $this->render_gate( $this->p( 'ONE' ) );
+		// A divider with nothing after it leaves nothing to gate. Without a divider,
+		// every inner block is gated (AC-007), so a lone paragraph would not qualify.
+		$only_preview = $this->render_gate( $this->p( 'ONE' ) . $this->divider() );
 		$this->assertStringNotContainsString( 'beehiiv-gated-content__gate', $only_preview );
 	}
 

@@ -375,6 +375,7 @@ final class Registrar {
 			id="beehiiv_post_template_id"
 			class="beehiiv-settings-select"
 			name="<?php echo esc_attr( $name ); ?>"
+			<?php disabled( '' === $publication_id ); ?>
 		>
 			<option value="" <?php selected( $selected, '' ); ?>>
 				<?php esc_html_e( 'No default template', 'beehiiv' ); ?>

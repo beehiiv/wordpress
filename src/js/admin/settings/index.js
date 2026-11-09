@@ -171,6 +171,9 @@ async function loadTemplates( publicationId, refresh = false ) {
 
 	if ( ! publicationId ) {
 		populateTemplateOptions( [] );
+
+		// No publication selected, so there are no templates to choose from.
+		templateSelect.disabled = true;
 		return;
 	}
 
