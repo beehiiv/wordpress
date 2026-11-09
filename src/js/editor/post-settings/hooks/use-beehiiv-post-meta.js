@@ -12,6 +12,7 @@ import { store as editorStore } from '@wordpress/editor';
 
 import {
 	META_BEEHIIV_POST_ID,
+	META_BEEHIIV_POST_STATE,
 	META_BEEHIIV_SCHEDULED_AT,
 	META_NEWSLETTER_ERROR,
 	META_NEWSLETTER_ERROR_TYPE,
@@ -139,6 +140,8 @@ export function useBeehiivPostMeta() {
 			[ META_BEEHIIV_POST_ID ]: serverBeehiivPostId,
 			[ META_BEEHIIV_SCHEDULED_AT ]:
 				serverMeta[ META_BEEHIIV_SCHEDULED_AT ] ?? '',
+			[ META_BEEHIIV_POST_STATE ]:
+				serverMeta[ META_BEEHIIV_POST_STATE ] ?? '',
 			[ META_NEWSLETTER_ERROR ]:
 				serverMeta[ META_NEWSLETTER_ERROR ] ?? '',
 			[ META_NEWSLETTER_ERROR_TYPE ]:
@@ -225,7 +228,11 @@ export function useBeehiivPostMeta() {
 		typeof rawBeehiivPostId === 'string' && rawBeehiivPostId.length > 0
 			? rawBeehiivPostId
 			: null;
-	const newsletterAlreadySent = null !== beehiivPostId;
+	const newsletterDraftLinked =
+		null !== beehiivPostId && meta?.[ META_BEEHIIV_POST_STATE ] === 'draft';
+	// A linked Preview draft is not scheduled or sent, so the send controls stay editable.
+	const newsletterAlreadySent =
+		null !== beehiivPostId && ! newsletterDraftLinked;
 	const rawBeehiivScheduledAt = meta?.[ META_BEEHIIV_SCHEDULED_AT ];
 	const beehiivScheduledAt =
 		typeof rawBeehiivScheduledAt === 'string' &&
@@ -274,6 +281,7 @@ export function useBeehiivPostMeta() {
 		beehiivPostTemplateId,
 		beehiivPublicationId,
 		newsletterAlreadySent,
+		newsletterDraftLinked,
 		newsletterPublished,
 		beehiivPostId,
 		beehiivScheduledAt,

@@ -167,6 +167,77 @@ final class PostSettingsBuilder {
 	}
 
 	/**
+	 * Build the create payload for a Preview draft from the saved post.
+	 *
+	 * Uses the real send's payload builder without scheduling, then forces draft status
+	 * after the public settings filter so a draft can never become a real send.
+	 *
+	 * @param int         $post_id        Post ID.
+	 * @param string|null $publication_id Publication the draft is for. Defaults to the post's resolved publication.
+	 * @return array<string, mixed>|WP_Error
+	 * @since x.x.x
+	 */
+	public static function build_draft_payload( int $post_id, ?string $publication_id = null ) {
+		$settings = self::get_post_settings( $post_id, true, $publication_id );
+
+		if ( is_wp_error( $settings ) ) {
+			return $settings;
+		}
+
+		if ( ! is_array( $settings ) ) {
+			return new WP_Error(
+				'beehiiv_draft_invalid_settings',
+				__( 'Something went wrong preparing the email draft. Try again.', 'beehiiv' )
+			);
+		}
+
+		$settings['status'] = 'draft';
+		unset( $settings['scheduled_at'] );
+
+		return $settings;
+	}
+
+	/**
+	 * Build the update payload for a linked Preview draft.
+	 *
+	 * Carries the content fields only; never a status, send time or template, so the update
+	 * cannot confirm the draft.
+	 *
+	 * @param int         $post_id        Post ID.
+	 * @param string|null $publication_id Publication the draft lives in.
+	 * @return array<string, mixed>|WP_Error
+	 * @since x.x.x
+	 */
+	public static function build_draft_update_payload( int $post_id, ?string $publication_id = null ) {
+		$settings = self::build_draft_payload( $post_id, $publication_id );
+
+		if ( is_wp_error( $settings ) ) {
+			return $settings;
+		}
+
+		$payload = array_intersect_key(
+			$settings,
+			array_flip(
+				[
+					'title',
+					'blocks',
+					'thumbnail_image_url',
+					'email_settings',
+					'web_settings',
+					'social_share',
+					'content_tags',
+					'seo_settings',
+				]
+			)
+		);
+
+		// A subtitle cleared in WordPress is removed from the draft by sending it empty.
+		$payload['subtitle'] = $settings['subtitle'] ?? '';
+
+		return $payload;
+	}
+
+	/**
 	 * Build a beehiiv update request for a linked newsletter.
 	 *
 	 * Content is always refreshed via PATCH. When the send time must move later,
