@@ -63,7 +63,7 @@ class BlockConverterColumnsStyleTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The visual settings of the section that wraps the converted columns block.
+	 * The visual settings of the converted columns block.
 	 *
 	 * @param array<string, mixed> $attrs   Columns block attributes.
 	 * @param int                  $columns Number of columns.
@@ -74,16 +74,13 @@ class BlockConverterColumnsStyleTest extends WP_UnitTestCase {
 	private function visual_settings( array $attrs, int $columns = 2, string $style = '', string $classes = '' ): array {
 		$blocks = $this->convert( $attrs, $columns, $style, $classes );
 
-		$this->assertSame( 'section', $blocks[0]['type'] );
-		$this->assertCount( 1, $blocks[0]['blocks'] );
-		$this->assertSame( 'columns', $blocks[0]['blocks'][0]['type'] );
-		$this->assertArrayNotHasKey( 'visual_settings', $blocks[0]['blocks'][0] );
+		$this->assertSame( 'columns', $blocks[0]['type'] );
 
-		return $blocks[0]['visual_settings'];
+		return $blocks[0]['visual_settings'] ?? array();
 	}
 
 	/**
-	 * A Columns block with no styling is sent as a plain columns block, with no section.
+	 * A Columns block with no styling sends no visual settings.
 	 */
 	public function test_unstyled_columns_have_no_visual_settings(): void {
 		$blocks = $this->convert( array() );
@@ -338,7 +335,7 @@ class BlockConverterColumnsStyleTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Styling does not change how the columns inside the section convert.
+	 * Styling does not change how the columns convert.
 	 */
 	public function test_styling_does_not_change_the_columns(): void {
 		$blocks = $this->convert(
@@ -347,10 +344,8 @@ class BlockConverterColumnsStyleTest extends WP_UnitTestCase {
 		);
 
 		$this->assertCount( 1, $blocks );
-		$this->assertSame( 'section', $blocks[0]['type'] );
-		$columns = $blocks[0]['blocks'][0];
-		$this->assertCount( 3, $columns['columns'] );
-		$this->assertTrue( $columns['stackOnMobile'] );
+		$this->assertCount( 3, $blocks[0]['columns'] );
+		$this->assertTrue( $blocks[0]['stackOnMobile'] );
 	}
 
 	/**
@@ -363,30 +358,5 @@ class BlockConverterColumnsStyleTest extends WP_UnitTestCase {
 		);
 
 		$this->assertSame( array(), $blocks );
-	}
-
-	/**
-	 * Styling that cannot be converted leaves a plain columns block, with no empty section.
-	 */
-	public function test_styling_that_cannot_be_converted_sends_no_section(): void {
-		$blocks = $this->convert(
-			array( 'style' => array( 'spacing' => array( 'padding' => '10%' ) ) )
-		);
-
-		$this->assertCount( 1, $blocks );
-		$this->assertSame( 'columns', $blocks[0]['type'] );
-	}
-
-	/**
-	 * A styled Columns block with nothing convertible inside sends no section and no columns block.
-	 */
-	public function test_styled_columns_with_nothing_convertible_send_nothing(): void {
-		$markup = '<!-- wp:columns {"style":{"color":{"background":"#ffeeaa"}}} -->'
-			. '<div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column">'
-			. '<!-- wp:spacer --><div class="wp-block-spacer"></div><!-- /wp:spacer -->'
-			. '</div><!-- /wp:column --></div><!-- /wp:columns -->';
-		$blocks = parse_blocks( $markup );
-
-		$this->assertSame( array(), BlockConverter::convert_columns_block_to_blocks( $blocks[0] ) );
 	}
 }
