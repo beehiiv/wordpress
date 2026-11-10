@@ -37,6 +37,7 @@ defined( 'ABSPATH' ) || exit;
  * - `core/separator` — beehiiv `content_break`
  * - `core/more` — snippet newsletters only; beehiiv Read More `button` via `convert_more_block()`
  * - `beehiiv/advertisement` — beehiiv `advertisement` block via `convert_advertisement_block()`
+ * - `beehiiv/post-roundup` — newsletters only; `PostRoundup::expand()` makes image, text, button, separator blocks
  *
  * Layout blocks (`core/group`, `core/columns`, etc.) are skipped at the top level.
  * `convert_columns_block()` exists for internal reuse (e.g. `core/media-text`) and is
@@ -64,11 +65,13 @@ final class BlockConverter {
 			}
 		}
 
-		$is_send_newsletter_snippet = (bool) get_post_meta(
-			$post_object->ID,
-			Meta::SEND_TO_NEWSLETTER_SNIPPET,
-			true
-		);
+		// Newsletters have no public post to link to, so snippet mode never applies.
+		$is_send_newsletter_snippet = ! ContentTypes::is_newsletter( $post_object->post_type )
+			&& (bool) get_post_meta(
+				$post_object->ID,
+				Meta::SEND_TO_NEWSLETTER_SNIPPET,
+				true
+			);
 
 		$converted_blocks = self::convert_blocks(
 			$wp_blocks,
@@ -97,7 +100,8 @@ final class BlockConverter {
 		WP_Post $post_object,
 		bool $is_send_newsletter_snippet
 	): array {
-		$beehiiv_blocks = [];
+		$beehiiv_blocks  = [];
+		$roundup_ordinal = 0;
 
 		foreach ( $wp_blocks as $wp_block ) {
 			if ( empty( $wp_block['blockName'] ) ) {
@@ -112,6 +116,20 @@ final class BlockConverter {
 			}
 
 			if ( ! SupportedBlocks::is_supported( $block_name, $is_send_newsletter_snippet ) ) {
+				continue;
+			}
+
+			if ( PostRoundup::BLOCK === $block_name ) {
+				$attrs = (array) ( $wp_block['attrs'] ?? [] );
+				$key   = PostRoundup::block_key( $attrs, $roundup_ordinal++ );
+
+				// A roundup left in a regular post is ignored.
+				if ( ContentTypes::is_newsletter( $post_object->post_type ) ) {
+					$beehiiv_blocks = array_merge(
+						$beehiiv_blocks,
+						PostRoundup::expand( $attrs, $post_object->ID, $key )
+					);
+				}
 				continue;
 			}
 

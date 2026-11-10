@@ -1,0 +1,37 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "beehiiv/post-roundup",
+	"version": "1.0.0",
+	"title": "Post Roundup",
+	"category": "beehiiv-blocks",
+	"icon": "excerpt-view",
+	"description": "Adds a roundup of posts to the newsletter. Available in newsletters only. Outputs nothing on the website.",
+	"keywords": [ "beehiiv", "roundup", "posts", "digest" ],
+	"textdomain": "beehiiv",
+	"supports": {
+		"html": false,
+		"anchor": true
+	},
+	"attributes": {
+		"mode": {
+			"type": "string",
+			"enum": [ "auto", "manual" ],
+			"default": "auto"
+		},
+		"count": {
+			"type": "number",
+			"default": 3
+		},
+		"posts": {
+			"type": "array",
+			"default": []
+		},
+		"uid": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css"
+}

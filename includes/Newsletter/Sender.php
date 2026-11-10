@@ -29,13 +29,6 @@ defined( 'ABSPATH' ) || exit;
 final class Sender {
 
 	/**
-	 * Post type that supports beehiiv newsletters.
-	 *
-	 * @since 1.0.0
-	 */
-	private const POST_TYPE = 'post';
-
-	/**
 	 * Seconds before `scheduled_at` from which a scheduled newsletter counts as sent.
 	 *
 	 * Keeps a publication or template move from racing beehiiv's own send.
@@ -68,7 +61,10 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	public static function init(): void {
-		add_action( 'rest_after_insert_' . self::POST_TYPE, [ self::class, 'on_rest_insert' ], 10, 2 );
+		foreach ( ContentTypes::supported() as $post_type ) {
+			add_action( 'rest_after_insert_' . $post_type, [ self::class, 'on_rest_insert' ], 10, 2 );
+		}
+
 		add_action( 'future_to_publish', [ self::class, 'on_future_to_publish' ], 10, 1 );
 		add_action( 'transition_post_status', [ self::class, 'on_transition_post_status' ], 10, 3 );
 		add_action( 'before_delete_post', [ self::class, 'on_before_delete_post' ], 10, 1 );
@@ -271,7 +267,7 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	public static function on_future_to_publish( WP_Post $post ): void {
-		if ( self::POST_TYPE !== $post->post_type ) {
+		if ( ! ContentTypes::is_supported( $post->post_type ) ) {
 			return;
 		}
 
@@ -292,7 +288,7 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	public static function on_transition_post_status( string $new_status, string $old_status, WP_Post $post ): void {
-		if ( self::POST_TYPE !== $post->post_type || $new_status === $old_status ) {
+		if ( ! ContentTypes::is_supported( $post->post_type ) || $new_status === $old_status ) {
 			return;
 		}
 
@@ -320,7 +316,7 @@ final class Sender {
 	public static function on_before_delete_post( int $post_id ): void {
 		$post = get_post( $post_id );
 
-		if ( ! $post instanceof WP_Post || self::POST_TYPE !== $post->post_type ) {
+		if ( ! $post instanceof WP_Post || ! ContentTypes::is_supported( $post->post_type ) ) {
 			return;
 		}
 
@@ -380,6 +376,7 @@ final class Sender {
 		self::clear_linked_publication( $post_id );
 		delete_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT );
 		delete_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE );
+		PostRoundupSnapshot::clear( $post_id );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
 		self::clear_error( $post_id );
 	}
@@ -396,7 +393,7 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	public static function maybe_send_post_newsletter( WP_Post $post, ?WP_REST_Request $request = null ): void {
-		if ( self::POST_TYPE !== $post->post_type ) {
+		if ( ! ContentTypes::is_supported( $post->post_type ) ) {
 			return;
 		}
 
@@ -504,9 +501,13 @@ final class Sender {
 			return;
 		}
 
+		// Fix the automatic roundup lists now; every later sync reads this snapshot.
+		PostRoundupSnapshot::freeze( $post_object );
+
 		$beehiiv_post_data = PostSettingsBuilder::get_post_settings( $post_id, false, $publication_id );
 
 		if ( is_wp_error( $beehiiv_post_data ) ) {
+			PostRoundupSnapshot::clear( $post_id );
 			self::fail(
 				$post_id,
 				'save',
@@ -519,6 +520,8 @@ final class Sender {
 		$result = Posts::create( $publication_id, $beehiiv_post_data );
 
 		if ( ! $result['success'] ) {
+			// Nothing was sent, so the next attempt freezes the lists again.
+			PostRoundupSnapshot::clear( $post_id );
 			self::fail(
 				$post_id,
 				'send',
@@ -621,6 +624,9 @@ final class Sender {
 			);
 			return;
 		}
+
+		// Keeps lists frozen at the first send; only a changed or new roundup is frozen now.
+		PostRoundupSnapshot::freeze( $post_object );
 
 		$target_publication_id = self::get_move_target_publication( $post_id, $publication_id );
 
@@ -786,6 +792,7 @@ final class Sender {
 			self::clear_linked_publication( $post_id );
 			delete_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT );
 			delete_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE );
+			PostRoundupSnapshot::clear( $post_id );
 			update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
 
 			self::fail(

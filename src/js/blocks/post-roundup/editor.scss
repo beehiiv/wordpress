@@ -1,0 +1,57 @@
+@use "../../css" as beehiiv;
+
+.wp-block-beehiiv-post-roundup {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+
+	@include beehiiv.block-placeholder-outline;
+}
+
+/* stylelint-disable selector-class-pattern -- BEM + @wordpress/components */
+.beehiiv-post-roundup__card {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding-bottom: 1.5rem;
+	border-bottom: 1px solid #ddd;
+
+	&:last-child {
+		padding-bottom: 0;
+		border-bottom: 0;
+	}
+
+	p {
+		margin: 0;
+	}
+
+	a {
+		color: inherit;
+		text-decoration: underline;
+		pointer-events: none;
+	}
+}
+
+.beehiiv-post-roundup__title strong {
+	font-weight: 700;
+}
+
+.beehiiv-post-roundup__image {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
+
+.beehiiv-post-roundup__button {
+	align-self: flex-start;
+	padding: 0.5rem 1rem;
+	border-radius: 2px;
+	background: #1e1e1e;
+	color: #fff;
+	font-size: 0.875rem;
+}
+
+.beehiiv-post-roundup__picker {
+	margin-top: 16px;
+}
+/* stylelint-enable selector-class-pattern */
