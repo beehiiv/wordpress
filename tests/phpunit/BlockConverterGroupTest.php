@@ -22,6 +22,13 @@ use Beehiiv\Newsletter\PostSettingsBuilder;
 class BlockConverterGroupTest extends WP_UnitTestCase {
 
 	/**
+	 * Theme preset filter added by a test, removed in tear_down.
+	 *
+	 * @var callable|null
+	 */
+	private $theme_json_filter = null;
+
+	/**
 	 * Configure a site default post template so the builder needs no API call.
 	 */
 	public function set_up(): void {
@@ -279,6 +286,8 @@ class BlockConverterGroupTest extends WP_UnitTestCase {
 
 	/**
 	 * AC-011: padding that cannot become pixels is left out, so beehiiv keeps its default for that side.
+	 *
+	 * A fluid `clamp()` is not left out: it is sent at its maximum, see the fluid size test.
 	 */
 	public function test_padding_that_is_not_in_pixels_is_left_out(): void {
 		$section = $this->convert_to_section(
@@ -298,7 +307,333 @@ class BlockConverterGroupTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertSame( array( 'inner_spacing_right' => 30 ), $section['visual_settings'] );
+		$this->assertSame(
+			array(
+				'inner_spacing_left'  => 48,
+				'inner_spacing_right' => 30,
+			),
+			$section['visual_settings']
+		);
+	}
+
+	/**
+	 * AC-011: margin on each side becomes whole-pixel outer spacing, converting rem and em.
+	 */
+	public function test_margin_becomes_outer_spacing_in_pixels(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'spacing' => array(
+							'margin' => array(
+								'top'    => '12px',
+								'bottom' => '1.5rem',
+								'left'   => '1em',
+								'right'  => '0',
+							),
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertEquals(
+			array(
+				'outer_spacing_top'    => 12,
+				'outer_spacing_bottom' => 24,
+				'outer_spacing_left'   => 16,
+				'outer_spacing_right'  => 0,
+			),
+			$section['visual_settings']
+		);
+	}
+
+	/**
+	 * AC-011: padding and margin are sent together as inner and outer spacing.
+	 */
+	public function test_padding_and_margin_are_sent_as_inner_and_outer_spacing(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'spacing' => array(
+							'padding' => array(
+								'top'    => '20px',
+								'bottom' => '20px',
+							),
+							'margin'  => array(
+								'top'    => '40px',
+								'bottom' => '8px',
+							),
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertEquals(
+			array(
+				'inner_spacing_top'    => 20,
+				'inner_spacing_bottom' => 20,
+				'outer_spacing_top'    => 40,
+				'outer_spacing_bottom' => 8,
+			),
+			$section['visual_settings']
+		);
+	}
+
+	/**
+	 * AC-011: a spacing preset margin is sent as pixels, and a margin that cannot become pixels is left out.
+	 */
+	public function test_margin_presets_convert_and_unusable_margins_are_left_out(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'spacing' => array(
+							'margin' => array(
+								'top'    => 'auto',
+								'bottom' => '-10px',
+								'left'   => '5%',
+								'right'  => '16px',
+							),
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertEquals( array( 'outer_spacing_right' => 16 ), $section['visual_settings'] );
+	}
+
+	/**
+	 * Make the theme define its own spacing sizes and palette colours.
+	 *
+	 * The theme turns WordPress's default spacing sizes and palette off, redefines the `40`
+	 * spacing size and the `vivid-red` colour, and adds sizes and a colour with its own names.
+	 * While the defaults are on, WordPress ignores a theme entry that reuses a default slug.
+	 * The cached preset maps are cleared so the converter reads the new settings.
+	 */
+	private function use_theme_presets(): void {
+		$filter = static function ( $theme_json ) {
+			return $theme_json->update_with(
+				array(
+					'version'  => 3,
+					'settings' => array(
+						'spacing' => array(
+							'defaultSpacingSizes' => false,
+							'spacingSizes'        => array(
+								array(
+									'name' => 'Small',
+									'slug' => '40',
+									'size' => '2rem',
+								),
+								array(
+									'name' => 'Small',
+									'slug' => 'small',
+									'size' => '10px',
+								),
+								array(
+									'name' => 'Large',
+									'slug' => 'large',
+									'size' => '1.5em',
+								),
+								array(
+									'name' => 'Fluid',
+									'slug' => 'fluid',
+									'size' => 'clamp(30px, 5vw, 50px)',
+								),
+								array(
+									'name' => 'Capped',
+									'slug' => 'capped',
+									'size' => 'min(1.5rem, 2vw)',
+								),
+							),
+						),
+						'color'   => array(
+							'defaultPalette' => false,
+							'palette'        => array(
+								array(
+									'name'  => 'Vivid red',
+									'slug'  => 'vivid-red',
+									'color' => '#aa0000',
+								),
+								array(
+									'name'  => 'Brand',
+									'slug'  => 'brand',
+									'color' => '#123456',
+								),
+							),
+						),
+					),
+				)
+			);
+		};
+
+		add_filter( 'wp_theme_json_data_theme', $filter );
+		$this->theme_json_filter = $filter;
+
+		WP_Theme_JSON_Resolver::clean_cached_data();
+		$this->reset_preset_caches();
+	}
+
+	/**
+	 * Clear the converters' cached spacing and colour preset maps.
+	 */
+	private function reset_preset_caches(): void {
+		foreach (
+			array(
+				\Beehiiv\Newsletter\Converters\GroupBlockConverter::class => 'spacing_preset_map',
+				\Beehiiv\Newsletter\FormattedTextParser::class => 'color_preset_map',
+			) as $class => $property
+		) {
+			$reflection = new ReflectionProperty( $class, $property );
+			$reflection->setAccessible( true );
+			$reflection->setValue( null, null );
+		}
+	}
+
+	/**
+	 * Remove the theme preset filter and the cached maps after a test.
+	 */
+	public function tear_down(): void {
+		if ( null !== $this->theme_json_filter ) {
+			remove_filter( 'wp_theme_json_data_theme', $this->theme_json_filter );
+			$this->theme_json_filter = null;
+		}
+
+		WP_Theme_JSON_Resolver::clean_cached_data();
+		$this->reset_preset_caches();
+
+		parent::tear_down();
+	}
+
+	/**
+	 * AC-011: a theme spacing size named in a Group's padding and margin is sent as that theme's size.
+	 *
+	 * The padding on the right names `50`, which this theme no longer defines, so it is left out.
+	 */
+	public function test_theme_spacing_sizes_are_used_by_slug(): void {
+		$this->use_theme_presets();
+
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'spacing' => array(
+							'padding' => array(
+								'top'    => 'var:preset|spacing|small',
+								'bottom' => 'var:preset|spacing|large',
+								'left'   => 'var:preset|spacing|40',
+								'right'  => 'var:preset|spacing|50',
+							),
+							'margin'  => array(
+								'top'    => 'var(--wp--preset--spacing--small)',
+								'bottom' => 'var:preset|spacing|40',
+							),
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertEquals(
+			array(
+				'inner_spacing_top'    => 10,
+				'inner_spacing_bottom' => 24,
+				'inner_spacing_left'   => 32,
+				'outer_spacing_top'    => 10,
+				'outer_spacing_bottom' => 32,
+			),
+			$section['visual_settings']
+		);
+	}
+
+	/**
+	 * AC-011: a theme colour named in a Group's colours and border is sent as that theme's colour value.
+	 */
+	public function test_theme_colors_are_used_by_slug(): void {
+		$this->use_theme_presets();
+
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'backgroundColor' => 'brand',
+					'textColor'       => 'vivid-red',
+					'borderColor'     => 'vivid-red',
+					'style'           => array( 'border' => array( 'width' => '1px' ) ),
+				)
+			)
+		);
+
+		$this->assertSame( '#123456', $section['visual_settings']['background_color'] );
+		$this->assertSame( '#aa0000', $section['visual_settings']['text_color'] );
+		$this->assertSame( '#aa0000', $section['visual_settings']['border_color'] );
+	}
+
+	/**
+	 * AC-011: a fluid size is sent at its widest value, because a newsletter has no responsive spacing.
+	 */
+	public function test_fluid_sizes_are_sent_at_their_widest_value(): void {
+		$cases = array(
+			'clamp(30px, 5vw, 50px)' => 50,
+			'clamp(1.8rem, 1.8rem + ((1vw - 0.48rem) * 2.885), 3rem)' => 48,
+			'min(1.5rem, 2vw)'       => 24,
+			'min(2rem, 3rem)'        => 32,
+			'max(10px, 2rem)'        => 32,
+			'MIN( 20px , 4vw )'      => 20,
+		);
+
+		foreach ( $cases as $value => $expected ) {
+			$section = $this->convert_to_section(
+				$this->styled_group( array( 'style' => array( 'spacing' => array( 'padding' => array( 'top' => $value ) ) ) ) )
+			);
+
+			$this->assertSame( array( 'inner_spacing_top' => $expected ), $section['visual_settings'], $value );
+		}
+	}
+
+	/**
+	 * AC-011: a size with no fixed length in it cannot be sent, so beehiiv keeps its default.
+	 */
+	public function test_sizes_without_a_fixed_length_are_left_out(): void {
+		foreach ( array( 'calc(1rem + 2vw)', 'min(2vw, 3vw)', 'clamp(1rem, 2vw)', 'var(--custom-gap)' ) as $value ) {
+			$section = $this->convert_to_section(
+				$this->styled_group( array( 'style' => array( 'spacing' => array( 'padding' => array( 'top' => $value ) ) ) ) )
+			);
+
+			$this->assertSame( array( 'type', 'blocks' ), array_keys( $section ), $value );
+		}
+	}
+
+	/**
+	 * AC-011: a theme's fluid spacing sizes are sent at their widest value.
+	 */
+	public function test_theme_fluid_spacing_sizes_are_sent_at_their_widest_value(): void {
+		$this->use_theme_presets();
+
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'spacing' => array(
+							'padding' => array(
+								'top'    => 'var:preset|spacing|fluid',
+								'bottom' => 'var:preset|spacing|capped',
+							),
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertEquals(
+			array(
+				'inner_spacing_top'    => 50,
+				'inner_spacing_bottom' => 24,
+			),
+			$section['visual_settings']
+		);
 	}
 
 	/**

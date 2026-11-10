@@ -683,11 +683,11 @@ test.describe( 'US-006: Group blocks become sections', () => {
 		).toHaveCount( 0 );
 	} );
 
-	test( 'AC-011: Group background color, text color and padding become the section visual settings', async ( {
+	test( 'AC-011: Group background color, text color, padding and margin become the section visual settings', async ( {
 		page,
 	} ) => {
 		const styled =
-			'<!-- wp:group {"style":{"color":{"background":"#ff0000","text":"#ffffff"},"spacing":{"padding":{"top":"40px","bottom":"2.5rem","left":"20px","right":"10%"}}},"layout":{"type":"constrained"}} --><div class="wp-block-group has-text-color has-background" style="color:#ffffff;background-color:#ff0000;padding-top:40px;padding-right:10%;padding-bottom:2.5rem;padding-left:20px">' +
+			'<!-- wp:group {"style":{"color":{"background":"#ff0000","text":"#ffffff"},"spacing":{"padding":{"top":"40px","bottom":"2.5rem","left":"20px","right":"10%"},"margin":{"top":"12px","bottom":"1.5rem"}}},"layout":{"type":"constrained"}} --><div class="wp-block-group has-text-color has-background" style="color:#ffffff;background-color:#ff0000;margin-top:12px;margin-bottom:1.5rem;padding-top:40px;padding-right:10%;padding-bottom:2.5rem;padding-left:20px">' +
 			p( 'Styled group text' ) +
 			'</div><!-- /wp:group -->';
 		const { blocks } = await sendNew( page, styled );
@@ -698,13 +698,16 @@ test.describe( 'US-006: Group blocks become sections', () => {
 			'type',
 			'visual_settings',
 		] );
-		// Padding in rem converts to pixels; a percentage cannot, so that side is left out.
+		// Padding and margin become inner and outer spacing. rem converts to pixels; a percentage
+		// cannot, so that side is left out.
 		expect( blocks[ 0 ].visual_settings ).toEqual( {
 			background_color: '#ff0000',
 			text_color: '#ffffff',
 			inner_spacing_top: 40,
 			inner_spacing_bottom: 40,
 			inner_spacing_left: 20,
+			outer_spacing_top: 12,
+			outer_spacing_bottom: 24,
 		} );
 	} );
 

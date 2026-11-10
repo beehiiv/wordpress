@@ -12,10 +12,10 @@ use Beehiiv\Newsletter\FormattedTextParser;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Helpers for mapping a core/group block's colours, padding and border to the
+ * Helpers for mapping a core/group block's colours, padding, margin and border to the
  * `visual_settings` of a beehiiv `section` block.
  *
- * Background colour, text colour, padding, and the border's colour, width, style and
+ * Background colour, text colour, padding, margin, and the border's colour, width, style and
  * radius are mapped. Other Group styling stays at beehiiv defaults.
  *
  * @since x.x.x
@@ -86,8 +86,12 @@ final class GroupBlockConverter {
 			$settings['text_color'] = $text_color;
 		}
 
-		foreach ( self::resolve_padding( $attrs ) as $side => $pixels ) {
+		foreach ( self::resolve_spacing( $attrs, 'padding' ) as $side => $pixels ) {
 			$settings[ 'inner_spacing_' . $side ] = $pixels;
+		}
+
+		foreach ( self::resolve_spacing( $attrs, 'margin' ) as $side => $pixels ) {
+			$settings[ 'outer_spacing_' . $side ] = $pixels;
 		}
 
 		return array_merge( $settings, self::resolve_border( $attrs, $inner_html ) );
@@ -262,33 +266,35 @@ final class GroupBlockConverter {
 	}
 
 	/**
-	 * Resolve each padding side of a Group block to whole pixels.
+	 * Resolve each side of a Group block's padding or margin to whole pixels.
 	 *
 	 * A side whose value cannot be turned into pixels (percentages, viewport units,
-	 * `clamp()` presets) is left out so beehiiv keeps its default for that side.
+	 * `auto`, negative values, `clamp()` presets) is left out so beehiiv keeps its default
+	 * for that side.
 	 *
-	 * @param array<string, mixed> $attrs Parsed block attributes.
+	 * @param array<string, mixed> $attrs    Parsed block attributes.
+	 * @param string               $property Spacing property, `padding` or `margin`.
 	 * @return array<string, int> Pixels keyed by side.
 	 */
-	private static function resolve_padding( array $attrs ): array {
-		$padding = $attrs['style']['spacing']['padding'] ?? null;
+	private static function resolve_spacing( array $attrs, string $property ): array {
+		$spacing = $attrs['style']['spacing'][ $property ] ?? null;
 
-		if ( is_string( $padding ) || is_int( $padding ) ) {
-			$padding = array_fill_keys( self::SIDES, $padding );
+		if ( is_string( $spacing ) || is_int( $spacing ) ) {
+			$spacing = array_fill_keys( self::SIDES, $spacing );
 		}
 
-		if ( ! is_array( $padding ) ) {
+		if ( ! is_array( $spacing ) ) {
 			return [];
 		}
 
 		$resolved = [];
 
 		foreach ( self::SIDES as $side ) {
-			if ( ! isset( $padding[ $side ] ) ) {
+			if ( ! isset( $spacing[ $side ] ) ) {
 				continue;
 			}
 
-			$pixels = self::to_pixels( $padding[ $side ] );
+			$pixels = self::to_pixels( $spacing[ $side ] );
 
 			if ( null !== $pixels ) {
 				$resolved[ $side ] = $pixels;
@@ -299,9 +305,9 @@ final class GroupBlockConverter {
 	}
 
 	/**
-	 * Convert one padding value to whole pixels.
+	 * Convert one padding or margin value to whole pixels.
 	 *
-	 * @param mixed $value Padding value: a number, a CSS length, or a spacing preset.
+	 * @param mixed $value Spacing value: a number, a CSS length, or a spacing preset.
 	 * @return int|null Pixels, or null when the value cannot be converted.
 	 */
 	private static function to_pixels( $value ): ?int {
@@ -326,12 +332,23 @@ final class GroupBlockConverter {
 	}
 
 	/**
-	 * Convert a plain CSS length (`40px`, `2.5rem`, `1em`, `12`) to whole pixels.
+	 * Convert a CSS length (`40px`, `2.5rem`, `1em`, `12`) or a fluid size to whole pixels.
 	 *
-	 * @param string $length CSS length.
+	 * Themes often define spacing as `clamp()`, `min()` or `max()`. A newsletter has no
+	 * responsive spacing, so a fluid size is sent at its widest value: `clamp()` at its
+	 * maximum, `min()` at its smallest fixed argument, `max()` at its largest. An argument
+	 * that is not a fixed length (a `vw` unit, `calc()`) is ignored.
+	 *
+	 * @param string $length CSS length or fluid size.
 	 * @return int|null Pixels, or null for any other unit or function.
 	 */
 	private static function css_length_to_pixels( string $length ): ?int {
+		$length = trim( $length );
+
+		if ( preg_match( '/^(clamp|min|max)\((.*)\)$/is', $length, $call ) ) {
+			return self::fluid_size_to_pixels( strtolower( $call[1] ), self::split_arguments( $call[2] ) );
+		}
+
 		if ( ! preg_match( '/^(\d+(?:\.\d+)?)\s*(px|rem|em)?$/i', trim( $length ), $matches ) ) {
 			return null;
 		}
@@ -344,6 +361,63 @@ final class GroupBlockConverter {
 		}
 
 		return (int) round( $number );
+	}
+
+	/**
+	 * Resolve a `clamp()`, `min()` or `max()` size to whole pixels.
+	 *
+	 * @param string             $name      Function name: `clamp`, `min` or `max`.
+	 * @param array<int, string> $arguments Top-level arguments of the function.
+	 * @return int|null Pixels, or null when no argument is a fixed length.
+	 */
+	private static function fluid_size_to_pixels( string $name, array $arguments ): ?int {
+		if ( 'clamp' === $name ) {
+			// clamp( minimum, preferred, maximum ): the maximum is the widest size.
+			return 3 === count( $arguments ) ? self::css_length_to_pixels( $arguments[2] ) : null;
+		}
+
+		$values = array_filter(
+			array_map( array( self::class, 'css_length_to_pixels' ), $arguments ),
+			static function ( $pixels ) {
+				return null !== $pixels;
+			}
+		);
+
+		if ( empty( $values ) ) {
+			return null;
+		}
+
+		return 'min' === $name ? min( $values ) : max( $values );
+	}
+
+	/**
+	 * Split a CSS function's arguments on top-level commas.
+	 *
+	 * @param string $arguments Text between the function's outer parentheses.
+	 * @return array<int, string>
+	 */
+	private static function split_arguments( string $arguments ): array {
+		$parts = [];
+		$depth = 0;
+		$start = 0;
+		$total = strlen( $arguments );
+
+		for ( $index = 0; $index < $total; $index++ ) {
+			$char = $arguments[ $index ];
+
+			if ( '(' === $char ) {
+				++$depth;
+			} elseif ( ')' === $char ) {
+				--$depth;
+			} elseif ( ',' === $char && 0 === $depth ) {
+				$parts[] = trim( substr( $arguments, $start, $index - $start ) );
+				$start   = $index + 1;
+			}
+		}
+
+		$parts[] = trim( substr( $arguments, $start ) );
+
+		return $parts;
 	}
 
 	/**
@@ -378,7 +452,13 @@ final class GroupBlockConverter {
 		$sizes = wp_get_global_settings( array( 'spacing', 'spacingSizes' ) );
 		$sizes = is_array( $sizes ) ? $sizes : [];
 
-		foreach ( array( 'theme', 'default', 'custom' ) as $source ) {
+		// Apply origins in WordPress's own order, so a later origin overrides an earlier one with the same slug.
+		// A theme can turn WordPress's default sizes off, and then they are not offered at all.
+		$sources = false === wp_get_global_settings( array( 'spacing', 'defaultSpacingSizes' ) )
+			? array( 'theme', 'custom' )
+			: array( 'default', 'theme', 'custom' );
+
+		foreach ( $sources as $source ) {
 			if ( empty( $sizes[ $source ] ) || ! is_array( $sizes[ $source ] ) ) {
 				continue;
 			}

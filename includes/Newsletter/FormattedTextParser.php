@@ -1196,7 +1196,11 @@ final class FormattedTextParser {
 
 		$map     = [];
 		$palette = wp_get_global_settings( array( 'color', 'palette' ) );
-		$sources = array( 'theme', 'default', 'custom' );
+		// Apply origins in WordPress's own order, so a later origin overrides an earlier one with the same slug.
+		// A theme can turn WordPress's default palette off, and then its colours are not offered at all.
+		$sources = false === wp_get_global_settings( array( 'color', 'defaultPalette' ) )
+			? array( 'theme', 'custom' )
+			: array( 'default', 'theme', 'custom' );
 		$palette = is_array( $palette ) ? $palette : [];
 
 		foreach ( $sources as $source ) {
