@@ -708,6 +708,55 @@ test.describe( 'US-006: Group blocks become sections', () => {
 		} );
 	} );
 
+	test( 'AC-015: Group border color, width, style and radius become the section visual settings', async ( {
+		page,
+	} ) => {
+		const bordered =
+			'<!-- wp:group {"style":{"border":{"color":"#00aa55","width":"3px","style":"dashed","radius":{"topLeft":"4px","topRight":"8px","bottomLeft":"1rem","bottomRight":"50%"}}},"layout":{"type":"constrained"}} --><div class="wp-block-group has-border-color" style="border-color:#00aa55;border-style:dashed;border-width:3px;border-top-left-radius:4px;border-top-right-radius:8px;border-bottom-left-radius:1rem;border-bottom-right-radius:50%">' +
+			p( 'Bordered group text' ) +
+			'</div><!-- /wp:group -->';
+		const { blocks } = await sendNew( page, bordered );
+		expect( blocks ).toHaveLength( 1 );
+		expect( blocks[ 0 ].type ).toBe( 'section' );
+		// A radius in percent cannot become pixels, so that corner is left out.
+		expect( blocks[ 0 ].visual_settings ).toEqual( {
+			border_color: '#00aa55',
+			border_width: 3,
+			border_style: 'dashed',
+			border_radius_top_left: 4,
+			border_radius_top_right: 8,
+			border_radius_bottom_left: 16,
+		} );
+	} );
+
+	test( 'AC-015: a border with a different width on each side still sends its color', async ( {
+		page,
+	} ) => {
+		// The editor stores a palette color on a split border as var:preset|color|slug on each side.
+		const side = ( width ) =>
+			`{"color":"var:preset|color|vivid-red","width":"${ width }"}`;
+		const split =
+			`<!-- wp:group {"style":{"border":{"top":${ side(
+				'1px'
+			) },"right":${ side( '3px' ) },"bottom":${ side(
+				'5px'
+			) },"left":${ side(
+				'7px'
+			) }}},"layout":{"type":"constrained"}} --><div class="wp-block-group">` +
+			p( 'Split border group text' ) +
+			'</div><!-- /wp:group -->';
+		const { blocks } = await sendNew( page, split );
+		const settings = blocks[ 0 ].visual_settings;
+		expect( settings.border_color ).toMatch( /^#[0-9a-f]{3,8}$/i );
+		expect( settings.border_style ).toBe( 'solid' );
+		expect( [
+			settings.border_width_top,
+			settings.border_width_right,
+			settings.border_width_bottom,
+			settings.border_width_left,
+		] ).toEqual( [ 1, 3, 5, 7 ] );
+	} );
+
 	test( 'AC-011: a Group with no styling sends a section without visual settings', async ( {
 		page,
 	} ) => {

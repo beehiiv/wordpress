@@ -249,6 +249,83 @@ final class FormattedTextParser {
 	}
 
 	/**
+	 * Resolve a colour reference to a colour value.
+	 *
+	 * Palette variables (`var:preset|color|slug`, as the block editor stores them on a split
+	 * border, or `var(--wp--preset--color--slug)`) become the palette colour's value. Any other
+	 * value is returned as given.
+	 *
+	 * @param string $value Colour value or palette variable.
+	 * @return string|null Null when the value is empty, transparent, or names an unknown palette colour.
+	 * @since x.x.x
+	 */
+	public static function resolve_color_reference( string $value ): ?string {
+		$value = trim( $value );
+
+		if ( '' === $value || self::is_transparent_color( $value ) ) {
+			return null;
+		}
+
+		if (
+			preg_match( '/^var:preset\|color\|([a-z0-9-]+)$/i', $value, $matches )
+			|| preg_match( '/^var\(--wp--preset--color--([a-z0-9-]+)\)$/i', $value, $matches )
+		) {
+			return self::get_color_preset_map()[ $matches[1] ] ?? null;
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Resolve a Group block's border colour from attrs and the `<div>` wrapper.
+	 *
+	 * Reads a custom colour, then a palette slug, then the saved wrapper's inline style and
+	 * `has-{slug}-border-color` class.
+	 *
+	 * @param string               $inner_html Saved Group HTML including the `<div>` wrapper.
+	 * @param array<string, mixed> $attrs      Parsed block attributes.
+	 * @return string|null
+	 * @since x.x.x
+	 */
+	public static function resolve_group_block_border_color( string $inner_html, array $attrs ): ?string {
+		$custom = $attrs['style']['border']['color'] ?? null;
+
+		if ( is_string( $custom ) ) {
+			$resolved = self::resolve_color_reference( $custom );
+
+			if ( null !== $resolved ) {
+				return $resolved;
+			}
+		}
+
+		if ( ! empty( $attrs['borderColor'] ) && is_string( $attrs['borderColor'] ) ) {
+			$from_slug = self::get_color_preset_map()[ trim( $attrs['borderColor'] ) ] ?? null;
+
+			if ( null !== $from_slug ) {
+				return $from_slug;
+			}
+		}
+
+		$attributes = self::get_first_tag_attributes( $inner_html, 'div' );
+
+		if ( null === $attributes ) {
+			return null;
+		}
+
+		if ( '' !== $attributes['style'] ) {
+			$color = self::extract_css_color( html_entity_decode( $attributes['style'], ENT_QUOTES ), 'border-color' );
+
+			if ( null !== $color && ! self::is_transparent_color( $color ) ) {
+				return $color;
+			}
+		}
+
+		$slug = self::extract_preset_slug( $attributes['class'], 'border-color' );
+
+		return null === $slug ? null : ( self::get_color_preset_map()[ $slug ] ?? null );
+	}
+
+	/**
 	 * Resolve block-level list-item text colour from attrs and the `<li>` tag.
 	 *
 	 * @param string               $inner_html Saved list-item HTML including the `<li>` wrapper.

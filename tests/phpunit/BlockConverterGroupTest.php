@@ -302,21 +302,261 @@ class BlockConverterGroupTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-011: borders and other Group styling are not sent.
+	 * AC-015: border colour, width, style and radius become the section's border settings.
 	 */
-	public function test_borders_are_not_sent(): void {
+	public function test_border_becomes_visual_settings(): void {
 		$section = $this->convert_to_section(
 			$this->styled_group(
 				array(
 					'style' => array(
 						'border' => array(
+							'color'  => '#112233',
 							'width'  => '3px',
-							'color'  => '#000000',
+							'style'  => 'dashed',
 							'radius' => '8px',
 						),
 					),
 				)
 			)
+		);
+
+		$this->assertEquals(
+			array(
+				'border_color'  => '#112233',
+				'border_width'  => 3,
+				'border_style'  => 'dashed',
+				'border_radius' => 8,
+			),
+			$section['visual_settings']
+		);
+	}
+
+	/**
+	 * AC-015: a border with a width or colour but no style is sent as solid, as WordPress draws it.
+	 */
+	public function test_border_without_a_style_is_solid(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group( array( 'style' => array( 'border' => array( 'width' => '2px' ) ) ) )
+		);
+
+		$this->assertEquals(
+			array(
+				'border_width' => 2,
+				'border_style' => 'solid',
+			),
+			$section['visual_settings']
+		);
+	}
+
+	/**
+	 * AC-015: a border style beehiiv does not accept is not sent, and does not default to solid.
+	 */
+	public function test_unsupported_border_style_is_not_sent(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'border' => array(
+							'width' => '4px',
+							'style' => 'double',
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertEquals( array( 'border_width' => 4 ), $section['visual_settings'] );
+	}
+
+	/**
+	 * AC-015: widths set per side and radii set per corner are sent per side and corner.
+	 */
+	public function test_border_widths_and_radii_can_be_set_per_side_and_corner(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'border' => array(
+							'top'    => array(
+								'width' => '2px',
+								'color' => '#445566',
+								'style' => 'dotted',
+							),
+							'bottom' => array(
+								'width' => '1rem',
+								'color' => '#445566',
+								'style' => 'dotted',
+							),
+							'radius' => array(
+								'topLeft'     => '4px',
+								'topRight'    => '8px',
+								'bottomLeft'  => '1rem',
+								'bottomRight' => '10%',
+							),
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertEquals(
+			array(
+				'border_width_top'          => 2,
+				'border_width_bottom'       => 16,
+				'border_color'              => '#445566',
+				'border_style'              => 'dotted',
+				'border_radius_top_left'    => 4,
+				'border_radius_top_right'   => 8,
+				'border_radius_bottom_left' => 16,
+			),
+			$section['visual_settings']
+		);
+	}
+
+	/**
+	 * AC-015: sides with different colours or styles cannot be sent, so beehiiv keeps its defaults.
+	 */
+	public function test_border_colors_and_styles_that_differ_by_side_are_not_sent(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'border' => array(
+							'top'    => array(
+								'width' => '2px',
+								'color' => '#111111',
+								'style' => 'solid',
+							),
+							'bottom' => array(
+								'width' => '2px',
+								'color' => '#222222',
+								'style' => 'dashed',
+							),
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertEquals(
+			array(
+				'border_width_top'    => 2,
+				'border_width_bottom' => 2,
+				'border_style'        => 'solid',
+			),
+			$section['visual_settings']
+		);
+	}
+
+	/**
+	 * AC-015: a palette border colour is sent as its colour value, not its slug.
+	 */
+	public function test_palette_border_color_is_sent_as_a_color_value(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'borderColor' => 'vivid-red',
+					'style'       => array( 'border' => array( 'width' => '1px' ) ),
+				),
+				' has-border-color has-vivid-red-border-color'
+			)
+		);
+
+		$this->assertMatchesRegularExpression( '/^#[0-9a-f]{3,8}$/i', $section['visual_settings']['border_color'] );
+		$this->assertSame( 'solid', $section['visual_settings']['border_style'] );
+	}
+
+	/**
+	 * AC-015: a split border (a different width on each side) with palette colours sends the colour value.
+	 *
+	 * The editor stores palette colours on a split border as `var:preset|color|slug` on each side.
+	 */
+	public function test_split_border_with_palette_colors_sends_the_color_value(): void {
+		$side    = static function ( string $width ): array {
+			return array(
+				'color' => 'var:preset|color|vivid-red',
+				'width' => $width,
+			);
+		};
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'border' => array(
+							'top'    => $side( '1px' ),
+							'right'  => $side( '3px' ),
+							'bottom' => $side( '5px' ),
+							'left'   => $side( '7px' ),
+						),
+					),
+				)
+			)
+		);
+
+		$settings = $section['visual_settings'];
+
+		$this->assertMatchesRegularExpression( '/^#[0-9a-f]{3,8}$/i', $settings['border_color'] );
+		$this->assertSame( 1, $settings['border_width_top'] );
+		$this->assertSame( 3, $settings['border_width_right'] );
+		$this->assertSame( 5, $settings['border_width_bottom'] );
+		$this->assertSame( 7, $settings['border_width_left'] );
+		$this->assertSame( 'solid', $settings['border_style'] );
+	}
+
+	/**
+	 * AC-015: a split border with the same custom colour on every side sends that colour.
+	 */
+	public function test_split_border_with_the_same_custom_color_sends_it(): void {
+		$side    = static function ( string $width ): array {
+			return array(
+				'color' => '#0a0b0c',
+				'width' => $width,
+			);
+		};
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'border' => array(
+							'top'    => $side( '2px' ),
+							'bottom' => $side( '6px' ),
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertSame( '#0a0b0c', $section['visual_settings']['border_color'] );
+		$this->assertSame( 2, $section['visual_settings']['border_width_top'] );
+		$this->assertSame( 6, $section['visual_settings']['border_width_bottom'] );
+	}
+
+	/**
+	 * AC-015: a palette variable on the whole border is sent as its colour value.
+	 */
+	public function test_palette_variable_on_the_whole_border_is_resolved(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'border' => array(
+							'color' => 'var:preset|color|vivid-red',
+							'width' => '2px',
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertMatchesRegularExpression( '/^#[0-9a-f]{3,8}$/i', $section['visual_settings']['border_color'] );
+	}
+
+	/**
+	 * AC-015: a radius in percent cannot become pixels, so it is not sent.
+	 */
+	public function test_border_radius_in_percent_is_not_sent(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group( array( 'style' => array( 'border' => array( 'radius' => '50%' ) ) ) )
 		);
 
 		$this->assertSame( array( 'type', 'blocks' ), array_keys( $section ) );

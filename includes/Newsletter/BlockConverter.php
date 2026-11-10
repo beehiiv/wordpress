@@ -165,8 +165,8 @@ final class BlockConverter {
 	 * placed in the section in their original order. A Group nested inside a Group is
 	 * omitted with its inner blocks, because a beehiiv section cannot hold another section
 	 * and sending one makes beehiiv reject the whole post. The Group's background colour, text
-	 * colour and padding go in the section's `visual_settings`; every other setting is left at
-	 * beehiiv defaults. Returns an empty array when no inner block converts, so no empty section
+	 * colour, padding and border go in the section's `visual_settings`; every other setting is
+	 * left at beehiiv defaults. Returns an empty array when no inner block converts, so no empty section
 	 * is sent. Snippet-only blocks are omitted inside a section.
 	 *
 	 * @param array<string, mixed> $wp_block    Parsed core/group block.
