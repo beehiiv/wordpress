@@ -11,6 +11,7 @@ use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\AdvertisementOpportunities;
 use Beehiiv\Editor\Meta;
 use Beehiiv\Newsletter\Converters\ColumnsBlockConverter;
+use Beehiiv\Newsletter\Converters\GroupBlockConverter;
 use Beehiiv\Newsletter\Converters\MediaTextBlockConverter;
 use Beehiiv\Newsletter\Converters\TableBlockConverter;
 use Beehiiv\Newsletter\Converters\ListBlockConverter;
@@ -163,9 +164,10 @@ final class BlockConverter {
 	 * The Group's inner blocks are converted with the same rules as top-level blocks and
 	 * placed in the section in their original order. A Group nested inside a Group is
 	 * omitted with its inner blocks, because a beehiiv section cannot hold another section
-	 * and sending one makes beehiiv reject the whole post. Section settings are left at
-	 * beehiiv defaults. Returns an empty array when no inner block converts, so no empty
-	 * section is sent. Snippet-only blocks are omitted inside a section.
+	 * and sending one makes beehiiv reject the whole post. The Group's background colour, text
+	 * colour and padding go in the section's `visual_settings`; every other setting is left at
+	 * beehiiv defaults. Returns an empty array when no inner block converts, so no empty section
+	 * is sent. Snippet-only blocks are omitted inside a section.
 	 *
 	 * @param array<string, mixed> $wp_block    Parsed core/group block.
 	 * @param WP_Post              $post_object Post object.
@@ -184,10 +186,18 @@ final class BlockConverter {
 			return [];
 		}
 
-		return [
+		$section = [
 			'type'   => 'section',
 			'blocks' => $inner_blocks,
 		];
+
+		$visual_settings = GroupBlockConverter::build_visual_settings( $wp_block );
+
+		if ( ! empty( $visual_settings ) ) {
+			$section['visual_settings'] = $visual_settings;
+		}
+
+		return $section;
 	}
 
 	/**

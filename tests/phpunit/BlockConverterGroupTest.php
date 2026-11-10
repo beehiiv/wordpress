@@ -141,18 +141,185 @@ class BlockConverterGroupTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * AC-011: a section carries only its type and blocks, never Group styling.
+	 * Build a styled Group block's markup from block attributes and the wrapper class and style.
+	 *
+	 * @param array<string, mixed> $attrs Group block attributes.
+	 * @param string               $class Extra wrapper classes.
+	 * @param string               $style Wrapper inline style.
+	 * @return string
 	 */
-	public function test_section_uses_default_settings(): void {
-		$attrs   = '{"backgroundColor":"vivid-red","style":{"spacing":{"padding":{"top":"40px"}}}}';
-		$content = "<!-- wp:group {$attrs} -->\n"
-			. '<div class="wp-block-group has-vivid-red-background-color has-background">'
+	private function styled_group( array $attrs, string $class = '', string $style = '' ): string {
+		$style_attr = '' === $style ? '' : ' style="' . $style . '"';
+
+		return '<!-- wp:group ' . wp_json_encode( $attrs ) . " -->\n"
+			. '<div class="wp-block-group' . $class . '"' . $style_attr . '>'
 			. $this->paragraph( 'Styled' )
 			. "</div>\n<!-- /wp:group -->";
+	}
 
+	/**
+	 * Convert one styled Group and return its section block.
+	 *
+	 * @param string $content Group block markup.
+	 * @return array<string, mixed>
+	 */
+	private function convert_to_section( string $content ): array {
 		$blocks = BlockConverter::convert_supported_blocks( $this->create_post( $content ), true );
 
-		$this->assertSame( array( 'type', 'blocks' ), array_keys( $blocks[0] ) );
+		$this->assertSame( 'section', $blocks[0]['type'] );
+
+		return $blocks[0];
+	}
+
+	/**
+	 * AC-011: an unstyled Group sends a section without visual settings.
+	 */
+	public function test_unstyled_group_has_no_visual_settings(): void {
+		$section = $this->convert_to_section( $this->group( $this->paragraph( 'Plain' ) ) );
+
+		$this->assertSame( array( 'type', 'blocks' ), array_keys( $section ) );
+	}
+
+	/**
+	 * AC-011: a custom background colour and text colour become the section's colours.
+	 */
+	public function test_custom_colors_become_visual_settings(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'color' => array(
+							'background' => '#112233',
+							'text'       => '#ffeedd',
+						),
+					),
+				),
+				' has-text-color has-background',
+				'color:#ffeedd;background-color:#112233'
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'background_color' => '#112233',
+				'text_color'       => '#ffeedd',
+			),
+			$section['visual_settings']
+		);
+	}
+
+	/**
+	 * AC-011: a palette colour is sent as its colour value, not its slug.
+	 */
+	public function test_palette_colors_are_sent_as_color_values(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'backgroundColor' => 'vivid-red',
+					'textColor'       => 'white',
+				),
+				' has-white-color has-vivid-red-background-color has-text-color has-background'
+			)
+		);
+
+		$this->assertMatchesRegularExpression( '/^#[0-9a-f]{3,8}$/i', $section['visual_settings']['background_color'] );
+		$this->assertMatchesRegularExpression( '/^#[0-9a-f]{3,8}$/i', $section['visual_settings']['text_color'] );
+	}
+
+	/**
+	 * AC-011: padding on each side becomes whole-pixel inner spacing, converting rem and em.
+	 */
+	public function test_padding_becomes_inner_spacing_in_pixels(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'spacing' => array(
+							'padding' => array(
+								'top'    => '40px',
+								'bottom' => '2.5rem',
+								'left'   => '1em',
+								'right'  => '0',
+							),
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'inner_spacing_top'    => 40,
+				'inner_spacing_bottom' => 40,
+				'inner_spacing_left'   => 16,
+				'inner_spacing_right'  => 0,
+			),
+			$section['visual_settings']
+		);
+	}
+
+	/**
+	 * AC-011: a single padding value applies to every side.
+	 */
+	public function test_single_padding_value_applies_to_every_side(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group( array( 'style' => array( 'spacing' => array( 'padding' => '24px' ) ) ) )
+		);
+
+		$this->assertSame(
+			array(
+				'inner_spacing_top'    => 24,
+				'inner_spacing_bottom' => 24,
+				'inner_spacing_left'   => 24,
+				'inner_spacing_right'  => 24,
+			),
+			$section['visual_settings']
+		);
+	}
+
+	/**
+	 * AC-011: padding that cannot become pixels is left out, so beehiiv keeps its default for that side.
+	 */
+	public function test_padding_that_is_not_in_pixels_is_left_out(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'spacing' => array(
+							'padding' => array(
+								'top'    => '10%',
+								'bottom' => '5vw',
+								'left'   => 'clamp(1rem, 2vw, 3rem)',
+								'right'  => '30px',
+							),
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertSame( array( 'inner_spacing_right' => 30 ), $section['visual_settings'] );
+	}
+
+	/**
+	 * AC-011: borders and other Group styling are not sent.
+	 */
+	public function test_borders_are_not_sent(): void {
+		$section = $this->convert_to_section(
+			$this->styled_group(
+				array(
+					'style' => array(
+						'border' => array(
+							'width'  => '3px',
+							'color'  => '#000000',
+							'radius' => '8px',
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertSame( array( 'type', 'blocks' ), array_keys( $section ) );
 	}
 
 	/**

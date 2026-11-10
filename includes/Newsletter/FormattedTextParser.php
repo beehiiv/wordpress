@@ -213,6 +213,42 @@ final class FormattedTextParser {
 	}
 
 	/**
+	 * Resolve a Group block's background colour from attrs and the `<div>` wrapper.
+	 *
+	 * @param string               $inner_html Saved Group HTML including the `<div>` wrapper.
+	 * @param array<string, mixed> $attrs      Parsed block attributes.
+	 * @return string|null
+	 * @since x.x.x
+	 */
+	public static function resolve_group_block_background_color( string $inner_html, array $attrs ): ?string {
+		$from_attrs = self::resolve_block_background_color_from_attrs( $attrs );
+
+		if ( null !== $from_attrs ) {
+			return $from_attrs;
+		}
+
+		return self::resolve_wrapper_color_from_html_tag( $inner_html, 'div', 'background' );
+	}
+
+	/**
+	 * Resolve a Group block's text colour from attrs and the `<div>` wrapper.
+	 *
+	 * @param string               $inner_html Saved Group HTML including the `<div>` wrapper.
+	 * @param array<string, mixed> $attrs      Parsed block attributes.
+	 * @return string|null
+	 * @since x.x.x
+	 */
+	public static function resolve_group_block_text_color( string $inner_html, array $attrs ): ?string {
+		$from_attrs = self::resolve_block_text_color_from_attrs( $attrs );
+
+		if ( null !== $from_attrs ) {
+			return $from_attrs;
+		}
+
+		return self::resolve_wrapper_color_from_html_tag( $inner_html, 'div', 'text' );
+	}
+
+	/**
 	 * Resolve block-level list-item text colour from attrs and the `<li>` tag.
 	 *
 	 * @param string               $inner_html Saved list-item HTML including the `<li>` wrapper.
