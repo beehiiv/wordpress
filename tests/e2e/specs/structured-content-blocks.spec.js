@@ -176,12 +176,10 @@ function col( inner, { width, valign } = {} ) {
  * @param {Object}   [options]         Columns options.
  * @param {string}   [options.valign]  Block-level verticalAlignment.
  * @param {boolean}  [options.stacked] isStackedOnMobile value.
- * @param {Object}   [options.attrs]   Extra block attributes, such as `style`.
- * @param {string}   [options.style]   Inline style saved on the wrapper element.
  * @return {string} Serialized columns block.
  */
-function columns( cols, { valign, stacked, attrs: extraAttrs, style } = {} ) {
-	const attrs = { ...extraAttrs };
+function columns( cols, { valign, stacked } = {} ) {
+	const attrs = {};
 	if ( valign ) {
 		attrs.verticalAlignment = valign;
 	}
@@ -194,8 +192,7 @@ function columns( cols, { valign, stacked, attrs: extraAttrs, style } = {} ) {
 	const cls =
 		'wp-block-columns' +
 		( stacked === false ? ' is-not-stacked-on-mobile' : '' );
-	const styleAttr = style ? ` style="${ style }"` : '';
-	return `<!-- wp:columns${ json } --><div class="${ cls }"${ styleAttr }>${ cols.join(
+	return `<!-- wp:columns${ json } --><div class="${ cls }">${ cols.join(
 		''
 	) }</div><!-- /wp:columns -->`;
 }
@@ -644,85 +641,5 @@ test.describe( 'US-006: top-level Columns blocks', () => {
 			'paragraph',
 		] );
 		expect( types( cols[ 2 ].blocks ) ).toEqual( [ 'button' ] );
-	} );
-
-	test( 'AC-021: a Columns block sends its colors, padding and margin as visual settings', async ( {
-		page,
-	} ) => {
-		const blocks = await convert(
-			page,
-			columns( [ col( p( 'A' ) ), col( p( 'B' ) ) ], {
-				attrs: {
-					style: {
-						color: { background: '#ffeeaa', text: '#112233' },
-						spacing: {
-							padding: { top: '20px', bottom: '1.5rem' },
-							margin: { top: '30px' },
-						},
-					},
-				},
-				style: 'background-color:#ffeeaa;color:#112233',
-			} )
-		);
-		const settings = columnsBlocks( blocks )[ 0 ].visual_settings;
-		expect( settings.background_color ).toBe( '#ffeeaa' );
-		expect( settings.text_color ).toBe( '#112233' );
-		expect( settings.inner_spacing_top ).toBe( 20 );
-		expect( settings.inner_spacing_bottom ).toBe( 24 );
-		expect( settings.outer_spacing_top ).toBe( 30 );
-		expect( settings ).not.toHaveProperty( 'inner_spacing_left' );
-
-		// Control: a Columns block without styling sends no visual settings.
-		const plain = await convert(
-			page,
-			columns( [ col( p( 'A' ) ), col( p( 'B' ) ) ] )
-		);
-		expect( columnsBlocks( plain )[ 0 ] ).not.toHaveProperty(
-			'visual_settings'
-		);
-	} );
-
-	test( 'AC-022: a Columns block sends its border color, width, style and radius', async ( {
-		page,
-	} ) => {
-		const blocks = await convert(
-			page,
-			columns( [ col( p( 'A' ) ), col( p( 'B' ) ) ], {
-				attrs: {
-					style: {
-						border: {
-							color: '#ff0000',
-							width: '2px',
-							radius: '6px',
-						},
-					},
-				},
-			} )
-		);
-		const settings = columnsBlocks( blocks )[ 0 ].visual_settings;
-		expect( settings.border_color ).toBe( '#ff0000' );
-		expect( settings.border_width ).toBe( 2 );
-		// A border with a color or width and no style is sent as solid.
-		expect( settings.border_style ).toBe( 'solid' );
-		expect( settings.border_radius ).toBe( 6 );
-
-		const dashed = await convert(
-			page,
-			columns( [ col( p( 'A' ) ), col( p( 'B' ) ) ], {
-				attrs: {
-					style: {
-						border: {
-							width: '1px',
-							style: 'double',
-							radius: '50%',
-						},
-					},
-				},
-			} )
-		);
-		const rejected = columnsBlocks( dashed )[ 0 ].visual_settings;
-		// A style beehiiv does not accept, and a radius in percent, are not sent.
-		expect( rejected ).not.toHaveProperty( 'border_style' );
-		expect( rejected ).not.toHaveProperty( 'border_radius' );
 	} );
 } );

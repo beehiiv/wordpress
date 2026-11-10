@@ -11,7 +11,6 @@ use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\AdvertisementOpportunities;
 use Beehiiv\Editor\Meta;
 use Beehiiv\Newsletter\Converters\ColumnsBlockConverter;
-use Beehiiv\Newsletter\Converters\ColumnsStyleConverter;
 use Beehiiv\Newsletter\Converters\MediaTextBlockConverter;
 use Beehiiv\Newsletter\Converters\TableBlockConverter;
 use Beehiiv\Newsletter\Converters\ListBlockConverter;
@@ -548,9 +547,8 @@ final class BlockConverter {
 	/**
 	 * Convert a core/columns block to beehiiv blocks.
 	 *
-	 * A block with up to 3 columns becomes one beehiiv columns block, carrying the
-	 * block's background colour, text colour, padding, margin and border as visual
-	 * settings. A block with more columns is omitted entirely, and the row is never split. A core/columns
+	 * A block with up to 3 columns becomes one beehiiv columns block. A block with
+	 * more columns is omitted entirely, and the row is never split. A core/columns
 	 * block nested inside a column is not converted to a columns block: its inner
 	 * blocks follow the outer columns block at the top level.
 	 *
@@ -617,12 +615,6 @@ final class BlockConverter {
 			$columns,
 			ColumnsBlockConverter::resolve_stack_on_mobile( $attrs, $inner_html )
 		);
-
-		$visual_settings = ColumnsStyleConverter::build_visual_settings( $wp_block );
-
-		if ( ! empty( $columns_block ) && ! empty( $visual_settings ) ) {
-			$columns_block['visual_settings'] = $visual_settings;
-		}
 
 		return array_values( array_filter( array_merge( [ $columns_block ], $nested_blocks ) ) );
 	}
