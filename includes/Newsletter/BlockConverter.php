@@ -537,6 +537,10 @@ final class BlockConverter {
 	 */
 	public static function convert_columns_block( array $wp_block ): array {
 		foreach ( self::convert_columns_block_to_blocks( $wp_block ) as $beehiiv_block ) {
+			if ( 'section' === ( $beehiiv_block['type'] ?? '' ) ) {
+				$beehiiv_block = $beehiiv_block['blocks'][0] ?? [];
+			}
+
 			if ( 'columns' === ( $beehiiv_block['type'] ?? '' ) ) {
 				return $beehiiv_block;
 			}
@@ -548,9 +552,11 @@ final class BlockConverter {
 	/**
 	 * Convert a core/columns block to beehiiv blocks.
 	 *
-	 * A block with up to 3 columns becomes one beehiiv columns block, carrying the
-	 * block's background colour, text colour, padding, margin and border as visual
-	 * settings. A block with more columns is omitted entirely, and the row is never split. A core/columns
+	 * A block with up to 3 columns becomes one beehiiv columns block. When the block sets a
+	 * background colour, text colour, padding, margin or border that beehiiv can take, the
+	 * columns block is wrapped in a beehiiv section that carries them as visual settings,
+	 * because that is where beehiiv holds a container's styling. A block with more columns
+	 * is omitted entirely, and the row is never split. A core/columns
 	 * block nested inside a column is not converted to a columns block: its inner
 	 * blocks follow the outer columns block at the top level.
 	 *
@@ -621,7 +627,11 @@ final class BlockConverter {
 		$visual_settings = ColumnsStyleConverter::build_visual_settings( $wp_block );
 
 		if ( ! empty( $columns_block ) && ! empty( $visual_settings ) ) {
-			$columns_block['visual_settings'] = $visual_settings;
+			$columns_block = [
+				'type'            => 'section',
+				'blocks'          => [ $columns_block ],
+				'visual_settings' => $visual_settings,
+			];
 		}
 
 		return array_values( array_filter( array_merge( [ $columns_block ], $nested_blocks ) ) );

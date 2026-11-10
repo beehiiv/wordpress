@@ -200,6 +200,18 @@ function columns( cols, { valign, stacked, attrs: extraAttrs, style } = {} ) {
 	) }</div><!-- /wp:columns -->`;
 }
 
+/**
+ * The section a styled Columns block is wrapped in.
+ *
+ * @param {Array} blocks Blocks sent to beehiiv.
+ * @return {Object} The section block.
+ */
+function styledSection( blocks ) {
+	const section = blocks.find( ( b ) => b.type === 'section' );
+	expect( section, 'a section wraps the styled Columns block' ).toBeTruthy();
+	return section;
+}
+
 const types = ( blocks ) => blocks.map( ( b ) => b.type );
 const columnsBlocks = ( blocks ) =>
 	blocks.filter( ( b ) => b.type === 'columns' );
@@ -664,7 +676,7 @@ test.describe( 'US-006: top-level Columns blocks', () => {
 				style: 'background-color:#ffeeaa;color:#112233',
 			} )
 		);
-		const settings = columnsBlocks( blocks )[ 0 ].visual_settings;
+		const settings = styledSection( blocks ).visual_settings;
 		expect( settings.background_color ).toBe( '#ffeeaa' );
 		expect( settings.text_color ).toBe( '#112233' );
 		expect( settings.inner_spacing_top ).toBe( 20 );
@@ -672,14 +684,18 @@ test.describe( 'US-006: top-level Columns blocks', () => {
 		expect( settings.outer_spacing_top ).toBe( 30 );
 		expect( settings ).not.toHaveProperty( 'inner_spacing_left' );
 
-		// Control: a Columns block without styling sends no visual settings.
+		// The section holds the columns block, which carries no styling itself.
+		const section = styledSection( blocks );
+		expect( section.blocks ).toHaveLength( 1 );
+		expect( section.blocks[ 0 ].type ).toBe( 'columns' );
+		expect( section.blocks[ 0 ] ).not.toHaveProperty( 'visual_settings' );
+
+		// Control: a Columns block without styling is a plain columns block, with no section.
 		const plain = await convert(
 			page,
 			columns( [ col( p( 'A' ) ), col( p( 'B' ) ) ] )
 		);
-		expect( columnsBlocks( plain )[ 0 ] ).not.toHaveProperty(
-			'visual_settings'
-		);
+		expect( types( plain ) ).toEqual( [ 'columns' ] );
 	} );
 
 	test( 'AC-022: a Columns block sends its border color, width, style and radius', async ( {
@@ -699,7 +715,7 @@ test.describe( 'US-006: top-level Columns blocks', () => {
 				},
 			} )
 		);
-		const settings = columnsBlocks( blocks )[ 0 ].visual_settings;
+		const settings = styledSection( blocks ).visual_settings;
 		expect( settings.border_color ).toBe( '#ff0000' );
 		expect( settings.border_width ).toBe( 2 );
 		// A border with a color or width and no style is sent as solid.
@@ -720,7 +736,7 @@ test.describe( 'US-006: top-level Columns blocks', () => {
 				},
 			} )
 		);
-		const rejected = columnsBlocks( dashed )[ 0 ].visual_settings;
+		const rejected = styledSection( dashed ).visual_settings;
 		// A style beehiiv does not accept, and a radius in percent, are not sent.
 		expect( rejected ).not.toHaveProperty( 'border_style' );
 		expect( rejected ).not.toHaveProperty( 'border_radius' );
