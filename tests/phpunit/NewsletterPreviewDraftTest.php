@@ -286,6 +286,27 @@ class NewsletterPreviewDraftTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A refreshed preview keeps Group sections: the update payload still converts Groups.
+	 */
+	public function test_refreshing_a_preview_keeps_group_sections(): void {
+		$post_id = $this->create_post( 'draft', [ Meta::SEND_TO_NEWSLETTER => '1' ] );
+		wp_update_post(
+			[
+				'ID'           => $post_id,
+				'post_content' => "<!-- wp:group -->\n<div class=\"wp-block-group\"><!-- wp:paragraph -->\n<p>In a group.</p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:group -->",
+			]
+		);
+
+		Sender::sync_preview_draft( $post_id );
+		$this->requests = [];
+		Sender::sync_preview_draft( $post_id );
+
+		$request = $this->find_request( 'PATCH' );
+		$this->assertNotNull( $request, 'The second preview updates the draft.' );
+		$this->assertStringContainsString( '"type":"section"', wp_json_encode( $request['body'] ) );
+	}
+
+	/**
 	 * AC-041, AC-043: a post that is not opted in gets no draft, and a beehiiv failure is
 	 * returned without storing a newsletter error or changing the toggle.
 	 */

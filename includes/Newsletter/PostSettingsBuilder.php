@@ -363,6 +363,12 @@ final class PostSettingsBuilder {
 			return true;
 		}
 
+		// A Preview draft is replaced by a new post when the newsletter is sent, so it has no
+		// older layout to keep. Without this, refreshing a preview would drop every Group.
+		if ( Sender::is_draft_linked( $post_id ) ) {
+			return true;
+		}
+
 		return (bool) get_post_meta( $post_id, Meta::BEEHIIV_GROUP_SECTIONS, true );
 	}
 
