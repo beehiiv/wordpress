@@ -328,6 +328,34 @@ test.describe( 'US-001: add a roundup of posts to a newsletter', () => {
 		}
 	} );
 
+	test( 'a new newsletter opens with one Post Roundup block that the author can still remove', async ( {
+		page,
+	} ) => {
+		await loginAsAdmin( page );
+		await openEditor( page, `/wp-admin/post-new.php?post_type=${ TYPE }` );
+
+		const names = () =>
+			page.evaluate( () =>
+				window.wp.data
+					.select( 'core/block-editor' )
+					.getBlocks()
+					.map( ( block ) => block.name )
+			);
+
+		expect( await names() ).toEqual( [ BLOCK ] );
+
+		const removed = await page.evaluate( () => {
+			const { select, dispatch } = window.wp.data;
+			const [ block ] = select( 'core/block-editor' ).getBlocks();
+			dispatch( 'core/block-editor' ).removeBlock( block.clientId );
+			return select( 'core/block-editor' )
+				.getBlocks()
+				.map( ( item ) => item.name );
+		} );
+		// The editor adds an empty paragraph to an empty newsletter; the roundup stays gone.
+		expect( removed ).not.toContain( BLOCK );
+	} );
+
 	test( 'AC-002: automatic mode shows the latest regular posts, newest first, and the author sets how many', async ( {
 		page,
 	} ) => {

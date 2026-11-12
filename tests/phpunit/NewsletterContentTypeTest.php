@@ -135,6 +135,16 @@ class NewsletterContentTypeTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * New newsletters start with a Post Roundup block that authors can still change.
+	 */
+	public function test_new_newsletters_start_with_an_unlocked_post_roundup_template(): void {
+		$object = get_post_type_object( ContentTypes::NEWSLETTER );
+
+		$this->assertSame( array( array( 'beehiiv/post-roundup' ) ), $object->template );
+		$this->assertEmpty( $object->template_lock );
+	}
+
+	/**
 	 * AC-004: no public page, search, sitemap, nav menu or rewrite.
 	 */
 	public function test_post_type_is_non_public(): void {

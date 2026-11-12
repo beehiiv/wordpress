@@ -89,6 +89,9 @@ final class NewsletterPostType {
 				'capability_type'       => 'post',
 				'map_meta_cap'          => true,
 				'supports'              => [ 'title', 'editor', 'author', 'custom-fields' ],
+				// New newsletters start with a Post Roundup block. The template is not locked,
+				// so authors can add an intro and outro or remove the block.
+				'template'              => [ [ 'beehiiv/post-roundup' ] ],
 			]
 		);
 	}
