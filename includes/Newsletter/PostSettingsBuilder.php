@@ -94,7 +94,10 @@ final class PostSettingsBuilder {
 			);
 		}
 
-		$beehiiv_blocks = BlockConverter::convert_supported_blocks( $post_object );
+		$beehiiv_blocks = BlockConverter::convert_supported_blocks(
+			$post_object,
+			self::should_convert_groups( $post_id )
+		);
 
 		if ( empty( $beehiiv_blocks ) ) {
 			return new WP_Error(
@@ -164,6 +167,77 @@ final class PostSettingsBuilder {
 		 * @param WP_Post $post_object WordPress post object.
 		 */
 		return apply_filters( 'beehiiv_newsletter_post_settings', $settings, $post_id, $post_object );
+	}
+
+	/**
+	 * Build the create payload for a Preview draft from the saved post.
+	 *
+	 * Uses the real send's payload builder without scheduling, then forces draft status
+	 * after the public settings filter so a draft can never become a real send.
+	 *
+	 * @param int         $post_id        Post ID.
+	 * @param string|null $publication_id Publication the draft is for. Defaults to the post's resolved publication.
+	 * @return array<string, mixed>|WP_Error
+	 * @since x.x.x
+	 */
+	public static function build_draft_payload( int $post_id, ?string $publication_id = null ) {
+		$settings = self::get_post_settings( $post_id, true, $publication_id );
+
+		if ( is_wp_error( $settings ) ) {
+			return $settings;
+		}
+
+		if ( ! is_array( $settings ) ) {
+			return new WP_Error(
+				'beehiiv_draft_invalid_settings',
+				__( 'Something went wrong preparing the email draft. Try again.', 'beehiiv' )
+			);
+		}
+
+		$settings['status'] = 'draft';
+		unset( $settings['scheduled_at'] );
+
+		return $settings;
+	}
+
+	/**
+	 * Build the update payload for a linked Preview draft.
+	 *
+	 * Carries the content fields only; never a status, send time or template, so the update
+	 * cannot confirm the draft.
+	 *
+	 * @param int         $post_id        Post ID.
+	 * @param string|null $publication_id Publication the draft lives in.
+	 * @return array<string, mixed>|WP_Error
+	 * @since x.x.x
+	 */
+	public static function build_draft_update_payload( int $post_id, ?string $publication_id = null ) {
+		$settings = self::build_draft_payload( $post_id, $publication_id );
+
+		if ( is_wp_error( $settings ) ) {
+			return $settings;
+		}
+
+		$payload = array_intersect_key(
+			$settings,
+			array_flip(
+				[
+					'title',
+					'blocks',
+					'thumbnail_image_url',
+					'email_settings',
+					'web_settings',
+					'social_share',
+					'content_tags',
+					'seo_settings',
+				]
+			)
+		);
+
+		// A subtitle cleared in WordPress is removed from the draft by sending it empty.
+		$payload['subtitle'] = $settings['subtitle'] ?? '';
+
+		return $payload;
 	}
 
 	/**
@@ -262,6 +336,27 @@ final class PostSettingsBuilder {
 		}
 
 		return $update['payload'];
+	}
+
+	/**
+	 * Whether Group blocks become beehiiv sections for this post.
+	 *
+	 * A post that has no beehiiv post yet is on its first sync, so Groups convert. After
+	 * that, only a post whose first sync converted them keeps converting them; a post
+	 * synced before section support keeps omitting Groups so its beehiiv layout does not change.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since x.x.x
+	 */
+	private static function should_convert_groups( int $post_id ): bool {
+		$beehiiv_post_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true );
+
+		if ( ! is_string( $beehiiv_post_id ) || '' === trim( $beehiiv_post_id ) ) {
+			return true;
+		}
+
+		return (bool) get_post_meta( $post_id, Meta::BEEHIIV_GROUP_SECTIONS, true );
 	}
 
 	/**

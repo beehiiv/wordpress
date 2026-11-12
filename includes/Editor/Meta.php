@@ -73,6 +73,15 @@ final class Meta {
 	public const BEEHIIV_POST_ID = '_beehiiv_post_id';
 
 	/**
+	 * Set when the post was first synced with Group blocks converted to beehiiv sections.
+	 *
+	 * Posts synced before section support lack it and keep omitting Group blocks on re-sync.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_GROUP_SECTIONS = '_beehiiv_group_sections';
+
+	/**
 	 * UTC ISO 8601 datetime last synced to beehiiv `scheduled_at` for a linked post.
 	 *
 	 * @since 1.0.0
@@ -132,4 +141,13 @@ final class Meta {
 	 * @since x.x.x
 	 */
 	public const NEWSLETTER_SHOW_TITLE_IN_EMAIL = '_beehiiv_newsletter_show_title_in_email';
+
+	/**
+	 * Whether the linked beehiiv post is a `draft` (kept for Preview) or `confirmed`.
+	 *
+	 * Empty means the link was made by a normal send and counts as confirmed.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_POST_STATE = '_beehiiv_post_state';
 }

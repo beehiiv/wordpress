@@ -1,0 +1,290 @@
+/**
+ * Preview the real beehiiv email of the saved post in a WordPress modal.
+ */
+import { __ } from '@wordpress/i18n';
+import { useMemo, useRef, useState } from '@wordpress/element';
+import { useSelect } from '@wordpress/data';
+import { store as editorStore } from '@wordpress/editor';
+import { Button, Modal, Spinner } from '@wordpress/components';
+import { update } from '@wordpress/icons';
+import apiFetch from '@wordpress/api-fetch';
+
+import { useBeehiivEditorConfig } from '../hooks/use-beehiiv-editor-config';
+import renderSettingsLinkMessage from '../utils/render-settings-link-message';
+
+// While beehiiv prepares a new email: up to MAX_ATTEMPTS fetches, POLL_INTERVAL_MS apart.
+const MAX_ATTEMPTS = 4;
+const POLL_INTERVAL_MS = 2000;
+
+const wait = ( ms ) => new Promise( ( resolve ) => setTimeout( resolve, ms ) );
+
+const INERT_STYLE =
+	'a,a *,area{pointer-events:none!important;cursor:default!important}';
+
+/**
+ * Make the email view-only: links cannot be followed, even with the keyboard.
+ *
+ * Scripts, forms and popups are already blocked by the empty `sandbox` attribute; this
+ * removes link targets so the frame cannot navigate away from the email either.
+ *
+ * @param {string} html Rendered email HTML from beehiiv.
+ * @return {string} HTML with links made inert.
+ */
+export function makeEmailInert( html ) {
+	// DOMParser builds an inert document: nothing in it loads or runs.
+	const doc = new window.DOMParser().parseFromString( html, 'text/html' );
+
+	doc.querySelectorAll( 'a[href], area[href]' ).forEach( ( link ) => {
+		link.removeAttribute( 'href' );
+	} );
+
+	const base = doc.createElement( 'base' );
+	base.setAttribute( 'target', '_blank' );
+	doc.head.prepend( base );
+
+	const style = doc.createElement( 'style' );
+	style.textContent = INERT_STYLE;
+	doc.head.append( style );
+
+	return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+}
+
+/**
+ * @param {Object}                                                   props
+ * @param {import('../hooks/use-beehiiv-post-meta').BeehiivPostMeta} props.beehiivMeta
+ */
+export default function EmailPreview( { beehiivMeta } ) {
+	const { settingsUrl } = useBeehiivEditorConfig();
+	const [ isOpen, setIsOpen ] = useState( false );
+	const [ isLoading, setIsLoading ] = useState( false );
+	const [ email, setEmail ] = useState( null );
+	const [ device, setDevice ] = useState( 'desktop' );
+	const [ error, setError ] = useState( null );
+	const latestRequest = useRef( 0 );
+	// Parsing a large email is costly; redo it only when the email itself changes.
+	const inertHtml = useMemo(
+		() => ( email ? makeEmailInert( email.html ) : '' ),
+		[ email ]
+	);
+
+	const { postId, isDirty, isNew, isSaving } = useSelect( ( select ) => {
+		const editor = select( editorStore );
+
+		return {
+			postId: editor.getCurrentPostId(),
+			isDirty: editor.isEditedPostDirty(),
+			isNew: editor.isEditedPostNew(),
+			isSaving: editor.isSavingPost(),
+		};
+	}, [] );
+
+	if ( beehiivMeta.newsletterAlreadySent ) {
+		return (
+			<p className="beehiiv-email-preview__reason">
+				{ __(
+					"This newsletter is already scheduled or sent, so it can't be previewed.",
+					'beehiiv'
+				) }
+			</p>
+		);
+	}
+
+	const needsSave = isNew || isDirty;
+
+	const load = async () => {
+		const requestId = ++latestRequest.current;
+		const isCurrent = () => requestId === latestRequest.current;
+
+		setIsLoading( true );
+		setError( null );
+		setEmail( null );
+
+		try {
+			// The first call syncs the draft; while beehiiv is still preparing the
+			// email, later calls only fetch it, so no request is held open.
+			for ( let attempt = 0; attempt < MAX_ATTEMPTS; attempt++ ) {
+				if ( attempt > 0 ) {
+					await wait( POLL_INTERVAL_MS );
+				}
+
+				const data = await apiFetch( {
+					path: '/beehiiv/v1/email-preview',
+					method: 'POST',
+					data: { post_id: postId, fetch_only: attempt > 0 },
+				} );
+
+				if ( ! isCurrent() ) {
+					return;
+				}
+
+				if ( data?.html ) {
+					setEmail( {
+						html: data.html,
+						subject: data.subject ?? '',
+						previewText: data.preview_text ?? '',
+						fromName: data.from_name ?? '',
+					} );
+					return;
+				}
+			}
+
+			setError(
+				__(
+					'beehiiv is still preparing this email. Try again in a moment.',
+					'beehiiv'
+				)
+			);
+		} catch ( apiError ) {
+			if ( isCurrent() ) {
+				setError(
+					apiError?.message ||
+						__(
+							"Something went wrong and the preview couldn't load. Try again.",
+							'beehiiv'
+						)
+				);
+			}
+		} finally {
+			if ( isCurrent() ) {
+				setIsLoading( false );
+			}
+		}
+	};
+
+	const open = () => {
+		setIsOpen( true );
+		load();
+	};
+
+	const close = () => {
+		// Ignore any request still in flight; reopening runs a fresh sync.
+		latestRequest.current++;
+		setIsOpen( false );
+		setIsLoading( false );
+		setEmail( null );
+		setError( null );
+	};
+
+	return (
+		<div className="beehiiv-email-preview">
+			{ needsSave && (
+				<p className="beehiiv-email-preview__note">
+					{ __(
+						'Save the post to preview your latest edits.',
+						'beehiiv'
+					) }
+				</p>
+			) }
+
+			<Button
+				variant="secondary"
+				onClick={ open }
+				disabled={ needsSave || isSaving }
+				accessibleWhenDisabled
+			>
+				{ __( 'Preview email', 'beehiiv' ) }
+			</Button>
+
+			{ isOpen && (
+				<Modal
+					title={ __( 'Email preview', 'beehiiv' ) }
+					onRequestClose={ close }
+					size="fill"
+					className="beehiiv-email-preview__modal"
+				>
+					{ isLoading && (
+						<p className="beehiiv-email-preview__loading">
+							<Spinner />{ ' ' }
+							{ __( 'Preparing your email preview…', 'beehiiv' ) }
+						</p>
+					) }
+
+					{ error && (
+						<div className="beehiiv-email-preview__error">
+							<p>
+								{ renderSettingsLinkMessage(
+									error,
+									settingsUrl
+								) }
+							</p>
+							<Button variant="secondary" onClick={ load }>
+								{ __( 'Try again', 'beehiiv' ) }
+							</Button>
+						</div>
+					) }
+
+					{ email && (
+						<div className="beehiiv-email-preview__stage">
+							<div className="beehiiv-email-preview__toolbar">
+								<div className="beehiiv-email-preview__devices">
+									<Button
+										variant={
+											device === 'desktop'
+												? 'primary'
+												: 'secondary'
+										}
+										onClick={ () => setDevice( 'desktop' ) }
+										aria-pressed={ device === 'desktop' }
+									>
+										{ __( 'Desktop', 'beehiiv' ) }
+									</Button>
+									<Button
+										variant={
+											device === 'mobile'
+												? 'primary'
+												: 'secondary'
+										}
+										onClick={ () => setDevice( 'mobile' ) }
+										aria-pressed={ device === 'mobile' }
+									>
+										{ __( 'Mobile', 'beehiiv' ) }
+									</Button>
+								</div>
+								<Button
+									variant="tertiary"
+									icon={ update }
+									label={ __( 'Refresh preview', 'beehiiv' ) }
+									onClick={ load }
+								/>
+							</div>
+
+							<div
+								className={ `beehiiv-email-preview__device is-${ device }` }
+							>
+								{ device === 'desktop' && (
+									<div
+										className="beehiiv-email-preview__chrome"
+										aria-hidden="true"
+									>
+										<span />
+										<span />
+										<span />
+									</div>
+								) }
+								<dl className="beehiiv-email-preview__meta">
+									<dt>{ __( 'From:', 'beehiiv' ) }</dt>
+									<dd>{ email.fromName }</dd>
+									<dt>{ __( 'Subject:', 'beehiiv' ) }</dt>
+									<dd>{ email.subject }</dd>
+									<dt>
+										{ __( 'Preview Text:', 'beehiiv' ) }
+									</dt>
+									<dd>{ email.previewText }</dd>
+								</dl>
+								<iframe
+									className="beehiiv-email-preview__frame"
+									title={ __(
+										'beehiiv email preview',
+										'beehiiv'
+									) }
+									sandbox=""
+									srcDoc={ inertHtml }
+								/>
+							</div>
+						</div>
+					) }
+				</Modal>
+			) }
+		</div>
+	);
+}

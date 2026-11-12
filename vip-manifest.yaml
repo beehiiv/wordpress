@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=./vip-manifest.schema.json
+
+manifest_version: 2
+manifest_kind: vip-integration-handoff
+
+integration:
+  slug: beehiiv
+  display_name: beehiiv
+  summary: Publish WordPress posts as newsletters and grow your audience with beehiiv.
+  partner:
+    name: beehiiv
+    support_contact: https://www.beehiiv.com/support
+
+documentation:
+  public_url: https://www.beehiiv.com/support
+
+runtime:
+  wordpress_plugin:
+    folder: beehiiv
+    entry_file: beehiiv.php
+    php_namespace: 'Beehiiv'
+    scope: site
+
+runtime_config:
+  fields:
+    - key: api_base_url
+      label: API base URL
+      type: url
+      help: Base URL for the beehiiv API. Leave empty to use the default.
+      nullable: true
+
+release:
+  plugin_version: 1.1.0
+  version_strategy: latest
+  migration_required: false
+  changelog: Adds newsletter title and subtitle, per-post publication choice, and test email send from the post editor.

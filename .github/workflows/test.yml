@@ -25,7 +25,7 @@ jobs:
           - { series: "8.3", patch: "8.3.36" }
           - { series: "8.4", patch: "8.4.27" }
           - { series: "8.5", patch: "8.5.12" }
-        wp-version: ["6.8", "latest"]
+        wp-version: ["6.8", "6.9", "7.0", "latest"]
 
     steps:
       - name: Checkout
@@ -62,7 +62,7 @@ jobs:
         run: npm run env:start
 
       - name: Run PHPUnit
-        run: npx wp-env run tests-cli -- bash -c "cd wp-content/plugins/$(basename "$GITHUB_WORKSPACE") && composer test"
+        run: npx wp-env run tests-cli -- bash -c "cd wp-content/plugins/$(basename "$GITHUB_WORKSPACE") && composer test:unit"
 
       - name: Generate PHPUnit dashboard
         if: always() && hashFiles('tests/phpunit/test-results/junit.xml') != ''

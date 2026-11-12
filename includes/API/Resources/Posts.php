@@ -84,20 +84,22 @@ final class Posts {
 	/**
 	 * Fetch a single post from a beehiiv publication.
 	 *
-	 * @param string $publication_id Publication ID.
-	 * @param string $post_id        beehiiv post ID.
-	 * @return array{success: bool, post: array<string, mixed>, error: string}
+	 * @param string      $publication_id Publication ID.
+	 * @param string      $post_id        beehiiv post ID.
+	 * @param string|null $expand         Optional `expand` value, for example `free_email_content`.
+	 * @return array{success: bool, post: array<string, mixed>, error: string, status_code: int|null}
 	 * @since x.x.x
 	 */
-	public static function get( string $publication_id, string $post_id ): array {
+	public static function get( string $publication_id, string $post_id, ?string $expand = null ): array {
 		$publication_id = trim( $publication_id );
 		$post_id        = trim( $post_id );
 
 		if ( '' === $publication_id || '' === $post_id ) {
 			return [
-				'success' => false,
-				'post'    => [],
-				'error'   => 'Publication ID or post ID is empty.',
+				'success'     => false,
+				'post'        => [],
+				'error'       => 'Publication ID or post ID is empty.',
+				'status_code' => null,
 			];
 		}
 
@@ -106,15 +108,16 @@ final class Posts {
 			rawurlencode( $publication_id ),
 			rawurlencode( $post_id )
 		);
-		$response = Client::request( $path );
+		$response = Client::request( $path, null === $expand ? [] : [ 'expand' => $expand ] );
 
 		$wp_error = Client::get_last_wp_error();
 
 		if ( null !== $wp_error ) {
 			return [
-				'success' => false,
-				'post'    => [],
-				'error'   => $wp_error,
+				'success'     => false,
+				'post'        => [],
+				'error'       => $wp_error,
+				'status_code' => null,
 			];
 		}
 
@@ -122,16 +125,18 @@ final class Posts {
 
 		if ( null !== $status_code && $status_code > 299 ) {
 			return [
-				'success' => false,
-				'post'    => [],
-				'error'   => self::format_error_message( $response, $status_code ),
+				'success'     => false,
+				'post'        => [],
+				'error'       => self::format_error_message( $response, $status_code ),
+				'status_code' => $status_code,
 			];
 		}
 
 		return [
-			'success' => true,
-			'post'    => isset( $response['data'] ) && is_array( $response['data'] ) ? $response['data'] : [],
-			'error'   => '',
+			'success'     => true,
+			'post'        => isset( $response['data'] ) && is_array( $response['data'] ) ? $response['data'] : [],
+			'error'       => '',
+			'status_code' => $status_code,
 		];
 	}
 
@@ -275,6 +280,51 @@ final class Posts {
 	}
 
 	/**
+	 * Read a post together with its rendered free email content.
+	 *
+	 * @link https://developers.beehiiv.com/api-reference/posts/show
+	 *
+	 * @param string $publication_id Publication ID.
+	 * @param string $post_id        beehiiv post ID.
+	 * @return array{
+	 *     success: bool,
+	 *     email_html: string,
+	 *     subject: string,
+	 *     preview_text: string,
+	 *     error: string,
+	 *     status_code: int|null
+	 * }
+	 * @since x.x.x
+	 */
+	public static function get_email_content( string $publication_id, string $post_id ): array {
+		$fetched = self::get( $publication_id, $post_id, 'free_email_content' );
+		$result  = [
+			'success'      => false,
+			'email_html'   => '',
+			'subject'      => '',
+			'preview_text' => '',
+			'error'        => $fetched['error'],
+			'status_code'  => $fetched['status_code'],
+		];
+
+		if ( ! $fetched['success'] ) {
+			return $result;
+		}
+
+		$data = $fetched['post'];
+		$html = $data['content']['free']['email'] ?? '';
+
+		$result['success']      = true;
+		$result['email_html']   = is_string( $html ) ? $html : '';
+		$result['subject']      = self::first_non_empty( [ $data['email_settings']['email_subject_line'] ?? '' ] );
+		$result['preview_text'] = self::first_non_empty(
+			[ $data['email_settings']['email_preview_text'] ?? '', $data['subtitle'] ?? '' ]
+		);
+
+		return $result;
+	}
+
+	/**
 	 * Send a test email of a beehiiv post to one or more addresses.
 	 *
 	 * @link https://developers.beehiiv.com/api-reference/posts/test-send
@@ -396,6 +446,23 @@ final class Posts {
 			'success' => true,
 			'error'   => '',
 		];
+	}
+
+	/**
+	 * First value that is a non-empty string, or an empty string.
+	 *
+	 * @param array<int, mixed> $values Candidate values in priority order.
+	 * @return string
+	 * @since x.x.x
+	 */
+	private static function first_non_empty( array $values ): string {
+		foreach ( $values as $value ) {
+			if ( is_string( $value ) && '' !== trim( $value ) ) {
+				return $value;
+			}
+		}
+
+		return '';
 	}
 
 	/**
