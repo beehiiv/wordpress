@@ -73,6 +73,15 @@ final class Meta {
 	public const BEEHIIV_POST_ID = '_beehiiv_post_id';
 
 	/**
+	 * Set when the post was first synced with Group blocks converted to beehiiv sections.
+	 *
+	 * Posts synced before section support lack it and keep omitting Group blocks on re-sync.
+	 *
+	 * @since x.x.x
+	 */
+	public const BEEHIIV_GROUP_SECTIONS = '_beehiiv_group_sections';
+
+	/**
 	 * UTC ISO 8601 datetime last synced to beehiiv `scheduled_at` for a linked post.
 	 *
 	 * @since 1.0.0

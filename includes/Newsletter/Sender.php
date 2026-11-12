@@ -847,6 +847,8 @@ final class Sender {
 			(string) ( $beehiiv_post_data['post_template_id'] ?? '' )
 		);
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
+		// This first sync converted Group blocks to sections; later syncs of this post must too.
+		update_post_meta( $post_id, Meta::BEEHIIV_GROUP_SECTIONS, true );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, false );
 		delete_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT );
 		self::persist_synced_subtitle( $post_id, $beehiiv_post_data );

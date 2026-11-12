@@ -34,7 +34,11 @@
 		align-items: flex-start;
 		display: flex;
 		gap: 6px;
-		margin-top: 10px !important;
+	}
+
+	// Gap only when the omitted-blocks line follows the send warning text.
+	.beehiiv-post-settings-notice__text + .beehiiv-post-settings-notice__omitted {
+		margin-top: 10px;
 	}
 
 	.beehiiv-post-settings-notice__omitted-icon {

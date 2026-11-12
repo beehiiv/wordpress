@@ -27,18 +27,20 @@ import SendNewsletterToggle from './components/send-newsletter-toggle';
 import EmailPreview from './components/email-preview';
 import TestEmailSend from './components/test-email-send';
 import IncompleteAdvertisementNotice from './components/incomplete-advertisement-notice';
-import { OmittedBlocksNoticeMessage } from './components/omitted-blocks-notice';
+import {
+	OmittedBlocksNotice,
+	OmittedBlocksNoticeMessage,
+} from './components/omitted-blocks-notice';
 import { useBeehiivEditorConfig } from './hooks/use-beehiiv-editor-config';
 import { useBeehiivPostMeta } from './hooks/use-beehiiv-post-meta';
 import { usePostPublication } from './hooks/use-post-publication';
 
 import './filters/with-omitted-block-indicator';
 import './editor.scss';
+import { PLUGIN_NAME, SIDEBAR_NAME } from './constants';
 
 const sidebarIcon = <BeehiivSidebarIcon />;
 
-const PLUGIN_NAME = 'beehiiv-post-settings';
-const SIDEBAR_NAME = 'beehiiv-post-settings';
 const PRE_PUBLISH_PANEL_NAME = 'beehiiv-send-newsletter';
 
 function usePostPublishDate() {
@@ -215,6 +217,7 @@ function BeehiivPostSettingsPanel() {
 				<NewsletterLinkedNotice beehiivMeta={ beehiivMeta } />
 				{ newsletterAlreadySent && isNewsletterReady && (
 					<>
+						{ ! newsletterPublished && <OmittedBlocksNotice /> }
 						<NewsletterPublicationAndTemplate
 							beehiivMeta={ beehiivMeta }
 							postPublication={ postPublication }
