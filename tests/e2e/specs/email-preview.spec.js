@@ -474,8 +474,8 @@ test.describe( 'Email Preview (PRD-06.5 email-preview)', () => {
 			.locator( '.editor-post-title__input, [aria-label="Add title"]' )
 			.first();
 		await title.click();
-		await page.keyboard.press( 'End' );
-		await page.keyboard.type( ' EDITED' );
+		await page.keyboard.press( 'ControlOrMeta+a' );
+		await page.keyboard.type( 'AC-003 saved title EDITED' );
 		await saveDraft( page );
 
 		php( 'beehiiv_e2e_clear_http_log();' );

@@ -254,7 +254,7 @@ test.describe( 'US-001: nested lists', () => {
 	} ) => {
 		const cascade = await convert(
 			page,
-			nested( ' {"textColor":"vivid-red"}', '' )
+			nested( ' {"textColor":"accent"}', '' )
 		);
 		const colors = cascade[ 0 ].items.map(
 			( i ) => i.formattedText[ 0 ].text_color
@@ -266,8 +266,8 @@ test.describe( 'US-001: nested lists', () => {
 		const override = await convert(
 			page,
 			nested(
-				' {"textColor":"vivid-red"}',
-				' {"textColor":"luminous-vivid-amber"}'
+				' {"textColor":"accent"}',
+				' {"textColor":"accent-2"}'
 			)
 		);
 		const oc = override[ 0 ].items.map(
