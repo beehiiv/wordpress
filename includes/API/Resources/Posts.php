@@ -88,7 +88,7 @@ final class Posts {
 	 * @param string      $post_id        beehiiv post ID.
 	 * @param string|null $expand         Optional `expand` value, for example `free_email_content`.
 	 * @return array{success: bool, post: array<string, mixed>, error: string, status_code: int|null}
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function get( string $publication_id, string $post_id, ?string $expand = null ): array {
 		$publication_id = trim( $publication_id );
@@ -294,7 +294,7 @@ final class Posts {
 	 *     error: string,
 	 *     status_code: int|null
 	 * }
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function get_email_content( string $publication_id, string $post_id ): array {
 		$fetched = self::get( $publication_id, $post_id, 'free_email_content' );
@@ -453,7 +453,7 @@ final class Posts {
 	 *
 	 * @param array<int, mixed> $values Candidate values in priority order.
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function first_non_empty( array $values ): string {
 		foreach ( $values as $value ) {

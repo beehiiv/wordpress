@@ -17,21 +17,21 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Lets the block editor preview the real beehiiv email of the saved post.
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 final class EmailPreviewController {
 
 	/**
 	 * REST namespace.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private const NAMESPACE = 'beehiiv/v1';
 
 	/**
 	 * Register REST routes.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @return void
 	 */
@@ -64,7 +64,7 @@ final class EmailPreviewController {
 	/**
 	 * Requires publish rights and edit access to the referenced post.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param WP_REST_Request $request REST request.
 	 * @return bool
@@ -81,7 +81,7 @@ final class EmailPreviewController {
 	/**
 	 * Sync the linked draft and return the rendered email HTML.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 *
 	 * @param WP_REST_Request $request REST request.
 	 * @return WP_REST_Response

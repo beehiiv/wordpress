@@ -303,7 +303,7 @@ final class PostSettings {
 	 * @param array                                               $handler  Route handler.
 	 * @param \WP_REST_Request                                    $request  Request object.
 	 * @return \WP_REST_Response|\WP_HTTP_Response|\WP_Error|mixed
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function drop_readonly_meta_from_request( $response, $handler, $request ) {
 		if ( ! $request instanceof \WP_REST_Request ) {

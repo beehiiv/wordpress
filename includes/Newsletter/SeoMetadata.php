@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
  * otherwise from the post title and excerpt. Social titles and descriptions fall
  * back to the search title and description when the SEO plugin leaves them empty.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 final class SeoMetadata {
 
@@ -37,7 +37,7 @@ final class SeoMetadata {
 	 *     twitter_title: string,
 	 *     twitter_description: string
 	 * }
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function resolve( WP_Post $post ): array {
 		try {
@@ -53,7 +53,7 @@ final class SeoMetadata {
 	 * @param array<string, string> $values SEO plugin values.
 	 * @param WP_Post               $post   Post object.
 	 * @return array<string, string>
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function build( array $values, WP_Post $post ): array {
 		$title       = '' !== ( $values['title'] ?? '' ) ? $values['title'] : self::clean( get_the_title( $post ) );
@@ -77,7 +77,7 @@ final class SeoMetadata {
 	 * @param array<string, string> $settings Resolved values.
 	 * @param WP_Post               $post     Post object.
 	 * @return array<string, string>
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function filter( array $settings, WP_Post $post ): array {
 		/**
@@ -85,7 +85,7 @@ final class SeoMetadata {
 		 *
 		 * Use this to supply values from an SEO plugin the beehiiv plugin does not read natively.
 		 *
-		 * @since x.x.x
+		 * @since 1.1.0
 		 *
 		 * @param array   $settings Resolved `seo_settings` values.
 		 * @param WP_Post $post     WordPress post object.
@@ -112,7 +112,7 @@ final class SeoMetadata {
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function excerpt( WP_Post $post ): string {
 		if ( '' !== trim( $post->post_excerpt ) ) {
@@ -129,7 +129,7 @@ final class SeoMetadata {
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return array<string, string>
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function from_seo_plugin( WP_Post $post ): array {
 		if ( function_exists( 'YoastSEO' ) ) {
@@ -148,7 +148,7 @@ final class SeoMetadata {
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return array<string, string>
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function from_yoast( WP_Post $post ): array {
 		$meta = YoastSEO()->meta->for_post( $post->ID );
@@ -172,7 +172,7 @@ final class SeoMetadata {
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return array<string, string>
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function from_rank_math( WP_Post $post ): array {
 		$keys = [
@@ -207,7 +207,7 @@ final class SeoMetadata {
 	 * @param string $value    Preferred value.
 	 * @param string $fallback Fallback value.
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function first_filled( string $value, string $fallback ): string {
 		return '' !== $value ? $value : $fallback;
@@ -218,7 +218,7 @@ final class SeoMetadata {
 	 *
 	 * @param string $value Raw value.
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function clean( string $value ): string {
 		return trim( html_entity_decode( wp_strip_all_tags( $value ), ENT_QUOTES, 'UTF-8' ) );

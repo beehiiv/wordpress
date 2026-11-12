@@ -30,7 +30,7 @@ runtime_config:
       nullable: true
 
 release:
-  plugin_version: 1.1.0
+  plugin_version: 1.2.0
   version_strategy: latest
   migration_required: false
-  changelog: Adds newsletter title and subtitle, per-post publication choice, and test email send from the post editor.
+  changelog: Adds an email preview in the post editor, a setting to require a post template choice, and Group and Columns block conversion.

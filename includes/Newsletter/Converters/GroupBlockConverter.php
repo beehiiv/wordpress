@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
  * Background colour, text colour, padding, margin, and the border's colour, width, style and
  * radius are mapped. Other Group styling stays at beehiiv defaults.
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 final class GroupBlockConverter {
 
@@ -67,7 +67,7 @@ final class GroupBlockConverter {
 	 *
 	 * @param array<string, mixed> $wp_block Parsed core/group block.
 	 * @return array<string, int|string> Empty when the Group sets no mapped styling.
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function build_visual_settings( array $wp_block ): array {
 		$attrs      = is_array( $wp_block['attrs'] ?? null ) ? $wp_block['attrs'] : [];

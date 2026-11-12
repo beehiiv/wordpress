@@ -218,7 +218,7 @@ final class FormattedTextParser {
 	 * @param string               $inner_html Saved Group HTML including the `<div>` wrapper.
 	 * @param array<string, mixed> $attrs      Parsed block attributes.
 	 * @return string|null
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function resolve_group_block_background_color( string $inner_html, array $attrs ): ?string {
 		$from_attrs = self::resolve_block_background_color_from_attrs( $attrs );
@@ -236,7 +236,7 @@ final class FormattedTextParser {
 	 * @param string               $inner_html Saved Group HTML including the `<div>` wrapper.
 	 * @param array<string, mixed> $attrs      Parsed block attributes.
 	 * @return string|null
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function resolve_group_block_text_color( string $inner_html, array $attrs ): ?string {
 		$from_attrs = self::resolve_block_text_color_from_attrs( $attrs );
@@ -257,7 +257,7 @@ final class FormattedTextParser {
 	 *
 	 * @param string $value Colour value or palette variable.
 	 * @return string|null Null when the value is empty, transparent, or names an unknown palette colour.
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function resolve_color_reference( string $value ): ?string {
 		$value = trim( $value );
@@ -285,7 +285,7 @@ final class FormattedTextParser {
 	 * @param string               $inner_html Saved Group HTML including the `<div>` wrapper.
 	 * @param array<string, mixed> $attrs      Parsed block attributes.
 	 * @return string|null
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function resolve_group_block_border_color( string $inner_html, array $attrs ): ?string {
 		$custom = $attrs['style']['border']['color'] ?? null;

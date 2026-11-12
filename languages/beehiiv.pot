@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: beehiiv 1.1.0\n"
+"Project-Id-Version: beehiiv 1.2.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/beehiiv\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-16T15:42:07+00:00\n"
+"POT-Creation-Date: 2026-11-12T16:55:02+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: beehiiv\n"
@@ -19,7 +19,7 @@ msgstr ""
 #: beehiiv.php
 #: includes/Admin/Menu.php:32
 #: includes/Blocks/Registry.php:45
-#: src/js/editor/post-settings/index.js:314
+#: src/js/editor/post-settings/index.js:339
 msgid "beehiiv"
 msgstr ""
 
@@ -45,44 +45,56 @@ msgstr ""
 msgid "Default post template"
 msgstr ""
 
-#: includes/Admin/Registrar.php:97
+#: includes/Admin/Registrar.php:92
+msgid "Template choice"
+msgstr ""
+
+#: includes/Admin/Registrar.php:108
 msgid "Default beehiiv publication and post template for newsletters sent from this site."
 msgstr ""
 
-#: includes/Admin/Registrar.php:121
+#: includes/Admin/Registrar.php:132
 #: src/js/admin/settings/index.js:259
 #: src/js/editor/post-settings/components/newsletter-publication-select.js:78
 msgid "Select a publication"
 msgstr ""
 
-#: includes/Admin/Registrar.php:155
+#: includes/Admin/Registrar.php:166
 #: src/js/admin/settings/index.js:25
 #: src/js/editor/post-settings/components/newsletter-publication-select.js:115
 msgid "Refresh publications"
 msgstr ""
 
-#: includes/Admin/Registrar.php:160
+#: includes/Admin/Registrar.php:171
 msgid "Preselected on new posts. Editors can choose a different publication for each post in the beehiiv sidebar."
 msgstr ""
 
-#: includes/Admin/Registrar.php:190
+#: includes/Admin/Registrar.php:201
 #: src/js/admin/settings/index.js:138
 msgid "No default template"
 msgstr ""
 
-#: includes/Admin/Registrar.php:225
+#: includes/Admin/Registrar.php:236
 #: src/js/admin/settings/index.js:21
-#: src/js/editor/post-settings/components/newsletter-template-select.js:201
+#: src/js/editor/post-settings/components/newsletter-template-select.js:251
 msgid "Refresh templates"
 msgstr ""
 
-#: includes/Admin/Registrar.php:230
+#: includes/Admin/Registrar.php:241
 #: src/js/admin/settings/index.js:59
 msgid "This publication has no post templates. Create a template in beehiiv, then refresh."
 msgstr ""
 
-#: includes/Admin/Registrar.php:239
+#: includes/Admin/Registrar.php:250
 msgid "Default newsletter template for this site. Refresh after changing templates in beehiiv."
+msgstr ""
+
+#: includes/Admin/Registrar.php:277
+msgid "Require editors to choose a post template"
+msgstr ""
+
+#: includes/Admin/Registrar.php:282
+msgid "When on, editors must pick a template for each new post. The default template is not applied automatically to those posts, and sending is blocked until a template is chosen."
 msgstr ""
 
 #: includes/Admin/Views/connection.php:30
@@ -200,121 +212,182 @@ msgstr ""
 msgid "%1$s (%2$s)"
 msgstr ""
 
-#: includes/Newsletter/PostSettingsBuilder.php:618
-#: includes/Newsletter/PostSettingsBuilder.php:667
-#: includes/Newsletter/Sender.php:1046
+#: includes/Newsletter/EmailPreview.php:56
+#: includes/Newsletter/EmailPreview.php:198
+#: src/js/editor/post-settings/components/email-preview.js:141
+msgid "Something went wrong and the preview couldn't load. Try again."
+msgstr ""
+
+#: includes/Newsletter/EmailPreview.php:168
+msgid "beehiiv refused the request. Reconnect your account in <a>beehiiv settings</a> and make sure it has access to read posts."
+msgstr ""
+
+#: includes/Newsletter/EmailPreview.php:179
+#: includes/Newsletter/PreviewEligibility.php:96
+msgid "Email preview needs beehiiv Send API access (Max and Enterprise plans)."
+msgstr ""
+
+#. translators: %s: error message from beehiiv.
+#: includes/Newsletter/EmailPreview.php:188
+#, php-format
+msgid "beehiiv couldn't prepare the preview: %s"
+msgstr ""
+
+#: includes/Newsletter/PostSettingsBuilder.php:200
+msgid "Something went wrong preparing the email draft. Try again."
+msgstr ""
+
+#: includes/Newsletter/PostSettingsBuilder.php:741
+#: includes/Newsletter/PostSettingsBuilder.php:790
+#: includes/Newsletter/Sender.php:1365
 msgid "That send date has already passed. Pick a future date and time in the newsletter schedule."
 msgstr ""
 
-#: includes/Newsletter/PostSettingsBuilder.php:642
-#: includes/Newsletter/PostSettingsBuilder.php:697
-#: includes/Newsletter/PostSettingsBuilder.php:738
-#: includes/Newsletter/Sender.php:1057
+#: includes/Newsletter/PostSettingsBuilder.php:765
+#: includes/Newsletter/PostSettingsBuilder.php:820
+#: includes/Newsletter/PostSettingsBuilder.php:861
+#: includes/Newsletter/Sender.php:1376
 msgid "That send date isn't valid. Open the newsletter schedule and choose a different date and time."
 msgstr ""
 
-#: includes/Newsletter/PostSettingsBuilder.php:685
-#: includes/Newsletter/Sender.php:1051
+#: includes/Newsletter/PostSettingsBuilder.php:808
+#: includes/Newsletter/Sender.php:1370
 msgid "The newsletter can't send before this post publishes. Choose a later send time, or schedule the post first."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:359
-msgid "We couldn't cancel the scheduled newsletter in beehiiv. Try saving the post again, or cancel it directly in beehiiv."
-msgstr ""
-
-#: includes/Newsletter/Sender.php:497
-#: includes/Newsletter/Sender.php:619
-#: includes/Newsletter/Sender.php:1044
+#: includes/Newsletter/PreviewEligibility.php:40
+#: includes/Newsletter/Sender.php:808
+#: includes/Newsletter/Sender.php:936
+#: includes/Newsletter/Sender.php:1363
 #: includes/Newsletter/TestSender.php:125
 msgid "This post no longer exists. Save or reload the editor and try again."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1015
-msgid "Choose a default post template in <a>beehiiv settings</a>, or pick one for this post in the beehiiv sidebar."
+#: includes/Newsletter/PreviewEligibility.php:47
+msgid "You don't have permission to preview this newsletter."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1021
-msgid "Pick a post template for this post's publication in the beehiiv sidebar."
+#: includes/Newsletter/PreviewEligibility.php:57
+msgid "This newsletter is already scheduled or sent, so it can no longer be previewed."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1025
-msgid "Add a title and body content before sending this newsletter."
+#: includes/Newsletter/PreviewEligibility.php:66
+msgid "Turn on \"Send to newsletter\" to preview this email."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1027
-msgid "This post doesn't include any blocks beehiiv can send. Add supported content and try again."
+#: includes/Newsletter/PreviewEligibility.php:73
+msgid "Connect your beehiiv account in <a>beehiiv settings</a> to preview."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1032
-#: src/js/editor/post-settings/components/incomplete-advertisement-notice.js:25
-msgid "Select an advertisement for the Advertisement block, or remove the block, to send this newsletter."
-msgstr ""
-
-#: includes/Newsletter/Sender.php:1038
-msgid "The selected advertisement is no longer available in beehiiv. Choose a different advertisement or remove the Advertisement block, then try again."
-msgstr ""
-
-#: includes/Newsletter/Sender.php:1075
-msgid "Connect your beehiiv account in <a>beehiiv settings</a> to send this newsletter."
-msgstr ""
-
-#: includes/Newsletter/Sender.php:1088
+#: includes/Newsletter/PreviewEligibility.php:82
+#: includes/Newsletter/Sender.php:1407
 #: includes/Newsletter/TestSender.php:168
 msgid "Choose a publication in <a>beehiiv settings</a>, then try again."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1098
+#: includes/Newsletter/PreviewEligibility.php:89
+msgid "Choose a default post template in <a>beehiiv settings</a> to preview."
+msgstr ""
+
+#: includes/Newsletter/Sender.php:377
+msgid "We couldn't cancel the scheduled newsletter in beehiiv. Try saving the post again, or cancel it directly in beehiiv."
+msgstr ""
+
+#: includes/Newsletter/Sender.php:423
+msgid "A preview of this post is already being prepared. Try again in a moment."
+msgstr ""
+
+#: includes/Newsletter/Sender.php:705
+msgid "We couldn't replace the email draft in beehiiv. Try saving the post again."
+msgstr ""
+
+#: includes/Newsletter/Sender.php:1332
+msgid "Choose a default post template in <a>beehiiv settings</a>, or pick one for this post in the beehiiv sidebar."
+msgstr ""
+
+#: includes/Newsletter/Sender.php:1338
+#: src/js/editor/post-settings/components/newsletter-status-notices.js:137
+#: src/js/editor/post-settings/components/newsletter-template-select.js:195
+msgid "Choose a post template before sending this post to beehiiv."
+msgstr ""
+
+#: includes/Newsletter/Sender.php:1340
+msgid "Pick a post template for this post's publication in the beehiiv sidebar."
+msgstr ""
+
+#: includes/Newsletter/Sender.php:1344
+msgid "Add a title and body content before sending this newsletter."
+msgstr ""
+
+#: includes/Newsletter/Sender.php:1346
+msgid "This post doesn't include any blocks beehiiv can send. Add supported content and try again."
+msgstr ""
+
+#: includes/Newsletter/Sender.php:1351
+#: src/js/editor/post-settings/components/incomplete-advertisement-notice.js:25
+msgid "Select an advertisement for the Advertisement block, or remove the block, to send this newsletter."
+msgstr ""
+
+#: includes/Newsletter/Sender.php:1357
+msgid "The selected advertisement is no longer available in beehiiv. Choose a different advertisement or remove the Advertisement block, then try again."
+msgstr ""
+
+#: includes/Newsletter/Sender.php:1394
+msgid "Connect your beehiiv account in <a>beehiiv settings</a> to send this newsletter."
+msgstr ""
+
+#: includes/Newsletter/Sender.php:1417
 msgid "Choose a publication for this post in the beehiiv sidebar."
 msgstr ""
 
 #. translators: 1: removed publication name, 2: default publication name.
-#: includes/Newsletter/Sender.php:1115
+#: includes/Newsletter/Sender.php:1434
 #, php-format
 msgid "The publication \"%1$s\" is no longer connected, so this newsletter was sent to the default publication \"%2$s\" instead."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1142
-#: includes/Newsletter/Sender.php:1177
+#: includes/Newsletter/Sender.php:1461
+#: includes/Newsletter/Sender.php:1496
 msgid "Post not found."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1146
+#: includes/Newsletter/Sender.php:1465
 msgid "Your beehiiv connection expired. Reconnect in <a>beehiiv settings</a>."
 msgstr ""
 
 #. translators: %s: error message from the beehiiv API.
-#: includes/Newsletter/Sender.php:1155
+#: includes/Newsletter/Sender.php:1474
 #, php-format
 msgid "beehiiv rejected this newsletter: %s"
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1161
+#: includes/Newsletter/Sender.php:1480
 #: includes/Newsletter/TestSender.php:631
 msgid "Too many requests. Try again in a moment."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1165
+#: includes/Newsletter/Sender.php:1484
 msgid "beehiiv is temporarily unavailable. Try again later."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1169
-#: includes/Newsletter/Sender.php:1181
+#: includes/Newsletter/Sender.php:1488
+#: includes/Newsletter/Sender.php:1500
 msgid "Something went wrong. Try saving the post again."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1185
+#: includes/Newsletter/Sender.php:1504
 msgid "beehiiv took too long to respond. Try again."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1189
+#: includes/Newsletter/Sender.php:1508
 msgid "Couldn't reach beehiiv. Try again."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1206
+#: includes/Newsletter/Sender.php:1525
 msgid "Something went wrong and the newsletter wasn't sent. Try saving the post again."
 msgstr ""
 
-#: includes/Newsletter/Sender.php:1223
+#: includes/Newsletter/Sender.php:1542
 msgid "Something went wrong and the newsletter couldn't be updated. Try saving the post again."
 msgstr ""
 
@@ -492,12 +565,12 @@ msgstr ""
 #: src/js/admin/settings/index.js:302
 #: src/js/blocks/advertisement/edit.js:219
 #: src/js/editor/post-settings/components/newsletter-publication-select.js:114
-#: src/js/editor/post-settings/components/newsletter-template-select.js:200
+#: src/js/editor/post-settings/components/newsletter-template-select.js:250
 msgid "Refreshing…"
 msgstr ""
 
 #: src/js/admin/settings/index.js:213
-#: src/js/editor/post-settings/components/newsletter-template-select.js:208
+#: src/js/editor/post-settings/components/newsletter-template-select.js:258
 msgid "Templates updated from beehiiv."
 msgstr ""
 
@@ -582,6 +655,63 @@ msgstr ""
 msgid "beehiiv Subscribe Form"
 msgstr ""
 
+#: src/js/editor/post-settings/components/email-preview.js:84
+msgid "This newsletter is already scheduled or sent, so it can't be previewed."
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:132
+msgid "beehiiv is still preparing this email. Try again in a moment."
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:172
+msgid "Save the post to preview your latest edits."
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:185
+msgid "Preview email"
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:190
+#: src/js/editor/post-settings/index.js:298
+msgid "Email preview"
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:198
+msgid "Preparing your email preview…"
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:211
+msgid "Try again"
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:229
+msgid "Desktop"
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:240
+msgid "Mobile"
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:246
+msgid "Refresh preview"
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:265
+msgid "From:"
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:267
+msgid "Subject:"
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:270
+msgid "Preview Text:"
+msgstr ""
+
+#: src/js/editor/post-settings/components/email-preview.js:276
+msgid "beehiiv email preview"
+msgstr ""
+
 #: src/js/editor/post-settings/components/newsletter-date-picker.js:37
 msgid "Invalid date. Please choose a different date and time."
 msgstr ""
@@ -664,44 +794,60 @@ msgstr ""
 msgid "Choose a publication for this post."
 msgstr ""
 
-#: src/js/editor/post-settings/components/newsletter-status-notices.js:134
+#: src/js/editor/post-settings/components/newsletter-status-notices.js:141
 msgid "Pick a post template for this post."
 msgstr ""
 
-#: src/js/editor/post-settings/components/newsletter-status-notices.js:167
+#: src/js/editor/post-settings/components/newsletter-status-notices.js:174
 msgid "Could not save this post to beehiiv:"
 msgstr ""
 
-#: src/js/editor/post-settings/components/newsletter-status-notices.js:175
+#: src/js/editor/post-settings/components/newsletter-status-notices.js:182
 msgid "Could not send this post to beehiiv:"
 msgstr ""
 
 #. translators: %s: post template name
 #. translators: %s: post template ID
-#: src/js/editor/post-settings/components/newsletter-template-select.js:122
-#: src/js/editor/post-settings/components/newsletter-template-select.js:140
+#: src/js/editor/post-settings/components/newsletter-template-select.js:126
+#: src/js/editor/post-settings/components/newsletter-template-select.js:144
 #, js-format
 msgid "%s (default)"
 msgstr ""
 
-#: src/js/editor/post-settings/components/newsletter-template-select.js:156
+#. translators: %s: post template ID
+#: src/js/editor/post-settings/components/newsletter-template-select.js:160
+#, js-format
+msgid "%s (unavailable)"
+msgstr ""
+
+#: src/js/editor/post-settings/components/newsletter-template-select.js:171
+msgid "Choose a template"
+msgstr ""
+
+#: src/js/editor/post-settings/components/newsletter-template-select.js:172
 msgid "Select a template"
 msgstr ""
 
-#: src/js/editor/post-settings/components/newsletter-template-select.js:178
-msgid "Post template"
-msgstr ""
-
-#: src/js/editor/post-settings/components/newsletter-template-select.js:184
+#: src/js/editor/post-settings/components/newsletter-template-select.js:188
 msgid "The template can't be changed once the newsletter is in beehiiv."
 msgstr ""
 
-#: src/js/editor/post-settings/components/newsletter-template-select.js:212
+#. translators: %s: default post template name
+#: src/js/editor/post-settings/components/newsletter-template-select.js:208
+#, js-format
+msgid "This post uses the default template, \"%s\", unless you choose another."
+msgstr ""
+
+#: src/js/editor/post-settings/components/newsletter-template-select.js:235
+msgid "Post template"
+msgstr ""
+
+#: src/js/editor/post-settings/components/newsletter-template-select.js:262
 msgid "Templates are cached. Refresh to pull the latest from beehiiv after adding, renaming, or deleting one."
 msgstr ""
 
 #. translators: %d: number of omitted blocks.
-#: src/js/editor/post-settings/components/omitted-blocks-notice.js:27
+#: src/js/editor/post-settings/components/omitted-blocks-notice.js:28
 #, js-format
 msgid "%d block will be omitted from this newsletter."
 msgid_plural "%d blocks will be omitted from this newsletter."
@@ -754,64 +900,67 @@ msgstr ""
 msgid "A leftover test draft may still be in beehiiv. You can delete it there."
 msgstr ""
 
-#: src/js/editor/post-settings/filters/with-omitted-block-indicator.js:38
-#: src/js/editor/post-settings/filters/with-omitted-block-indicator.js:42
+#: src/js/editor/post-settings/filters/with-omitted-block-indicator.js:52
 msgid "Not included in beehiiv newsletter"
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:157
+#: src/js/editor/post-settings/index.js:166
 msgid "Newsletter title"
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:158
+#: src/js/editor/post-settings/index.js:167
 msgid "Used as the email subject line. Leave empty to use the post title."
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:170
+#: src/js/editor/post-settings/index.js:179
 msgid "Newsletter subtitle"
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:171
+#: src/js/editor/post-settings/index.js:180
 msgid "Shown as the beehiiv post subtitle. Leave empty for no subtitle."
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:182
+#: src/js/editor/post-settings/index.js:191
 msgid "Show title and subtitle in email"
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:183
+#: src/js/editor/post-settings/index.js:192
 msgid "Shows the newsletter title and subtitle in the beehiiv email. Off by default."
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:229
+#: src/js/editor/post-settings/index.js:239
 msgid "The newsletter can only be sent once and cannot be undone."
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:252
+#: src/js/editor/post-settings/index.js:262
 msgid "Snippet newsletter"
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:255
+#: src/js/editor/post-settings/index.js:265
 msgid "Send a snippet newsletter with a \"Read More\" button to the full post."
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:263
+#: src/js/editor/post-settings/index.js:273
 msgid "Insert the \"More\" block in your post to mark where the snippet ends."
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:278
+#: src/js/editor/post-settings/index.js:290
+msgid "Pick a post template for this post to send a test email."
+msgstr ""
+
+#: src/js/editor/post-settings/index.js:303
 msgid "Test email"
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:357
+#: src/js/editor/post-settings/index.js:390
 msgid "Yes"
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:358
+#: src/js/editor/post-settings/index.js:391
 msgid "No"
 msgstr ""
 
-#: src/js/editor/post-settings/index.js:365
+#: src/js/editor/post-settings/index.js:398
 msgid "Send to newsletter:"
 msgstr ""
 

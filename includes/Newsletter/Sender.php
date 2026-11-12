@@ -41,14 +41,14 @@ final class Sender {
 	 *
 	 * Keeps a publication or template move from racing beehiiv's own send.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private const SENT_SAFETY_MARGIN = 60;
 
 	/**
 	 * Option name prefix for the per-post preview lock.
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private const PREVIEW_LOCK_PREFIX = 'beehiiv_preview_lock_';
 
@@ -56,14 +56,14 @@ final class Sender {
 	 * Seconds after which a preview lock counts as abandoned. Longer than the slowest sync
 	 * (a delete and a create, each with a 30 second request timeout).
 	 *
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private const PREVIEW_LOCK_SECONDS = 180;
 
 	/**
 	 * Meta keys that lock once beehiiv has sent the newsletter.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private const LOCKED_AFTER_SEND_META_KEYS = [
 		Meta::BEEHIIV_PUBLICATION_ID,
@@ -99,7 +99,7 @@ final class Sender {
 	 * Applies to every save path (block editor, REST, PHP). Changes are ignored
 	 * rather than rejected so a full editor save does not fail.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param mixed  $check      Whether to allow updating metadata for the given type.
 	 * @param int    $post_id    Post ID.
@@ -138,7 +138,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function is_newsletter_published( int $post_id ): bool {
 		return self::has_beehiiv_post_id( $post_id )
@@ -151,7 +151,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function send_time_has_passed( int $post_id ): bool {
 		$scheduled_at = get_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT, true );
@@ -177,7 +177,7 @@ final class Sender {
 	 * @param string $meta_key Meta key.
 	 * @param string $value    Value.
 	 * @return void
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function update_locked_meta( int $post_id, string $meta_key, string $value ): void {
 		self::$bypass_meta_lock = true;
@@ -192,7 +192,7 @@ final class Sender {
 	 * @param string $publication_id   Publication the beehiiv post was created in.
 	 * @param string $post_template_id Template it was created with.
 	 * @return void
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function record_linked_publication(
 		int $post_id,
@@ -209,7 +209,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return void
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function clear_linked_publication( int $post_id ): void {
 		delete_post_meta( $post_id, Meta::BEEHIIV_LINKED_PUBLICATION_ID );
@@ -414,7 +414,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return array{beehiiv_post_id: string, created: bool}|WP_Error
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function sync_preview_draft( int $post_id ) {
 		if ( ! self::acquire_preview_lock( $post_id ) ) {
@@ -439,7 +439,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool Whether the lock was acquired.
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function acquire_preview_lock( int $post_id ): bool {
 		$key = self::PREVIEW_LOCK_PREFIX . $post_id;
@@ -469,7 +469,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function is_preview_in_progress( int $post_id ): bool {
 		$taken_at = (int) get_option( self::PREVIEW_LOCK_PREFIX . $post_id, 0 );
@@ -481,7 +481,7 @@ final class Sender {
 	 * Remove preview locks left behind by requests that died before releasing them.
 	 *
 	 * @return void
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function purge_stale_preview_locks(): void {
 		global $wpdb;
@@ -501,7 +501,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return void
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function release_preview_lock( int $post_id ): void {
 		delete_option( self::PREVIEW_LOCK_PREFIX . $post_id );
@@ -512,7 +512,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return array{beehiiv_post_id: string, created: bool}|WP_Error
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function sync_preview_draft_locked( int $post_id ) {
 		// One definition of "can this post be previewed" for the whole feature.
@@ -587,7 +587,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function is_draft_linked( int $post_id ): bool {
 		return self::has_beehiiv_post_id( $post_id )
@@ -601,7 +601,7 @@ final class Sender {
 	 * @param string $linked_publication_id Publication the draft lives in.
 	 * @param string $target_publication_id Publication the post now targets.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function draft_needs_recreate(
 		int $post_id,
@@ -626,7 +626,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool Whether the link was cleared.
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function delete_linked_draft( int $post_id ): bool {
 		if ( ! self::is_draft_linked( $post_id ) ) {
@@ -658,7 +658,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function get_beehiiv_post_id( int $post_id ): string {
 		$beehiiv_post_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true );
@@ -1016,7 +1016,7 @@ final class Sender {
 	 * @param int    $post_id               Post ID.
 	 * @param string $linked_publication_id Publication the beehiiv post lives in.
 	 * @return string Target publication ID, or empty when no move is needed.
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function get_move_target_publication( int $post_id, string $linked_publication_id ): string {
 		if ( self::is_newsletter_published( $post_id ) ) {
@@ -1131,7 +1131,7 @@ final class Sender {
 	 * @param int                  $post_id Post ID.
 	 * @param array<string, mixed> $payload Payload that was sent.
 	 * @return void
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function persist_synced_subtitle( int $post_id, array $payload ): void {
 		if ( ! array_key_exists( 'subtitle', $payload ) ) {
@@ -1215,7 +1215,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function is_newsletter_sent( int $post_id ): bool {
 		return rest_sanitize_boolean( get_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT, true ) );
@@ -1229,7 +1229,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function should_confirm_sent_state( int $post_id ): bool {
 		$scheduled_at = get_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT, true );
@@ -1252,7 +1252,7 @@ final class Sender {
 	 *
 	 * @param array<string, mixed> $beehiiv_post Post data from beehiiv.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function is_sent_beehiiv_post( array $beehiiv_post ): bool {
 		if ( isset( $beehiiv_post['status'] ) && 'archived' === $beehiiv_post['status'] ) {
@@ -1411,7 +1411,7 @@ final class Sender {
 	 * User-facing message when a post has no publication and there is no default.
 	 *
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function no_post_publication_message(): string {
 		return __( 'Choose a publication for this post in the beehiiv sidebar.', 'beehiiv' );
@@ -1423,7 +1423,7 @@ final class Sender {
 	 * @param string $removed_publication_id Publication no longer connected.
 	 * @param string $default_publication_id Default publication used instead.
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function publication_fallback_message(
 		string $removed_publication_id,

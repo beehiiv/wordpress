@@ -178,7 +178,7 @@ final class BlockConverter {
 	 * @param array<string, mixed> $wp_block    Parsed core/group block.
 	 * @param WP_Post              $post_object Post object.
 	 * @return array<string, mixed>
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function convert_group_block( array $wp_block, WP_Post $post_object ): array {
 		$inner_blocks = self::convert_blocks(

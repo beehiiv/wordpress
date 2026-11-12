@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
  * {@see Sender} and the preview in {@see EmailPreview}. It reads post meta directly so it
  * depends on neither class.
  *
- * @since x.x.x
+ * @since 1.2.0
  */
 final class PreviewEligibility {
 
@@ -29,7 +29,7 @@ final class PreviewEligibility {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return true|WP_Error True when eligible, or an error with an editor-facing message.
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function check( int $post_id ) {
 		$post = get_post( $post_id );

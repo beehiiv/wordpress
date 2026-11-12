@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
  * preview never touches the post's newsletter error, link, toggle or send date.
  *
  * @link https://developers.beehiiv.com/api-reference/posts/show
- * @since x.x.x
+ * @since 1.2.0
  */
 final class EmailPreview {
 
@@ -34,7 +34,7 @@ final class EmailPreview {
 	 * @param bool $fetch_only Only fetch the email of the already linked draft; skip the sync.
 	 * @return array{html: string, subject: string, preview_text: string, from_name: string}
 	 *     |array{processing: bool}|WP_Error
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function render( int $post_id, bool $fetch_only = false ) {
 		if ( $fetch_only ) {
@@ -93,7 +93,7 @@ final class EmailPreview {
 	 * @param int    $post_id Post ID.
 	 * @param string $fetched Subject returned by beehiiv.
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function resolve_subject( int $post_id, string $fetched ): string {
 		if ( '' !== trim( $fetched ) ) {
@@ -115,7 +115,7 @@ final class EmailPreview {
 	 * @param int    $post_id Post ID.
 	 * @param string $fetched Preview text returned by beehiiv.
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function resolve_preview_text( int $post_id, string $fetched ): string {
 		if ( '' !== trim( $fetched ) ) {
@@ -132,7 +132,7 @@ final class EmailPreview {
 	 *
 	 * @param WP_Error $error Error from {@see Sender::sync_preview_draft()}.
 	 * @return WP_Error
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function classify_sync_error( WP_Error $error ): WP_Error {
 		$code = $error->get_error_code();
@@ -155,7 +155,7 @@ final class EmailPreview {
 	 * @param string   $error       Error string from the API client.
 	 * @param int|null $status_code HTTP status code when known.
 	 * @return WP_Error
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function classify_api_error( string $error, ?int $status_code ): WP_Error {
 		if ( null === $status_code && preg_match( '/^HTTP (\d+):/i', trim( $error ), $matches ) ) {

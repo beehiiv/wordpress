@@ -185,7 +185,7 @@ final class PostSettingsBuilder {
 	 * @param int         $post_id        Post ID.
 	 * @param string|null $publication_id Publication the draft is for. Defaults to the post's resolved publication.
 	 * @return array<string, mixed>|WP_Error
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function build_draft_payload( int $post_id, ?string $publication_id = null ) {
 		$settings = self::get_post_settings( $post_id, true, $publication_id );
@@ -216,7 +216,7 @@ final class PostSettingsBuilder {
 	 * @param int         $post_id        Post ID.
 	 * @param string|null $publication_id Publication the draft lives in.
 	 * @return array<string, mixed>|WP_Error
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function build_draft_update_payload( int $post_id, ?string $publication_id = null ) {
 		$settings = self::build_draft_payload( $post_id, $publication_id );
@@ -354,7 +354,7 @@ final class PostSettingsBuilder {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	private static function should_convert_groups( int $post_id ): bool {
 		$beehiiv_post_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true );
@@ -371,7 +371,7 @@ final class PostSettingsBuilder {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function has_synced_subtitle( int $post_id ): bool {
 		$synced = get_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE, true );
@@ -387,7 +387,7 @@ final class PostSettingsBuilder {
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return array<int, string>
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function get_content_tags( WP_Post $post ): array {
 		$names = wp_get_post_tags( $post->ID, [ 'fields' => 'names' ] );
@@ -543,7 +543,7 @@ final class PostSettingsBuilder {
 	 * which is the only publication that has a default template. Empty when
 	 * neither applies.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param int    $post_id        Post ID.
 	 * @param string $publication_id Publication ID.
@@ -579,7 +579,7 @@ final class PostSettingsBuilder {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.2.0
 	 */
 	public static function is_template_choice_required( int $post_id ): bool {
 		$settings = Options::get();
@@ -590,7 +590,7 @@ final class PostSettingsBuilder {
 	/**
 	 * Email subject line for the post: its newsletter title, or the post title when empty.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param int    $post_id    Post ID.
 	 * @param string $post_title Decoded WordPress post title.
@@ -608,7 +608,7 @@ final class PostSettingsBuilder {
 	/**
 	 * Subtitle for the beehiiv post: its newsletter subtitle, or empty for none.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param int $post_id Post ID.
 	 *
@@ -624,7 +624,7 @@ final class PostSettingsBuilder {
 	/**
 	 * Whether the beehiiv email shows the title and subtitle: the post's choice, hidden when never set.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param int $post_id Post ID.
 	 *
