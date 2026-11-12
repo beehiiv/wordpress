@@ -7,15 +7,18 @@
 
 namespace Beehiiv\Newsletter;
 
+use Beehiiv\Newsletter\Converters\ColumnsBlockConverter;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Single source of truth for which WordPress blocks are included in newsletters.
  *
  * `core/group` is supported as a beehiiv section for posts first synced with section
- * support; see `BlockConverter::convert_group_block()`. Other layout blocks such as
- * `core/columns` are not supported. They and all of their inner blocks are omitted
- * from the newsletter payload.
+ * support; see `BlockConverter::convert_group_block()`. `core/columns` is supported, but a
+ * Columns block with more than 3 columns is omitted; see
+ * `BlockConverter::convert_columns_block_to_blocks()`. Other layout blocks are not
+ * supported. They and all of their inner blocks are omitted from the newsletter payload.
  *
  * @since 1.0.0
  */
@@ -36,6 +39,7 @@ final class SupportedBlocks {
 		'core/pullquote',
 		'core/embed',
 		'core/media-text',
+		'core/columns',
 		'core/group',
 		'core/buttons',
 		'core/separator',
@@ -49,6 +53,7 @@ final class SupportedBlocks {
 	 */
 	public const NESTED_ONLY = [
 		'core/button',
+		'core/column',
 		'core/list-item',
 	];
 
@@ -64,7 +69,7 @@ final class SupportedBlocks {
 	/**
 	 * Block support config for the block editor (localized to JavaScript).
 	 *
-	 * @return array<string, array<int, string>>
+	 * @return array<string, array<int, string>|int>
 	 * @since 1.0.0
 	 */
 	public static function get_editor_config(): array {
@@ -72,6 +77,7 @@ final class SupportedBlocks {
 			'supported'   => self::BLOCKS,
 			'nestedOnly'  => self::NESTED_ONLY,
 			'snippetOnly' => self::SNIPPET_ONLY,
+			'maxColumns'  => ColumnsBlockConverter::MAX_COLUMNS,
 		];
 	}
 

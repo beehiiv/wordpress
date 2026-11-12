@@ -737,7 +737,7 @@ test.describe( 'US-006: Group blocks become sections', () => {
 	} ) => {
 		// The editor stores a palette color on a split border as var:preset|color|slug on each side.
 		const side = ( width ) =>
-			`{"color":"var:preset|color|vivid-red","width":"${ width }"}`;
+			`{"color":"var:preset|color|accent","width":"${ width }"}`;
 		const split =
 			`<!-- wp:group {"style":{"border":{"top":${ side(
 				'1px'
