@@ -8,6 +8,11 @@
 	);
 }
 
+// Also applies in the pre-publish panel, outside the sidebar content wrapper.
+.beehiiv-post-settings-notice {
+	margin-top: 12px;
+}
+
 .beehiiv-post-settings-content {
 	/* stylelint-disable selector-class-pattern -- @wordpress/components */
 	.components-panel__body {

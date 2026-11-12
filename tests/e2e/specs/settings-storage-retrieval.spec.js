@@ -45,6 +45,8 @@ const EXPECTED_KEYS = [
 	// Added by PRD-06.8.02 (per-post publication selector).
 	'defaultPublicationId',
 	'publications',
+	// Added by the required-template setting (Publication and Template Configuration).
+	'requireTemplateChoice',
 ].sort();
 
 let fixturePostId;

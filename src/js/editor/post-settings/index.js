@@ -93,6 +93,7 @@ function NewsletterPublicationAndTemplate( { beehiivMeta, postPublication } ) {
 					onChange={ setBeehiivPostTemplateId }
 					publicationId={ effectivePublicationId }
 					isDefaultPublication={ isDefaultPublication }
+					requireChoice={ postPublication.requireChoice }
 					// Sync never changes a newsletter's template, so it is locked once linked.
 					disabled={ newsletterAlreadySent }
 				/>
@@ -376,6 +377,14 @@ function BeehiivSendNewsletterPrePublishPanel() {
 		postPublishDate
 	);
 
+	// Pre-publish panels start collapsed. Open this one when the newsletter
+	// still needs a template, so the warning is visible before publishing.
+	const needsTemplate =
+		sendToNewsletter &&
+		! newsletterAlreadySent &&
+		isNewsletterReady &&
+		postPublication.missingTemplate;
+
 	const sendToNewsletterStatus =
 		sendToNewsletter && canWritePosts
 			? __( 'Yes', 'beehiiv' )
@@ -393,6 +402,7 @@ function BeehiivSendNewsletterPrePublishPanel() {
 				</>
 			}
 			icon={ false }
+			initialOpen={ needsTemplate }
 		>
 			{ showSendToggle && (
 				<SendNewsletterToggle

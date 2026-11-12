@@ -86,6 +86,17 @@ final class Registrar {
 				'label_for' => 'beehiiv_post_template_id',
 			]
 		);
+
+		add_settings_field(
+			'beehiiv_require_template_choice',
+			__( 'Template choice', 'beehiiv' ),
+			[ self::class, 'render_require_template_choice_field' ],
+			$page_slug,
+			self::PAGE_SETTINGS_SECTION_ID,
+			[
+				'label_for' => 'beehiiv_require_template_choice',
+			]
+		);
 	}
 
 	/**
@@ -240,6 +251,35 @@ final class Registrar {
 				'Default newsletter template for this site. Refresh after changing templates in beehiiv.',
 				'beehiiv'
 			);
+			?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Require-template-choice checkbox field.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function render_require_template_choice_field(): void {
+		$settings = Options::get();
+		$name     = Config::OPTION_NAME . '[require_template_choice]';
+		?>
+		<input type="hidden" name="<?php echo esc_attr( $name ); ?>" value="0" />
+		<label for="beehiiv_require_template_choice">
+			<input
+				type="checkbox"
+				id="beehiiv_require_template_choice"
+				name="<?php echo esc_attr( $name ); ?>"
+				value="1"
+				<?php checked( ! empty( $settings['require_template_choice'] ) ); ?>
+			/>
+			<?php esc_html_e( 'Require editors to choose a post template', 'beehiiv' ); ?>
+		</label>
+		<p class="description">
+			<?php
+			// phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
+			esc_html_e( 'When on, editors must pick a template for each new post. The default template is not applied automatically to those posts, and sending is blocked until a template is chosen.', 'beehiiv' );
 			?>
 		</p>
 		<?php
