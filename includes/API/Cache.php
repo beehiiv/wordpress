@@ -94,7 +94,7 @@ final class Cache {
 	/**
 	 * Clear the cached publications list so the next read fetches it from beehiiv.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return void
 	 */

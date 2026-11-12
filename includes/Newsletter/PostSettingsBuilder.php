@@ -59,6 +59,13 @@ final class PostSettingsBuilder {
 
 		$post_template_id = self::resolve_post_template_id( $post_id, $publication_id );
 
+		if ( '' === $post_template_id && self::is_template_choice_required( $post_id ) ) {
+			return new WP_Error(
+				'beehiiv_post_template_choice_required',
+				sprintf( 'An editor must choose a post template before post ID: %d is sent.', $post_id )
+			);
+		}
+
 		if ( '' === $post_template_id && PublicationResolver::get_default_publication_id() !== $publication_id ) {
 			return new WP_Error(
 				'beehiiv_post_template_required',
@@ -94,7 +101,10 @@ final class PostSettingsBuilder {
 			);
 		}
 
-		$beehiiv_blocks = BlockConverter::convert_supported_blocks( $post_object );
+		$beehiiv_blocks = BlockConverter::convert_supported_blocks(
+			$post_object,
+			self::should_convert_groups( $post_id )
+		);
 
 		if ( empty( $beehiiv_blocks ) ) {
 			return new WP_Error(
@@ -164,6 +174,77 @@ final class PostSettingsBuilder {
 		 * @param WP_Post $post_object WordPress post object.
 		 */
 		return apply_filters( 'beehiiv_newsletter_post_settings', $settings, $post_id, $post_object );
+	}
+
+	/**
+	 * Build the create payload for a Preview draft from the saved post.
+	 *
+	 * Uses the real send's payload builder without scheduling, then forces draft status
+	 * after the public settings filter so a draft can never become a real send.
+	 *
+	 * @param int         $post_id        Post ID.
+	 * @param string|null $publication_id Publication the draft is for. Defaults to the post's resolved publication.
+	 * @return array<string, mixed>|WP_Error
+	 * @since 1.2.0
+	 */
+	public static function build_draft_payload( int $post_id, ?string $publication_id = null ) {
+		$settings = self::get_post_settings( $post_id, true, $publication_id );
+
+		if ( is_wp_error( $settings ) ) {
+			return $settings;
+		}
+
+		if ( ! is_array( $settings ) ) {
+			return new WP_Error(
+				'beehiiv_draft_invalid_settings',
+				__( 'Something went wrong preparing the email draft. Try again.', 'beehiiv' )
+			);
+		}
+
+		$settings['status'] = 'draft';
+		unset( $settings['scheduled_at'] );
+
+		return $settings;
+	}
+
+	/**
+	 * Build the update payload for a linked Preview draft.
+	 *
+	 * Carries the content fields only; never a status, send time or template, so the update
+	 * cannot confirm the draft.
+	 *
+	 * @param int         $post_id        Post ID.
+	 * @param string|null $publication_id Publication the draft lives in.
+	 * @return array<string, mixed>|WP_Error
+	 * @since 1.2.0
+	 */
+	public static function build_draft_update_payload( int $post_id, ?string $publication_id = null ) {
+		$settings = self::build_draft_payload( $post_id, $publication_id );
+
+		if ( is_wp_error( $settings ) ) {
+			return $settings;
+		}
+
+		$payload = array_intersect_key(
+			$settings,
+			array_flip(
+				[
+					'title',
+					'blocks',
+					'thumbnail_image_url',
+					'email_settings',
+					'web_settings',
+					'social_share',
+					'content_tags',
+					'seo_settings',
+				]
+			)
+		);
+
+		// A subtitle cleared in WordPress is removed from the draft by sending it empty.
+		$payload['subtitle'] = $settings['subtitle'] ?? '';
+
+		return $payload;
 	}
 
 	/**
@@ -265,11 +346,38 @@ final class PostSettingsBuilder {
 	}
 
 	/**
+	 * Whether Group blocks become beehiiv sections for this post.
+	 *
+	 * A post that has no beehiiv post yet is on its first sync, so Groups convert. After
+	 * that, only a post whose first sync converted them keeps converting them; a post
+	 * synced before section support keeps omitting Groups so its beehiiv layout does not change.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since 1.2.0
+	 */
+	private static function should_convert_groups( int $post_id ): bool {
+		$beehiiv_post_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true );
+
+		if ( ! is_string( $beehiiv_post_id ) || '' === trim( $beehiiv_post_id ) ) {
+			return true;
+		}
+
+		// A Preview draft is replaced by a new post when the newsletter is sent, so it has no
+		// older layout to keep. Without this, refreshing a preview would drop every Group.
+		if ( Sender::is_draft_linked( $post_id ) ) {
+			return true;
+		}
+
+		return (bool) get_post_meta( $post_id, Meta::BEEHIIV_GROUP_SECTIONS, true );
+	}
+
+	/**
 	 * Whether a non-empty subtitle was last synced to the linked beehiiv post.
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function has_synced_subtitle( int $post_id ): bool {
 		$synced = get_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE, true );
@@ -285,7 +393,7 @@ final class PostSettingsBuilder {
 	 *
 	 * @param WP_Post $post Post object.
 	 * @return array<int, string>
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function get_content_tags( WP_Post $post ): array {
 		$names = wp_get_post_tags( $post->ID, [ 'fields' => 'names' ] );
@@ -441,7 +549,7 @@ final class PostSettingsBuilder {
 	 * which is the only publication that has a default template. Empty when
 	 * neither applies.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param int    $post_id        Post ID.
 	 * @param string $publication_id Publication ID.
@@ -457,6 +565,11 @@ final class PostSettingsBuilder {
 			return $post_template_id;
 		}
 
+		// With the required-template rule on, a never-sent post gets no automatic template.
+		if ( self::is_template_choice_required( $post_id ) ) {
+			return '';
+		}
+
 		if ( '' !== $publication_id && PublicationResolver::get_default_publication_id() === $publication_id ) {
 			return self::get_site_post_template_id();
 		}
@@ -465,9 +578,25 @@ final class PostSettingsBuilder {
 	}
 
 	/**
+	 * Whether an editor must choose this post's template before it can be sent.
+	 *
+	 * True when the "require template choice" setting is on and the post has never
+	 * been sent to beehiiv. Applies to every user role.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since 1.2.0
+	 */
+	public static function is_template_choice_required( int $post_id ): bool {
+		$settings = Options::get();
+
+		return ! empty( $settings['require_template_choice'] ) && ! Sender::has_beehiiv_post_id( $post_id );
+	}
+
+	/**
 	 * Email subject line for the post: its newsletter title, or the post title when empty.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param int    $post_id    Post ID.
 	 * @param string $post_title Decoded WordPress post title.
@@ -485,7 +614,7 @@ final class PostSettingsBuilder {
 	/**
 	 * Subtitle for the beehiiv post: its newsletter subtitle, or empty for none.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param int $post_id Post ID.
 	 *
@@ -501,7 +630,7 @@ final class PostSettingsBuilder {
 	/**
 	 * Whether the beehiiv email shows the title and subtitle: the post's choice, hidden when never set.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param int $post_id Post ID.
 	 *

@@ -81,6 +81,11 @@ final class PostSettings {
 			'default'  => '',
 			'readonly' => true,
 		],
+		Meta::BEEHIIV_POST_STATE             => [
+			'type'     => 'string',
+			'default'  => '',
+			'readonly' => true,
+		],
 		Meta::NEWSLETTER_ERROR               => [
 			'type'     => 'string',
 			'default'  => '',
@@ -298,7 +303,7 @@ final class PostSettings {
 	 * @param array                                               $handler  Route handler.
 	 * @param \WP_REST_Request                                    $request  Request object.
 	 * @return \WP_REST_Response|\WP_HTTP_Response|\WP_Error|mixed
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function drop_readonly_meta_from_request( $response, $handler, $request ) {
 		if ( ! $request instanceof \WP_REST_Request ) {
@@ -359,6 +364,7 @@ final class PostSettings {
 				Meta::BEEHIIV_POST_ID,
 				Meta::BEEHIIV_SCHEDULED_AT,
 				Meta::BEEHIIV_PUBLICATION_ID,
+				Meta::BEEHIIV_POST_STATE,
 				Meta::SEND_TO_NEWSLETTER,
 				Meta::NEWSLETTER_ERROR,
 				Meta::NEWSLETTER_ERROR_TYPE,
@@ -404,6 +410,7 @@ final class PostSettings {
 			'hasPostTemplate'       => '' !== trim( (string) ( $settings['post_template_id'] ?? '' ) ),
 			'publicationId'         => trim( (string) ( $settings['publication_id'] ?? '' ) ),
 			'defaultPostTemplateId' => trim( (string) ( $settings['post_template_id'] ?? '' ) ),
+			'requireTemplateChoice' => ! empty( $settings['require_template_choice'] ),
 			'canPublishPosts'       => current_user_can( 'publish_posts' ),
 			'defaultPublicationId'  => $default_pub_id,
 			'publications'          => $is_connected ? PublicationResolver::get_editor_publications() : [],

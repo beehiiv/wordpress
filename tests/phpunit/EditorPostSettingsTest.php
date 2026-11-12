@@ -10,6 +10,7 @@
  * @package beehiiv
  */
 
+use Beehiiv\Config;
 use Beehiiv\Editor\Meta;
 use Beehiiv\Editor\PostSettings;
 
@@ -321,5 +322,22 @@ class EditorPostSettingsTest extends WP_UnitTestCase {
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertSame( 'pub_qa', get_post_meta( $post_id, Meta::BEEHIIV_PUBLICATION_ID, true ) );
 		$this->assertSame( '', get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true ) );
+	}
+
+	/**
+	 * Newsletter Template Selection PRD AC-014, AC-019: the editor learns whether
+	 * the required-template setting is on, and reads off when never saved.
+	 */
+	public function test_editor_config_exposes_require_template_choice(): void {
+		$method = new ReflectionMethod( PostSettings::class, 'get_editor_config' );
+		$method->setAccessible( true );
+
+		delete_option( Config::OPTION_NAME );
+		$this->assertFalse( $method->invoke( null )['requireTemplateChoice'] );
+
+		update_option( Config::OPTION_NAME, array( 'require_template_choice' => true ) );
+		$this->assertTrue( $method->invoke( null )['requireTemplateChoice'] );
+
+		delete_option( Config::OPTION_NAME );
 	}
 }
