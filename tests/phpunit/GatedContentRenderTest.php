@@ -171,6 +171,60 @@ class GatedContentRenderTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Defaults AC-014 / AC-010: the block receives a valid cookie lifetime even when the saved value is not valid.
+	 *
+	 * @dataProvider invalid_cookie_days_provider
+	 *
+	 * @param string $saved Submitted lifetime.
+	 */
+	public function test_block_receives_a_valid_cookie_lifetime( string $saved ): void {
+		update_option( Config::OPTION_NAME, Options::sanitize( array( 'gate_cookie_days' => $saved ) ) );
+
+		$html = $this->render_gate( $this->p( 'ONE' ) . $this->p( 'TWO' ) );
+
+		$this->assertStringContainsString( 'data-cookie-days="30"', $html );
+	}
+
+	/**
+	 * @return array<string, array{0: string}>
+	 */
+	public function invalid_cookie_days_provider(): array {
+		return array(
+			'blank'   => array( '' ),
+			'zero'    => array( '0' ),
+			'text'    => array( 'abc' ),
+			'decimal' => array( '7.5' ),
+			'over'    => array( '366' ),
+		);
+	}
+
+	/**
+	 * AC-024: the gate renders in a custom post type, not only in posts.
+	 */
+	public function test_gate_renders_in_a_custom_post_type(): void {
+		register_post_type( 'beehiiv_gate_cpt', array( 'public' => true ) );
+
+		$post_id = self::factory()->post->create(
+			array(
+				'post_type'    => 'beehiiv_gate_cpt',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:beehiiv/gated-content {"formId":"form_1"} -->'
+					. $this->p( 'ONE' ) . $this->divider() . $this->p( 'TWO' )
+					. '<!-- /wp:beehiiv/gated-content -->',
+			)
+		);
+
+		$this->go_to( get_permalink( $post_id ) );
+		$html = apply_filters( 'the_content', get_post_field( 'post_content', $post_id ) );
+
+		$this->assertStringContainsString( 'data-beehiiv-gate', $html );
+		$this->assertMatchesRegularExpression( '/ONE.*beehiiv-gated-content__gate/s', $html );
+		$this->assertMatchesRegularExpression( '/beehiiv-gated-content__locked[^>]*>.*TWO/s', $html );
+
+		unregister_post_type( 'beehiiv_gate_cpt' );
+	}
+
+	/**
 	 * AC-022: logged-in users see the content with no gate.
 	 */
 	public function test_logged_in_user_sees_no_gate(): void {

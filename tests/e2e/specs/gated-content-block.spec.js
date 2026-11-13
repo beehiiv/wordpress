@@ -1,5 +1,5 @@
 const { test, expect } = require( '@playwright/test' );
-const { loginAsAdmin } = require( '../utils/auth' );
+const { loginAsAdmin, loginAs } = require( '../utils/auth' );
 const {
 	wpCli,
 	ensurePluginActive,
@@ -31,10 +31,10 @@ function gatedBlock( formId, body ) {
 	);
 }
 
-function createPost( title, content ) {
+function createPost( title, content, postType = 'post' ) {
 	const b64 = Buffer.from( content ).toString( 'base64' );
 	const id = wpCli(
-		`eval 'echo wp_insert_post( array( "post_title" => "${ title }", "post_status" => "publish", "post_content" => base64_decode( "${ b64 }" ) ) );'`
+		`eval 'echo wp_insert_post( array( "post_title" => "${ title }", "post_type" => "${ postType }", "post_status" => "publish", "post_content" => base64_decode( "${ b64 }" ) ) );'`
 	);
 	createdPostIds.push( id );
 	return id;
@@ -179,5 +179,160 @@ test.describe( 'Gated Content block', () => {
 		await expect(
 			page.locator( '.beehiiv-gated-content__gate' )
 		).toHaveCount( 0 );
+	} );
+
+	test( 'after unlock, focus moves to the content and a status message is announced (AC-018, AC-029)', async ( {
+		page,
+	} ) => {
+		const id = createPost( 'Gate focus', gatedBlock( 'form_e2e_8', 'H' ) );
+		await page.goto( `/?p=${ id }` );
+		await submit( page, 'form_e2e_8' );
+
+		const locked = page.locator( '.beehiiv-gated-content__locked' );
+		await expect( locked ).toBeFocused();
+
+		const status = page.locator( '[role="status"]' );
+		await expect( status ).toHaveText( 'Content unlocked.' );
+		await expect( status ).toHaveCount( 1 );
+
+		// The content can be selected and reached again.
+		expect(
+			await locked.evaluate(
+				( el ) => window.getComputedStyle( el ).userSelect
+			)
+		).not.toBe( 'none' );
+		expect(
+			await locked.evaluate(
+				( el ) => window.getComputedStyle( el ).pointerEvents
+			)
+		).not.toBe( 'none' );
+	} );
+
+	test( 'long gated content is limited in height and fades out at the bottom (AC-013)', async ( {
+		page,
+	} ) => {
+		const paragraphs = Array.from(
+			{ length: 40 },
+			( _, i ) =>
+				`<!-- wp:paragraph --><p>Long gated paragraph ${ i } with enough words to wrap across the content column on a desktop screen.</p><!-- /wp:paragraph -->`
+		).join( '' );
+		const content =
+			'<!-- wp:beehiiv/gated-content {"formId":"form_e2e_9"} -->' +
+			'<!-- wp:paragraph --><p>I-PREVIEW</p><!-- /wp:paragraph -->' +
+			'<!-- wp:beehiiv/gated-content-divider /-->' +
+			paragraphs +
+			'<!-- /wp:beehiiv/gated-content -->';
+		const id = createPost( 'Gate long', content );
+		await page.goto( `/?p=${ id }` );
+
+		const locked = page.locator( '.beehiiv-gated-content__locked' );
+		const box = await locked.evaluate( ( el ) => ( {
+			maxHeight: window.getComputedStyle( el ).maxHeight,
+			filter: window.getComputedStyle( el ).filter,
+			overflow: window.getComputedStyle( el ).overflow,
+			client: el.clientHeight,
+			scroll: el.scrollHeight,
+			fade: window.getComputedStyle( el, '::after' ).backgroundImage,
+			fadeHeight: window.getComputedStyle( el, '::after' ).height,
+		} ) );
+
+		// 30rem at the default 16px root size, and the content is taller.
+		expect( box.maxHeight ).toBe( '480px' );
+		expect( box.overflow ).toBe( 'hidden' );
+		expect( box.client ).toBeLessThanOrEqual( 480 );
+		expect( box.scroll ).toBeGreaterThan( 480 );
+		expect( box.filter ).toContain( 'blur' );
+		expect( box.fade ).toContain( 'linear-gradient' );
+		// The fade covers the bottom 60%.
+		expect( parseFloat( box.fadeHeight ) ).toBeCloseTo(
+			box.client * 0.6,
+			0
+		);
+
+		// After unlock the limit and the fade go away.
+		await submit( page, 'form_e2e_9' );
+		await expect( locked ).toHaveCSS( 'max-height', 'none' );
+		await expect( locked ).toHaveCSS( 'filter', 'none' );
+	} );
+
+	test( 'a logged-in editor sees the full content with no gate (AC-022)', async ( {
+		page,
+	} ) => {
+		const id = createPost(
+			'Gate editor',
+			gatedBlock( 'form_e2e_10', 'J' )
+		);
+		wpCli(
+			'user create gate_editor gate_editor@example.test --role=editor --user_pass=gate-editor-pass'
+		);
+		try {
+			await loginAs( page, 'gate_editor', 'gate-editor-pass' );
+			await page.goto( `/?p=${ id }` );
+
+			await expect( page.getByText( 'J-LOCKED' ) ).toBeVisible();
+			await expect(
+				page.locator( '.beehiiv-gated-content__gate' )
+			).toHaveCount( 0 );
+		} finally {
+			wpCli( 'user delete gate_editor --yes' );
+		}
+	} );
+
+	test( 'the gate works on a page, not only on posts (AC-024)', async ( {
+		page,
+	} ) => {
+		const id = createPost(
+			'Gate page',
+			gatedBlock( 'form_e2e_11', 'K' ),
+			'page'
+		);
+		await page.goto( `/?page_id=${ id }` );
+
+		await expect( page.getByText( 'K-PREVIEW' ) ).toBeVisible();
+		await expect(
+			page.locator( '.beehiiv-gated-content__locked' )
+		).toHaveAttribute( 'inert', '' );
+
+		await submit( page, 'form_e2e_11' );
+		await expect(
+			page.locator( '.beehiiv-gated-content__locked' )
+		).not.toHaveAttribute( 'inert', /.*/ );
+	} );
+
+	test( 'a cached copy of the page still opens for a returning reader (AC-023)', async ( {
+		page,
+		context,
+	} ) => {
+		const id = createPost( 'Gate cache', gatedBlock( 'form_e2e_12', 'L' ) );
+		const url = `/?p=${ id }`;
+
+		// A full-page cache stores the HTML built for a visitor with no cookie.
+		const cached = await ( await page.request.get( url ) ).text();
+		expect( cached ).toContain( 'data-beehiiv-gate' );
+		expect( cached ).toContain( 'L-LOCKED' );
+
+		// A returning reader gets that same cached HTML with the unlock cookie.
+		const { hostname } = new URL(
+			process.env.WP_BASE_URL || 'http://localhost:8891'
+		);
+		await context.addCookies( [
+			{ name: COOKIE, value: '1', domain: hostname, path: '/' },
+		] );
+		await page.route( `**${ url }`, ( route ) =>
+			route.fulfill( {
+				status: 200,
+				contentType: 'text/html; charset=UTF-8',
+				body: cached,
+			} )
+		);
+		await page.goto( url );
+
+		await expect(
+			page.locator( '.beehiiv-gated-content__gate.is-unlocked' )
+		).toHaveCount( 1 );
+		await expect(
+			page.locator( '.beehiiv-gated-content__locked' )
+		).not.toHaveAttribute( 'inert', /.*/ );
+		await expect( page.getByText( 'L-LOCKED' ) ).toBeVisible();
 	} );
 } );
