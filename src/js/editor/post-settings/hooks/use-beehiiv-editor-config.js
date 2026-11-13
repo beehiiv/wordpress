@@ -13,6 +13,7 @@ const DEFAULT_CONFIG = {
 	publicationId: '',
 	defaultPostTemplateId: '',
 	gateFormId: '',
+	requireTemplateChoice: false,
 	canPublishPosts: false,
 	defaultPublicationId: '',
 	publications: [],

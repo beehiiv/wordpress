@@ -47,6 +47,8 @@ const EXPECTED_KEYS = [
 	'publications',
 	// Added by the gated content block (default subscribe form ID).
 	'gateFormId',
+	// Added by the required-template setting (Publication and Template Configuration).
+	'requireTemplateChoice',
 ].sort();
 
 let fixturePostId;

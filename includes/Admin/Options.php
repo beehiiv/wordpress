@@ -25,12 +25,13 @@ final class Options {
 	 * @var array<string, mixed>
 	 */
 	private const DEFAULTS = [
-		'publication_id'   => '',
-		'post_template_id' => '',
-		'gate_headline'    => '',
-		'gate_text'        => '',
-		'gate_form_id'     => '',
-		'gate_cookie_days' => '',
+		'publication_id'          => '',
+		'post_template_id'        => '',
+		'require_template_choice' => false,
+		'gate_headline'           => '',
+		'gate_text'               => '',
+		'gate_form_id'            => '',
+		'gate_cookie_days'        => '',
 	];
 
 	/**
@@ -191,6 +192,14 @@ final class Options {
 		// Stored as submitted (digits only); the 1 to 365 rule applies on read.
 		if ( isset( $input['gate_cookie_days'] ) ) {
 			$current['gate_cookie_days'] = sanitize_text_field( (string) $input['gate_cookie_days'] );
+		}
+
+		// An unchecked checkbox is missing from the form, so absence means off, but only
+		// when the Publication section was shown. A save with that section hidden keeps it.
+		if ( isset( $input['require_template_choice'] ) ) {
+			$current['require_template_choice'] = ! empty( $input['require_template_choice'] );
+		} elseif ( $publication_section_shown ) {
+			$current['require_template_choice'] = false;
 		}
 
 		// Saving settings clears the cached template list for the selected

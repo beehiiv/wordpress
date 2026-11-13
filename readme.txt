@@ -4,7 +4,7 @@ Tags: newsletter, email, publishing, beehiiv, subscribe
 Requires at least: 6.8
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -151,6 +151,11 @@ It is visible in the editor but does not render on the front end of your site.
 == Changelog ==
 
 = 1.2.0 =
+* Added a "Preview email" button to the post editor that shows the real beehiiv email of a saved post, in desktop and mobile views.
+* Added a setting that requires editors to choose a post template before sending. When it is on, no template is chosen for them.
+* A post template that is no longer available in beehiiv is now labeled "(unavailable)" in the template picker.
+* Group blocks now become beehiiv sections, and top-level Columns blocks become beehiiv columns.
+* Added support for the WordPress VIP Integration Center, including configuration through VIP_BEEHIIV_CONFIG.
 * Added a Gated Content block. It shows a preview, then blurs and locks the rest of the content until the reader subscribes through a beehiiv form.
 * Added a Gate Divider block to mark where the preview ends inside a Gated Content block.
 * Added a "Subscriber gating" section to the beehiiv settings page for the default headline, text, subscribe form ID and unlock cookie lifetime.
