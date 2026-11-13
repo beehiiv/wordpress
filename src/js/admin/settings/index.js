@@ -156,6 +156,9 @@ function populateTemplateOptions( items ) {
 	updateNoTemplatesNotice( hasTemplates );
 }
 
+// Id of the newest template request, used to ignore stale responses.
+let templateRequestId = 0;
+
 /**
  * Fetch templates for the selected publication via REST API.
  *
@@ -169,8 +172,23 @@ async function loadTemplates( publicationId, refresh = false ) {
 		return;
 	}
 
+	// Only the latest request may change the page. An older one that finishes
+	// late must not re-enable the field or bring back templates for a
+	// publication that is no longer selected.
+	templateRequestId += 1;
+	const requestId = templateRequestId;
+
 	if ( ! publicationId ) {
 		populateTemplateOptions( [] );
+
+		// No publication selected, so there are no templates to choose from.
+		templateSelect.disabled = true;
+
+		if ( refreshTemplatesButton ) {
+			refreshTemplatesButton.disabled = true;
+			refreshTemplatesButton.textContent = refreshDefaultLabel;
+		}
+
 		return;
 	}
 
@@ -196,6 +214,10 @@ async function loadTemplates( publicationId, refresh = false ) {
 
 		const items = await apiFetch( { path } );
 
+		if ( requestId !== templateRequestId ) {
+			return;
+		}
+
 		populateTemplateOptions( Array.isArray( items ) ? items : [] );
 
 		if (
@@ -214,13 +236,17 @@ async function loadTemplates( publicationId, refresh = false ) {
 			);
 		}
 	} catch {
-		populateTemplateOptions( [] );
+		if ( requestId === templateRequestId ) {
+			populateTemplateOptions( [] );
+		}
 	} finally {
-		templateSelect.disabled = false;
+		if ( requestId === templateRequestId ) {
+			templateSelect.disabled = false;
 
-		if ( refreshTemplatesButton ) {
-			refreshTemplatesButton.disabled = ! publicationSelect?.value;
-			refreshTemplatesButton.textContent = refreshDefaultLabel;
+			if ( refreshTemplatesButton ) {
+				refreshTemplatesButton.disabled = ! publicationSelect?.value;
+				refreshTemplatesButton.textContent = refreshDefaultLabel;
+			}
 		}
 	}
 }

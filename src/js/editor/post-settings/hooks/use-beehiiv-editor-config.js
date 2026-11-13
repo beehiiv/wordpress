@@ -12,6 +12,7 @@ const DEFAULT_CONFIG = {
 	hasPostTemplate: false,
 	publicationId: '',
 	defaultPostTemplateId: '',
+	gateFormId: '',
 	requireTemplateChoice: false,
 	canPublishPosts: false,
 	defaultPublicationId: '',

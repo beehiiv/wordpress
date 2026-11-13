@@ -246,7 +246,11 @@ test.describe( 'Publication and Template Configuration', () => {
 		await page.goto( SETTINGS_PATH );
 
 		const select = page.locator( PUB_SELECT );
-		await expect( select ).toHaveAttribute( 'required', '' );
+
+		// The select is no longer `required`: the form also saves the
+		// Subscriber gating defaults, and a site with no publication must
+		// still be able to save those.
+		await expect( select ).not.toHaveAttribute( 'required' );
 
 		const firstOption = select.locator( 'option' ).first();
 		await expect( firstOption ).toHaveAttribute( 'value', '' );
@@ -256,13 +260,12 @@ test.describe( 'Publication and Template Configuration', () => {
 	test( 'AC-003: post template dropdown is disabled and empty until a publication is selected', async ( {
 		page,
 	} ) => {
-		// "Disabled" half of this AC is a known failure -- see the assertion
-		// below for the concrete reason (real PRD/implementation mismatch,
-		// not flakiness). Remove test.fail() once Registrar.php or the PRD
-		// is reconciled.
-		test.fail();
-
 		seedConnectedAndAuthorized();
+		const pubId = 'qa-e2e-pub-ac003';
+		seedPublications( [ { id: pubId, name: 'QA Publication AC003' } ] );
+		seedTemplates( pubId, [
+			{ id: 'qa-e2e-tpl-ac003', name: 'QA Template AC003' },
+		] );
 		setSettingsOption( '', '' );
 
 		await page.goto( SETTINGS_PATH );
@@ -270,24 +273,19 @@ test.describe( 'Publication and Template Configuration', () => {
 		const select = page.locator( TPL_SELECT );
 		await expect( select ).toHaveCount( 1 );
 
-		// "Empty" half of the AC: only the placeholder option renders when no
-		// publication is selected (Registrar::render_post_template_id_field()
-		// only queries PostTemplates::get_post_templates() when publication_id
-		// is non-empty).
+		// Disabled and empty: only the placeholder option, and no way to pick it.
+		await expect( select ).toBeDisabled();
 		await expect( select.locator( 'option' ) ).toHaveCount( 1 );
 
-		// "Disabled" half of the AC: reading
-		// Registrar::render_post_template_id_field() shows the <select> is
-		// never server-rendered with a `disabled` attribute at all -- unlike
-		// the refresh button a few lines below it, which does use
-		// `disabled( '' === $publication_id )`. src/js/admin/settings/index.js
-		// only ever sets `templateSelect.disabled = true` transiently during
-		// an in-flight fetch (inside loadTemplates()), never on initial page
-		// load. This assertion follows the AC's literal wording and is
-		// expected to FAIL against the real DOM -- that failure is the
-		// evidence for a genuine PRD/implementation mismatch, not a flaky
-		// test.
+		// Selecting a publication loads its templates and enables the field.
+		await page.locator( PUB_SELECT ).selectOption( pubId );
+		await expect( select ).toBeEnabled();
+		await expect( select.locator( 'option' ) ).toHaveCount( 2 );
+
+		// Clearing the publication disables and empties it again.
+		await page.locator( PUB_SELECT ).selectOption( '' );
 		await expect( select ).toBeDisabled();
+		await expect( select.locator( 'option' ) ).toHaveCount( 1 );
 	} );
 
 	test( 'AC-004: post template dropdown populates automatically when publication selection changes', async ( {
@@ -524,6 +522,8 @@ test.describe( 'Publication and Template Configuration', () => {
 		await page.locator( '#submit' ).click();
 		await page.waitForURL( /page=beehiiv/ );
 
+		// The saved option also carries the gate defaults, so match only
+		// the two fields this form saves.
 		expect( readSettingsOption() ).toMatchObject( {
 			publication_id: pubId,
 			post_template_id: tplId,

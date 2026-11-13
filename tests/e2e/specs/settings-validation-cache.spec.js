@@ -164,6 +164,8 @@ test.describe( 'Settings validation & cache management', () => {
 			'<script>window.__qaXss=1;</script>qa-e2e-pub-xss';
 
 		const response = await submitSettingsForm( page, nonceFields, {
+			// The real form sends this flag with the Publication section.
+			'beehiiv_settings[_publication_section]': '1',
 			'beehiiv_settings[publication_id]': rawPublicationId,
 			'beehiiv_settings[post_template_id]': '',
 		} );
@@ -182,6 +184,8 @@ test.describe( 'Settings validation & cache management', () => {
 		const rawTemplateId = '<b>bold</b>qa-e2e-tmpl-xss';
 
 		const response = await submitSettingsForm( page, nonceFields, {
+			// The real form sends this flag with the Publication section.
+			'beehiiv_settings[_publication_section]': '1',
 			'beehiiv_settings[publication_id]': '',
 			'beehiiv_settings[post_template_id]': rawTemplateId,
 		} );
@@ -199,11 +203,13 @@ test.describe( 'Settings validation & cache management', () => {
 		// Establish a known-good baseline through a real, valid save first.
 		let nonceFields = await readSettingsFormNonceFields( page );
 		await submitSettingsForm( page, nonceFields, {
+			// The real form sends this flag with the Publication section.
+			'beehiiv_settings[_publication_section]': '1',
 			'beehiiv_settings[publication_id]': 'qa-e2e-pub-baseline',
 			'beehiiv_settings[post_template_id]': 'qa-e2e-tmpl-baseline',
 		} );
 		const baseline = readSettingsOption();
-		expect( baseline ).toEqual( {
+		expect( baseline ).toMatchObject( {
 			publication_id: 'qa-e2e-pub-baseline',
 			post_template_id: 'qa-e2e-tmpl-baseline',
 			// The required-template setting is off unless its box is checked.
@@ -235,6 +241,8 @@ test.describe( 'Settings validation & cache management', () => {
 
 		const nonceFields = await readSettingsFormNonceFields( page );
 		const response = await submitSettingsForm( page, nonceFields, {
+			// The real form sends this flag with the Publication section.
+			'beehiiv_settings[_publication_section]': '1',
 			'beehiiv_settings[publication_id]': publicationId,
 			'beehiiv_settings[post_template_id]': '',
 		} );
@@ -254,6 +262,8 @@ test.describe( 'Settings validation & cache management', () => {
 
 		const nonceFields = await readSettingsFormNonceFields( page );
 		const response = await submitSettingsForm( page, nonceFields, {
+			// The real form sends this flag with the Publication section.
+			'beehiiv_settings[_publication_section]': '1',
 			'beehiiv_settings[publication_id]': '',
 			'beehiiv_settings[post_template_id]': '',
 		} );

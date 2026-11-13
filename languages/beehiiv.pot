@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-12T16:55:02+00:00\n"
+"POT-Creation-Date: 2026-11-13T09:57:47+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: beehiiv\n"
@@ -32,68 +32,127 @@ msgstr ""
 msgid "beehiiv Settings"
 msgstr ""
 
-#: includes/Admin/Registrar.php:63
+#: includes/Admin/Registrar.php:77
 #: src/js/editor/post-settings/components/newsletter-publication-select.js:92
 msgid "Publication"
 msgstr ""
 
-#: includes/Admin/Registrar.php:70
+#: includes/Admin/Registrar.php:84
 msgid "Default publication"
 msgstr ""
 
-#: includes/Admin/Registrar.php:81
+#: includes/Admin/Registrar.php:95
 msgid "Default post template"
 msgstr ""
 
-#: includes/Admin/Registrar.php:92
+#: includes/Admin/Registrar.php:106
 msgid "Template choice"
 msgstr ""
 
-#: includes/Admin/Registrar.php:108
-msgid "Default beehiiv publication and post template for newsletters sent from this site."
+#: includes/Admin/Registrar.php:125
+msgid "Subscriber gating"
 msgstr ""
 
 #: includes/Admin/Registrar.php:132
-#: src/js/admin/settings/index.js:259
+msgid "Default gate headline"
+msgstr ""
+
+#: includes/Admin/Registrar.php:141
+msgid "Default gate text"
+msgstr ""
+
+#: includes/Admin/Registrar.php:150
+msgid "Default subscribe form ID"
+msgstr ""
+
+#: includes/Admin/Registrar.php:159
+msgid "Unlock cookie lifetime"
+msgstr ""
+
+#: includes/Admin/Registrar.php:173
+msgid "Defaults for gated content blocks. A gated content block can override the headline and text."
+msgstr ""
+
+#: includes/Admin/Registrar.php:177
+msgid "Gated content stays in the page source. Gating prompts a subscription; it does not protect content."
+msgstr ""
+
+#: includes/Admin/Registrar.php:199
+msgid "Plain text. Leave blank to show no headline."
+msgstr ""
+
+#: includes/Admin/Registrar.php:220
+msgid "Plain text. Leave blank to show no text."
+msgstr ""
+
+#: includes/Admin/Registrar.php:242
+msgid "Used by every gated content block that has no form ID of its own."
+msgstr ""
+
+#: includes/Admin/Registrar.php:244
+#: src/js/blocks/subscribe-form/edit.js:44
+msgid "Paste the form ID from your beehiiv embed code (the value of data-beehiiv-form)."
+msgstr ""
+
+#: includes/Admin/Registrar.php:246
+msgid "The form must be Inline and set to Show a success message, not Redirect."
+msgstr ""
+
+#: includes/Admin/Registrar.php:271
+msgid "days"
+msgstr ""
+
+#. translators: 1: minimum days, 2: maximum days, 3: default days.
+#: includes/Admin/Registrar.php:277
+#, php-format
+msgid "How long a reader stays unlocked after subscribing. Whole days from %1$d to %2$d. Anything else uses %3$d."
+msgstr ""
+
+#: includes/Admin/Registrar.php:299
+msgid "Default beehiiv publication and post template for newsletters sent from this site."
+msgstr ""
+
+#: includes/Admin/Registrar.php:322
+#: src/js/admin/settings/index.js:285
 #: src/js/editor/post-settings/components/newsletter-publication-select.js:78
 msgid "Select a publication"
 msgstr ""
 
-#: includes/Admin/Registrar.php:166
+#: includes/Admin/Registrar.php:356
 #: src/js/admin/settings/index.js:25
 #: src/js/editor/post-settings/components/newsletter-publication-select.js:115
 msgid "Refresh publications"
 msgstr ""
 
-#: includes/Admin/Registrar.php:171
+#: includes/Admin/Registrar.php:361
 msgid "Preselected on new posts. Editors can choose a different publication for each post in the beehiiv sidebar."
 msgstr ""
 
-#: includes/Admin/Registrar.php:201
+#: includes/Admin/Registrar.php:392
 #: src/js/admin/settings/index.js:138
 msgid "No default template"
 msgstr ""
 
-#: includes/Admin/Registrar.php:236
+#: includes/Admin/Registrar.php:427
 #: src/js/admin/settings/index.js:21
 #: src/js/editor/post-settings/components/newsletter-template-select.js:251
 msgid "Refresh templates"
 msgstr ""
 
-#: includes/Admin/Registrar.php:241
+#: includes/Admin/Registrar.php:432
 #: src/js/admin/settings/index.js:59
 msgid "This publication has no post templates. Create a template in beehiiv, then refresh."
 msgstr ""
 
-#: includes/Admin/Registrar.php:250
+#: includes/Admin/Registrar.php:441
 msgid "Default newsletter template for this site. Refresh after changing templates in beehiiv."
 msgstr ""
 
-#: includes/Admin/Registrar.php:277
+#: includes/Admin/Registrar.php:468
 msgid "Require editors to choose a post template"
 msgstr ""
 
-#: includes/Admin/Registrar.php:282
+#: includes/Admin/Registrar.php:473
 msgid "When on, editors must pick a template for each new post. The default template is not applied automatically to those posts, and sending is blocked until a template is chosen."
 msgstr ""
 
@@ -155,34 +214,34 @@ msgstr ""
 msgid "Read more in the documentation on the %s."
 msgstr ""
 
-#: includes/Admin/Views/settings-page.php:38
+#: includes/Admin/Views/settings-page.php:39
 #: src/js/blocks/advertisement/edit.js:157
 msgid "Learn more about plans."
 msgstr ""
 
 #. translators: 1: Max plan, 2: Enterprise plan, 3: pricing link.
-#: includes/Admin/Views/settings-page.php:53
+#: includes/Admin/Views/settings-page.php:54
 #, php-format
 msgid "Your connected beehiiv account doesn't have access to send newsletters. This integration requires the %1$s or %2$s plan. %3$s"
 msgstr ""
 
-#: includes/Admin/Views/settings-page.php:54
-#: includes/Admin/Views/settings-page.php:65
+#: includes/Admin/Views/settings-page.php:55
+#: includes/Admin/Views/settings-page.php:66
 msgid "Max"
 msgstr ""
 
-#: includes/Admin/Views/settings-page.php:55
-#: includes/Admin/Views/settings-page.php:66
+#: includes/Admin/Views/settings-page.php:56
+#: includes/Admin/Views/settings-page.php:67
 msgid "Enterprise"
 msgstr ""
 
 #. translators: 1: Max plan, 2: Enterprise plan, 3: pricing link.
-#: includes/Admin/Views/settings-page.php:64
+#: includes/Admin/Views/settings-page.php:65
 #, php-format
 msgid "The beehiiv integration is available to publications on the %1$s and %2$s plans. %3$s"
 msgstr ""
 
-#: includes/Admin/Views/settings-page.php:84
+#: includes/Admin/Views/settings-page.php:91
 msgid "Save settings"
 msgstr ""
 
@@ -196,6 +255,10 @@ msgstr ""
 #: includes/API/Resources/AdvertisementOpportunities.php:198
 #, php-format
 msgid "%1$s – %2$s"
+msgstr ""
+
+#: includes/Blocks/GatedContent.php:154
+msgid "Content unlocked."
 msgstr ""
 
 #: includes/Connection/Manager.php:57
@@ -237,20 +300,20 @@ msgstr ""
 msgid "Something went wrong preparing the email draft. Try again."
 msgstr ""
 
-#: includes/Newsletter/PostSettingsBuilder.php:741
-#: includes/Newsletter/PostSettingsBuilder.php:790
+#: includes/Newsletter/PostSettingsBuilder.php:747
+#: includes/Newsletter/PostSettingsBuilder.php:796
 #: includes/Newsletter/Sender.php:1365
 msgid "That send date has already passed. Pick a future date and time in the newsletter schedule."
 msgstr ""
 
-#: includes/Newsletter/PostSettingsBuilder.php:765
-#: includes/Newsletter/PostSettingsBuilder.php:820
-#: includes/Newsletter/PostSettingsBuilder.php:861
+#: includes/Newsletter/PostSettingsBuilder.php:771
+#: includes/Newsletter/PostSettingsBuilder.php:826
+#: includes/Newsletter/PostSettingsBuilder.php:867
 #: includes/Newsletter/Sender.php:1376
 msgid "That send date isn't valid. Open the newsletter schedule and choose a different date and time."
 msgstr ""
 
-#: includes/Newsletter/PostSettingsBuilder.php:808
+#: includes/Newsletter/PostSettingsBuilder.php:814
 #: includes/Newsletter/Sender.php:1370
 msgid "The newsletter can't send before this post publishes. Choose a later send time, or schedule the post first."
 msgstr ""
@@ -561,20 +624,20 @@ msgstr ""
 msgid "These email addresses aren't valid: %s"
 msgstr ""
 
-#: src/js/admin/settings/index.js:186
-#: src/js/admin/settings/index.js:302
+#: src/js/admin/settings/index.js:204
+#: src/js/admin/settings/index.js:328
 #: src/js/blocks/advertisement/edit.js:219
 #: src/js/editor/post-settings/components/newsletter-publication-select.js:114
 #: src/js/editor/post-settings/components/newsletter-template-select.js:250
 msgid "Refreshing…"
 msgstr ""
 
-#: src/js/admin/settings/index.js:213
+#: src/js/admin/settings/index.js:235
 #: src/js/editor/post-settings/components/newsletter-template-select.js:258
 msgid "Templates updated from beehiiv."
 msgstr ""
 
-#: src/js/admin/settings/index.js:316
+#: src/js/admin/settings/index.js:342
 #: src/js/editor/post-settings/components/newsletter-publication-select.js:122
 msgid "Publications updated from beehiiv."
 msgstr ""
@@ -626,6 +689,60 @@ msgstr ""
 msgid "Opportunities are cached. Refresh to pull the latest from beehiiv."
 msgstr ""
 
+#: src/js/blocks/gated-content-divider/edit.js:30
+msgid "Ignored. Only the first divider is used. Delete this one."
+msgstr ""
+
+#: src/js/blocks/gated-content-divider/edit.js:34
+msgid "Preview ends here. Content below is gated."
+msgstr ""
+
+#: src/js/blocks/gated-content/edit.js:40
+msgid "Gate settings"
+msgstr ""
+
+#: src/js/blocks/gated-content/edit.js:46
+msgid "No beehiiv publication is set. Choose one in <a>beehiiv settings</a>."
+msgstr ""
+
+#: src/js/blocks/gated-content/edit.js:55
+#: src/js/blocks/subscribe-form/edit.js:39
+msgid "Subscribe form ID"
+msgstr ""
+
+#: src/js/blocks/gated-content/edit.js:61
+msgid "Leave blank to use the default form ID from the beehiiv settings page. Form must be Inline and set to Show a success message, not Redirect."
+msgstr ""
+
+#: src/js/blocks/gated-content/edit.js:67
+msgid "Headline"
+msgstr ""
+
+#: src/js/blocks/gated-content/edit.js:72
+msgid "Leave blank to use the default from the beehiiv settings page. If that is blank too, no headline is shown."
+msgstr ""
+
+#: src/js/blocks/gated-content/edit.js:78
+#: src/js/blocks/gated-content/edit.js:108
+msgid "Text"
+msgstr ""
+
+#: src/js/blocks/gated-content/edit.js:83
+msgid "Leave blank to use the default from the beehiiv settings page. If that is blank too, no text is shown."
+msgstr ""
+
+#: src/js/blocks/gated-content/edit.js:89
+msgid "Gated content stays in the page source. Use gating to prompt a subscription, not to protect private content."
+msgstr ""
+
+#: src/js/blocks/gated-content/edit.js:96
+msgid "Gate card colors"
+msgstr ""
+
+#: src/js/blocks/gated-content/edit.js:100
+msgid "Background"
+msgstr ""
+
 #: src/js/blocks/subscribe-form/edit.js:22
 msgid "The subscribe form is only rendered on the front-end and cannot be previewed here. View the page to see your form. If the form does not appear, make sure the entered form ID is valid."
 msgstr ""
@@ -636,14 +753,6 @@ msgstr ""
 
 #: src/js/blocks/subscribe-form/edit.js:35
 msgid "Form settings"
-msgstr ""
-
-#: src/js/blocks/subscribe-form/edit.js:39
-msgid "Subscribe form ID"
-msgstr ""
-
-#: src/js/blocks/subscribe-form/edit.js:44
-msgid "Paste the form ID from your beehiiv embed code (the value of data-beehiiv-form)."
 msgstr ""
 
 #: src/js/blocks/subscribe-form/edit.js:51
@@ -975,6 +1084,8 @@ msgid "Places a beehiiv advertisement in the newsletter. Outputs nothing on the 
 msgstr ""
 
 #: src/js/blocks/advertisement/block.json
+#: src/js/blocks/gated-content-divider/block.json
+#: src/js/blocks/gated-content/block.json
 #: src/js/blocks/subscribe-form/block.json
 msgctxt "block keyword"
 msgid "beehiiv"
@@ -990,6 +1101,54 @@ msgctxt "block keyword"
 msgid "ad"
 msgstr ""
 
+#: src/js/blocks/gated-content-divider/block.json
+msgctxt "block title"
+msgid "beehiiv Gate Divider"
+msgstr ""
+
+#: src/js/blocks/gated-content-divider/block.json
+msgctxt "block description"
+msgid "Marks where the preview ends inside a beehiiv Gated Content block."
+msgstr ""
+
+#: src/js/blocks/gated-content-divider/block.json
+#: src/js/blocks/gated-content/block.json
+msgctxt "block keyword"
+msgid "gate"
+msgstr ""
+
+#: src/js/blocks/gated-content-divider/block.json
+msgctxt "block keyword"
+msgid "divider"
+msgstr ""
+
+#: src/js/blocks/gated-content/block.json
+msgctxt "block title"
+msgid "beehiiv Gated Content"
+msgstr ""
+
+#: src/js/blocks/gated-content/block.json
+msgctxt "block description"
+msgid "Shows a preview, then blurs and locks the rest until the reader subscribes through a beehiiv form."
+msgstr ""
+
+#: src/js/blocks/gated-content/block.json
+msgctxt "block keyword"
+msgid "paywall"
+msgstr ""
+
+#: src/js/blocks/gated-content/block.json
+#: src/js/blocks/subscribe-form/block.json
+msgctxt "block keyword"
+msgid "subscribe"
+msgstr ""
+
+#: src/js/blocks/gated-content/block.json
+#: src/js/blocks/subscribe-form/block.json
+msgctxt "block keyword"
+msgid "newsletter"
+msgstr ""
+
 #: src/js/blocks/subscribe-form/block.json
 msgctxt "block title"
 msgid "beehiiv Subscribe Form"
@@ -998,14 +1157,4 @@ msgstr ""
 #: src/js/blocks/subscribe-form/block.json
 msgctxt "block description"
 msgid "Newsletter subscribe form powered by beehiiv."
-msgstr ""
-
-#: src/js/blocks/subscribe-form/block.json
-msgctxt "block keyword"
-msgid "newsletter"
-msgstr ""
-
-#: src/js/blocks/subscribe-form/block.json
-msgctxt "block keyword"
-msgid "subscribe"
 msgstr ""
