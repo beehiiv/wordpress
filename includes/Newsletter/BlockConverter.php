@@ -11,6 +11,7 @@ use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\AdvertisementOpportunities;
 use Beehiiv\Editor\Meta;
 use Beehiiv\Newsletter\Converters\ColumnsBlockConverter;
+use Beehiiv\Newsletter\Converters\GroupBlockConverter;
 use Beehiiv\Newsletter\Converters\MediaTextBlockConverter;
 use Beehiiv\Newsletter\Converters\TableBlockConverter;
 use Beehiiv\Newsletter\Converters\ListBlockConverter;
@@ -32,15 +33,21 @@ defined( 'ABSPATH' ) || exit;
  * - `core/quote` — `convert_quote_block()`
  * - `core/pullquote` — `convert_pullquote_block()`
  * - `core/embed` — `convert_embed_block()`
+ * - `core/columns` — `convert_columns_block_to_blocks()` (beehiiv `columns` block, up to 3 columns)
  * - `core/media-text` — `convert_media_text_block()` (beehiiv `columns` block)
  * - `core/buttons` / inner `core/button` — `convert_buttons_block()`, `convert_button_block()`
  * - `core/separator` — beehiiv `content_break`
  * - `core/more` — snippet newsletters only; beehiiv Read More `button` via `convert_more_block()`
  * - `beehiiv/advertisement` — beehiiv `advertisement` block via `convert_advertisement_block()`
  *
- * Layout blocks (`core/group`, `core/columns`, etc.) are skipped at the top level.
- * `convert_columns_block()` exists for internal reuse (e.g. `core/media-text`) and is
- * not wired into the main block walk yet. Snippet mode stops at `core/more`.
+ * - `core/group` — `convert_group_block()` (beehiiv `section` block holding the converted inner
+ *   blocks; only for posts whose first sync used sections, see `PostSettingsBuilder`; a Group
+ *   inside a Group is omitted because beehiiv sections cannot hold sections)
+ *
+ * `core/group` is skipped at the top level for posts first synced before section support.
+ * A `core/columns` block with more than 3 columns is omitted. A `core/columns` block
+ * nested inside a column is not converted to a columns block; its inner blocks are
+ * emitted at the top level instead. Snippet mode stops at `core/more`.
  *
  * @since 1.0.0
  */
@@ -49,11 +56,13 @@ final class BlockConverter {
 	/**
 	 * Convert a WordPress post's blocks to beehiiv blocks.
 	 *
-	 * @param WP_Post $post_object Post object.
+	 * @param WP_Post $post_object   Post object.
+	 * @param bool    $convert_groups Whether `core/group` blocks become beehiiv sections. When false,
+	 *                                Group blocks are omitted.
 	 * @return array<int, array<string, mixed>>
 	 * @since 1.0.0
 	 */
-	public static function convert_supported_blocks( WP_Post $post_object ): array {
+	public static function convert_supported_blocks( WP_Post $post_object, bool $convert_groups = false ): array {
 		$beehiiv_blocks = [];
 		$wp_blocks      = parse_blocks( $post_object->post_content );
 
@@ -73,7 +82,8 @@ final class BlockConverter {
 		$converted_blocks = self::convert_blocks(
 			$wp_blocks,
 			$post_object,
-			$is_send_newsletter_snippet
+			$is_send_newsletter_snippet,
+			$convert_groups
 		);
 
 		return array_values(
@@ -89,13 +99,15 @@ final class BlockConverter {
 	 * @param array<int, array<string, mixed>> $wp_blocks                  Parsed blocks.
 	 * @param WP_Post                          $post_object                Post object.
 	 * @param bool                             $is_send_newsletter_snippet Whether snippet mode is enabled.
+	 * @param bool                             $convert_groups             Whether Group blocks become sections.
 	 * @return array<int, array<string, mixed>>
 	 * @since 1.0.0
 	 */
 	private static function convert_blocks(
 		array $wp_blocks,
 		WP_Post $post_object,
-		bool $is_send_newsletter_snippet
+		bool $is_send_newsletter_snippet,
+		bool $convert_groups = false
 	): array {
 		$beehiiv_blocks = [];
 
@@ -109,6 +121,16 @@ final class BlockConverter {
 			if ( $is_send_newsletter_snippet && 'core/more' === $block_name ) {
 				$beehiiv_blocks[] = self::convert_more_block( (string) get_permalink( $post_object ) );
 				break;
+			}
+
+			if ( 'core/group' === $block_name ) {
+				$section_block = $convert_groups ? self::convert_group_block( $wp_block, $post_object ) : [];
+
+				if ( ! empty( $section_block ) ) {
+					$beehiiv_blocks[] = $section_block;
+				}
+
+				continue;
 			}
 
 			if ( ! SupportedBlocks::is_supported( $block_name, $is_send_newsletter_snippet ) ) {
@@ -127,6 +149,11 @@ final class BlockConverter {
 				continue;
 			}
 
+			if ( 'core/columns' === $block_name ) {
+				$beehiiv_blocks = array_merge( $beehiiv_blocks, self::convert_columns_block_to_blocks( $wp_block ) );
+				continue;
+			}
+
 			$beehiiv_block = self::convert_block( $wp_block );
 
 			if ( ! empty( $beehiiv_block ) ) {
@@ -135,6 +162,48 @@ final class BlockConverter {
 		}
 
 		return $beehiiv_blocks;
+	}
+
+	/**
+	 * Convert a core/group block to a beehiiv section block.
+	 *
+	 * The Group's inner blocks are converted with the same rules as top-level blocks and
+	 * placed in the section in their original order. A Group nested inside a Group is
+	 * omitted with its inner blocks, because a beehiiv section cannot hold another section
+	 * and sending one makes beehiiv reject the whole post. The Group's background colour, text
+	 * colour, padding, margin and border go in the section's `visual_settings`; every other setting is
+	 * left at beehiiv defaults. Returns an empty array when no inner block converts, so no empty section
+	 * is sent. Snippet-only blocks are omitted inside a section.
+	 *
+	 * @param array<string, mixed> $wp_block    Parsed core/group block.
+	 * @param WP_Post              $post_object Post object.
+	 * @return array<string, mixed>
+	 * @since 1.2.0
+	 */
+	private static function convert_group_block( array $wp_block, WP_Post $post_object ): array {
+		$inner_blocks = self::convert_blocks(
+			$wp_block['innerBlocks'] ?? [],
+			$post_object,
+			false,
+			false
+		);
+
+		if ( empty( $inner_blocks ) ) {
+			return [];
+		}
+
+		$section = [
+			'type'   => 'section',
+			'blocks' => $inner_blocks,
+		];
+
+		$visual_settings = GroupBlockConverter::build_visual_settings( $wp_block );
+
+		if ( ! empty( $visual_settings ) ) {
+			$section['visual_settings'] = $visual_settings;
+		}
+
+		return $section;
 	}
 
 	/**
@@ -335,7 +404,7 @@ final class BlockConverter {
 		$block_background_color = FormattedTextParser::resolve_paragraph_block_background_color( $inner_html, $attrs );
 		$parsed                 = FormattedTextParser::parse( $inline_html, $block_text_color );
 
-		if ( '' === trim( $parsed['plaintext'] ) ) {
+		if ( '' === preg_replace( '/[\s\x{00A0}]+/u', '', $parsed['plaintext'] ) ) {
 			return [];
 		}
 
@@ -520,64 +589,116 @@ final class BlockConverter {
 	/**
 	 * Convert a core/columns block to a beehiiv columns block.
 	 *
-	 * Not included in the top-level newsletter block walk yet. Intended for
-	 * internal reuse by `convert_media_text_block()` and future direct columns support.
+	 * Returns an empty array when the block is not converted to a columns block,
+	 * including when it has more columns than beehiiv accepts.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
 	public static function convert_columns_block( array $wp_block ): array {
+		foreach ( self::convert_columns_block_to_blocks( $wp_block ) as $beehiiv_block ) {
+			if ( 'columns' === ( $beehiiv_block['type'] ?? '' ) ) {
+				return $beehiiv_block;
+			}
+		}
+
+		return [];
+	}
+
+	/**
+	 * Convert a core/columns block to beehiiv blocks.
+	 *
+	 * A block with up to 3 columns becomes one beehiiv columns block. A block with
+	 * more columns is omitted entirely, and the row is never split. A core/columns
+	 * block nested inside a column is not converted to a columns block: its inner
+	 * blocks follow the outer columns block at the top level.
+	 *
+	 * @param array<string, mixed> $wp_block Parsed block.
+	 * @return array<int, array<string, mixed>>
+	 * @since 1.2.0
+	 */
+	public static function convert_columns_block_to_blocks( array $wp_block ): array {
 		if ( 'core/columns' !== ( $wp_block['blockName'] ?? '' ) ) {
 			return [];
 		}
 
 		$attrs                 = $wp_block['attrs'] ?? [];
 		$inner_html            = (string) ( $wp_block['innerHTML'] ?? '' );
-		$inner_blocks          = $wp_block['innerBlocks'] ?? [];
-		$stack_on_mobile       = ColumnsBlockConverter::resolve_stack_on_mobile( $attrs, $inner_html );
 		$parent_vertical_align = isset( $attrs['verticalAlignment'] ) && is_string( $attrs['verticalAlignment'] )
 			? $attrs['verticalAlignment']
 			: null;
-		$beehiiv_columns       = [];
+		$column_blocks         = [];
+		$converted_columns     = [];
+		$nested_blocks         = [];
 
-		foreach ( $inner_blocks as $column_block ) {
+		foreach ( $wp_block['innerBlocks'] ?? [] as $column_block ) {
 			if ( 'core/column' !== ( $column_block['blockName'] ?? '' ) ) {
 				continue;
 			}
 
-			$column_inner_blocks = $column_block['innerBlocks'] ?? [];
-			$column_blocks       = self::convert_layout_block_inner_blocks( $column_inner_blocks );
-
-			if ( empty( $column_blocks ) ) {
-				continue;
-			}
-
-			$beehiiv_column = ColumnsBlockConverter::build_beehiiv_column(
-				$column_blocks,
-				$column_block,
-				$parent_vertical_align
+			$column_blocks[]     = $column_block;
+			$converted_columns[] = self::convert_layout_block_inner_blocks(
+				$column_block['innerBlocks'] ?? [],
+				$nested_blocks
 			);
+		}
 
-			if ( ! empty( $beehiiv_column ) ) {
-				$beehiiv_columns[] = $beehiiv_column;
+		if ( count( $column_blocks ) > ColumnsBlockConverter::MAX_COLUMNS ) {
+			return [];
+		}
+
+		$kept_blocks           = [];
+		$kept_blocks_by_column = [];
+
+		foreach ( $column_blocks as $index => $column_block ) {
+			if ( ! empty( $converted_columns[ $index ] ) ) {
+				$kept_blocks[]           = $column_block;
+				$kept_blocks_by_column[] = $converted_columns[ $index ];
 			}
 		}
 
-		return ColumnsBlockConverter::build_beehiiv_columns_block( $beehiiv_columns, $stack_on_mobile );
+		$widths  = ColumnsBlockConverter::resolve_row_widths( $kept_blocks );
+		$columns = [];
+
+		foreach ( $kept_blocks as $index => $column_block ) {
+			$columns[] = ColumnsBlockConverter::build_beehiiv_column_from_definition(
+				$kept_blocks_by_column[ $index ],
+				$widths[ $index ],
+				ColumnsBlockConverter::resolve_column_vertical_alignment(
+					$column_block['attrs'] ?? [],
+					(string) ( $column_block['innerHTML'] ?? '' ),
+					$parent_vertical_align
+				)
+			);
+		}
+
+		$columns_block = ColumnsBlockConverter::build_beehiiv_columns_block(
+			$columns,
+			ColumnsBlockConverter::resolve_stack_on_mobile( $attrs, $inner_html )
+		);
+
+		return array_values( array_filter( array_merge( [ $columns_block ], $nested_blocks ) ) );
 	}
 
 	/**
 	 * Convert nested inner blocks inside a layout block to beehiiv blocks.
 	 *
 	 * Used by layout blocks such as columns and media-text. Unsupported blocks are
-	 * skipped; snippet-only blocks are omitted.
+	 * skipped; snippet-only blocks are omitted. A nested core/columns block is never
+	 * converted inside a column. When `$nested_blocks` is passed, its inner blocks are
+	 * added to it for the caller to emit at the top level. Without it, the nested block
+	 * is omitted.
 	 *
-	 * @param array<int, array<string, mixed>> $wp_blocks Parsed inner blocks.
+	 * @param array<int, array<string, mixed>>      $wp_blocks     Parsed inner blocks.
+	 * @param array<int, array<string, mixed>>|null $nested_blocks Receives the inner blocks of nested columns.
 	 * @return array<int, array<string, mixed>>
 	 * @since 1.0.0
 	 */
-	private static function convert_layout_block_inner_blocks( array $wp_blocks ): array {
+	private static function convert_layout_block_inner_blocks(
+		array $wp_blocks,
+		?array &$nested_blocks = null
+	): array {
 		$beehiiv_blocks = [];
 
 		foreach ( $wp_blocks as $wp_block ) {
@@ -586,6 +707,22 @@ final class BlockConverter {
 			}
 
 			$block_name = (string) $wp_block['blockName'];
+
+			if ( 'core/columns' === $block_name ) {
+				if ( null !== $nested_blocks ) {
+					foreach ( $wp_block['innerBlocks'] ?? [] as $nested_column ) {
+						if ( 'core/column' === ( $nested_column['blockName'] ?? '' ) ) {
+							$nested_converted = self::convert_layout_block_inner_blocks(
+								$nested_column['innerBlocks'] ?? [],
+								$nested_blocks
+							);
+							$nested_blocks    = array_merge( $nested_blocks, $nested_converted );
+						}
+					}
+				}
+
+				continue;
+			}
 
 			if ( 'core/buttons' === $block_name ) {
 				$beehiiv_blocks = array_merge( $beehiiv_blocks, self::convert_buttons_block( $wp_block ) );
@@ -617,7 +754,8 @@ final class BlockConverter {
 	 * Maps attrs.head into rows[0] with headerRow when the Header section is enabled
 	 * in the block editor. attrs.body supplies remaining rows. When attrs are empty
 	 * (common for query-sourced table attributes in PHP parse_blocks), rows are read
-	 * from innerHTML instead. The table is omitted when every cell is empty.
+	 * from innerHTML instead. The table is omitted when every cell is empty. A block
+	 * background colour is sent as `visual_settings.background_color`.
 	 * Footer rows are omitted; beehiiv has no table footer support.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
@@ -674,11 +812,21 @@ final class BlockConverter {
 			return [];
 		}
 
-		return [
+		$table_block = [
 			'type'      => 'table',
 			'rows'      => $rows,
 			'headerRow' => $header_row,
 		];
+
+		$background_color = FormattedTextParser::resolve_table_block_background_color( $inner_html, $attrs );
+
+		if ( null !== $background_color && '' !== $background_color ) {
+			$table_block['visual_settings'] = [
+				'background_color' => $background_color,
+			];
+		}
+
+		return $table_block;
 	}
 
 	/**
@@ -958,8 +1106,9 @@ final class BlockConverter {
 	 * Convert a core/media-text block to a beehiiv columns block.
 	 *
 	 * Maps the media side to an image column and the content side to converted
-	 * inner blocks. Blocks with video media are omitted entirely. Respects media
-	 * position, column widths, vertical alignment, and mobile stacking.
+	 * inner blocks. Blocks with video media, or with no valid image, are omitted
+	 * entirely. Respects media position, column widths, vertical alignment, and
+	 * mobile stacking.
 	 *
 	 * @param array<string, mixed> $wp_block Parsed block.
 	 * @return array<string, mixed>
@@ -979,7 +1128,12 @@ final class BlockConverter {
 		$media_width     = MediaTextBlockConverter::resolve_media_width( $attrs, $inner_html );
 		$content_width   = max( 1, min( 100, 100 - $media_width ) );
 
-		$media_blocks   = self::convert_media_text_media_blocks( $attrs, $inner_html );
+		$media_blocks = self::convert_media_text_media_blocks( $attrs, $inner_html );
+
+		if ( empty( $media_blocks ) ) {
+			return [];
+		}
+
 		$content_blocks = self::convert_layout_block_inner_blocks( $inner_blocks );
 
 		if ( empty( $content_blocks ) && '' !== $inner_html ) {

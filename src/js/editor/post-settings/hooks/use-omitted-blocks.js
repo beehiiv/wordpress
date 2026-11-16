@@ -34,6 +34,22 @@ function resolveOmittedBlockTarget( ancestors, blockClientId ) {
 }
 
 /**
+ * Whether a Group block sits inside another Group block.
+ *
+ * beehiiv sections cannot hold sections, so the inner Group is omitted.
+ *
+ * @param {WPBlock}         block     Block being visited.
+ * @param {BlockAncestor[]} ancestors Root-to-parent chain for the block.
+ * @return {boolean} True when the block is a Group nested in a Group.
+ */
+function isGroupInsideGroup( block, ancestors ) {
+	return (
+		'core/group' === block.name &&
+		ancestors.some( ( ancestor ) => 'core/group' === ancestor.name )
+	);
+}
+
+/**
  * Collect client IDs for blocks omitted from the newsletter.
  *
  * @param {WPBlock[]} blocks Parsed top-level blocks.
@@ -49,7 +65,10 @@ export function collectOmittedBlockClientIds( blocks ) {
 	 */
 	function visit( blockList, ancestors = [] ) {
 		for ( const block of blockList ) {
-			if ( isOmittedFromNewsletter( block ) ) {
+			if (
+				isOmittedFromNewsletter( block ) ||
+				isGroupInsideGroup( block, ancestors )
+			) {
 				targets.add(
 					resolveOmittedBlockTarget( ancestors, block.clientId )
 				);

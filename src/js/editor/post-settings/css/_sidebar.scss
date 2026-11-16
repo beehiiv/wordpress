@@ -8,6 +8,11 @@
 	);
 }
 
+// Also applies in the pre-publish panel, outside the sidebar content wrapper.
+.beehiiv-post-settings-notice {
+	margin-top: 12px;
+}
+
 .beehiiv-post-settings-content {
 	/* stylelint-disable selector-class-pattern -- @wordpress/components */
 	.components-panel__body {
@@ -34,7 +39,11 @@
 		align-items: flex-start;
 		display: flex;
 		gap: 6px;
-		margin-top: 10px !important;
+	}
+
+	// Gap only when the omitted-blocks line follows the send warning text.
+	.beehiiv-post-settings-notice__text + .beehiiv-post-settings-notice__omitted {
+		margin-top: 10px;
 	}
 
 	.beehiiv-post-settings-notice__omitted-icon {

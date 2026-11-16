@@ -24,20 +24,23 @@ import NewsletterPublicationSelect from './components/newsletter-publication-sel
 import NewsletterTemplateSelect from './components/newsletter-template-select';
 import PostSettingsNotice from './components/post-settings-notice';
 import SendNewsletterToggle from './components/send-newsletter-toggle';
+import EmailPreview from './components/email-preview';
 import TestEmailSend from './components/test-email-send';
 import IncompleteAdvertisementNotice from './components/incomplete-advertisement-notice';
-import { OmittedBlocksNoticeMessage } from './components/omitted-blocks-notice';
+import {
+	OmittedBlocksNotice,
+	OmittedBlocksNoticeMessage,
+} from './components/omitted-blocks-notice';
 import { useBeehiivEditorConfig } from './hooks/use-beehiiv-editor-config';
 import { useBeehiivPostMeta } from './hooks/use-beehiiv-post-meta';
 import { usePostPublication } from './hooks/use-post-publication';
 
 import './filters/with-omitted-block-indicator';
 import './editor.scss';
+import { PLUGIN_NAME, SIDEBAR_NAME } from './constants';
 
 const sidebarIcon = <BeehiivSidebarIcon />;
 
-const PLUGIN_NAME = 'beehiiv-post-settings';
-const SIDEBAR_NAME = 'beehiiv-post-settings';
 const PRE_PUBLISH_PANEL_NAME = 'beehiiv-send-newsletter';
 
 function usePostPublishDate() {
@@ -90,6 +93,7 @@ function NewsletterPublicationAndTemplate( { beehiivMeta, postPublication } ) {
 					onChange={ setBeehiivPostTemplateId }
 					publicationId={ effectivePublicationId }
 					isDefaultPublication={ isDefaultPublication }
+					requireChoice={ postPublication.requireChoice }
 					// Sync never changes a newsletter's template, so it is locked once linked.
 					disabled={ newsletterAlreadySent }
 				/>
@@ -214,6 +218,7 @@ function BeehiivPostSettingsPanel() {
 				<NewsletterLinkedNotice beehiivMeta={ beehiivMeta } />
 				{ newsletterAlreadySent && isNewsletterReady && (
 					<>
+						{ ! newsletterPublished && <OmittedBlocksNotice /> }
 						<NewsletterPublicationAndTemplate
 							beehiivMeta={ beehiivMeta }
 							postPublication={ postPublication }
@@ -287,6 +292,11 @@ function BeehiivPostSettingsPanel() {
 							'beehiiv'
 						) }
 					</PostSettingsNotice>
+				</PanelBody>
+			) }
+			{ isNewsletterReady && ! isTemplateMissing && sendToNewsletter && (
+				<PanelBody title={ __( 'Email preview', 'beehiiv' ) }>
+					<EmailPreview beehiivMeta={ beehiivMeta } />
 				</PanelBody>
 			) }
 			{ isNewsletterReady && ! isTemplateMissing && (
@@ -367,6 +377,14 @@ function BeehiivSendNewsletterPrePublishPanel() {
 		postPublishDate
 	);
 
+	// Pre-publish panels start collapsed. Open this one when the newsletter
+	// still needs a template, so the warning is visible before publishing.
+	const needsTemplate =
+		sendToNewsletter &&
+		! newsletterAlreadySent &&
+		isNewsletterReady &&
+		postPublication.missingTemplate;
+
 	const sendToNewsletterStatus =
 		sendToNewsletter && canWritePosts
 			? __( 'Yes', 'beehiiv' )
@@ -384,6 +402,7 @@ function BeehiivSendNewsletterPrePublishPanel() {
 				</>
 			}
 			icon={ false }
+			initialOpen={ needsTemplate }
 		>
 			{ showSendToggle && (
 				<SendNewsletterToggle

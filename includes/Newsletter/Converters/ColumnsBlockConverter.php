@@ -17,6 +17,13 @@ defined( 'ABSPATH' ) || exit;
 final class ColumnsBlockConverter {
 
 	/**
+	 * Most columns a single beehiiv columns block accepts.
+	 *
+	 * @var int
+	 */
+	public const MAX_COLUMNS = 3;
+
+	/**
 	 * Build a beehiiv columns block from converted column definitions.
 	 *
 	 * @param array<int, array<string, mixed>> $columns         Column definitions.
@@ -217,6 +224,118 @@ final class ColumnsBlockConverter {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Resolve the width of every column in one row.
+	 *
+	 * Percent (or unitless) widths are rounded to a whole percent one column at a
+	 * time, and a column with no width stays unset. When the widths use px, em, rem
+	 * or another non-percent unit, each width becomes that column's share of the
+	 * combined widths. If any column in such a row has no usable width, or the row
+	 * mixes units, no column gets a width.
+	 *
+	 * @param array<int, array<string, mixed>> $column_blocks Parsed core/column blocks in the row.
+	 * @return array<int, int|null> Width per column, in the same order.
+	 * @since 1.2.0
+	 */
+	public static function resolve_row_widths( array $column_blocks ): array {
+		$parsed = [];
+
+		foreach ( $column_blocks as $column_block ) {
+			$parsed[] = self::parse_raw_width(
+				self::resolve_column_raw_width(
+					$column_block['attrs'] ?? [],
+					(string) ( $column_block['innerHTML'] ?? '' )
+				)
+			);
+		}
+
+		$units = [];
+
+		foreach ( $parsed as $width ) {
+			if ( null !== $width ) {
+				$units[ $width['unit'] ] = true;
+			}
+		}
+
+		$only_percent = array_diff_key( $units, [ '%' => true ] );
+
+		if ( empty( $only_percent ) ) {
+			return array_map(
+				static function ( $width ): ?int {
+					return null === $width ? null : self::parse_width_percentage( $width['value'] );
+				},
+				$parsed
+			);
+		}
+
+		$none = array_fill( 0, count( $parsed ), null );
+
+		if ( 1 !== count( $units ) || in_array( null, $parsed, true ) ) {
+			return $none;
+		}
+
+		$total = array_sum( array_column( $parsed, 'value' ) );
+
+		if ( $total <= 0 ) {
+			return $none;
+		}
+
+		return array_map(
+			static function ( array $width ) use ( $total ): ?int {
+				$percentage = (int) round( $width['value'] / $total * 100 );
+
+				return self::is_valid_width_percentage( $percentage ) ? $percentage : null;
+			},
+			$parsed
+		);
+	}
+
+	/**
+	 * Read a column's raw width text from attrs or saved HTML.
+	 *
+	 * @param array<string, mixed> $attrs      Parsed core/column attrs.
+	 * @param string               $inner_html Saved column HTML.
+	 * @return string|null Raw width such as 33.33% or 200px, or null when unset.
+	 * @since 1.2.0
+	 */
+	private static function resolve_column_raw_width( array $attrs, string $inner_html ): ?string {
+		if ( isset( $attrs['width'] ) && ( is_string( $attrs['width'] ) || is_numeric( $attrs['width'] ) ) ) {
+			return trim( (string) $attrs['width'] );
+		}
+
+		$processor = new \WP_HTML_Tag_Processor( $inner_html );
+
+		if ( $processor->next_tag( 'DIV' ) ) {
+			$style = $processor->get_attribute( 'style' );
+
+			if ( is_string( $style ) && preg_match( '/flex-basis\s*:\s*([^;]+)/i', $style, $matches ) ) {
+				return trim( $matches[1] );
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Split a raw width into its number and unit.
+	 *
+	 * @param string|null $raw Raw width text.
+	 * @return array{value: float, unit: string}|null Null when empty or not a number with an optional unit.
+	 * @since 1.2.0
+	 */
+	private static function parse_raw_width( ?string $raw ): ?array {
+		if ( null === $raw || ! preg_match( '/^(\d*\.?\d+)\s*([a-z%]*)$/i', trim( $raw ), $matches ) ) {
+			return null;
+		}
+
+		$unit = strtolower( $matches[2] );
+
+		return [
+			'value' => (float) $matches[1],
+			'unit'  => '' === $unit ? '%' : $unit,
+		];
 	}
 
 	/**

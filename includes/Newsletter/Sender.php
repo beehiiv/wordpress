@@ -10,6 +10,7 @@ namespace Beehiiv\Newsletter;
 use Beehiiv\API\Resources\Posts;
 use Beehiiv\Connection\Manager;
 use Beehiiv\Editor\Meta;
+use WP_Error;
 use WP_Post;
 use WP_REST_Request;
 
@@ -40,14 +41,29 @@ final class Sender {
 	 *
 	 * Keeps a publication or template move from racing beehiiv's own send.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private const SENT_SAFETY_MARGIN = 60;
 
 	/**
+	 * Option name prefix for the per-post preview lock.
+	 *
+	 * @since 1.2.0
+	 */
+	private const PREVIEW_LOCK_PREFIX = 'beehiiv_preview_lock_';
+
+	/**
+	 * Seconds after which a preview lock counts as abandoned. Longer than the slowest sync
+	 * (a delete and a create, each with a 30 second request timeout).
+	 *
+	 * @since 1.2.0
+	 */
+	private const PREVIEW_LOCK_SECONDS = 180;
+
+	/**
 	 * Meta keys that lock once beehiiv has sent the newsletter.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private const LOCKED_AFTER_SEND_META_KEYS = [
 		Meta::BEEHIIV_PUBLICATION_ID,
@@ -83,7 +99,7 @@ final class Sender {
 	 * Applies to every save path (block editor, REST, PHP). Changes are ignored
 	 * rather than rejected so a full editor save does not fail.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param mixed  $check      Whether to allow updating metadata for the given type.
 	 * @param int    $post_id    Post ID.
@@ -122,10 +138,12 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function is_newsletter_published( int $post_id ): bool {
-		return self::has_beehiiv_post_id( $post_id ) && self::send_time_has_passed( $post_id );
+		return self::has_beehiiv_post_id( $post_id )
+			&& ! self::is_draft_linked( $post_id )
+			&& self::send_time_has_passed( $post_id );
 	}
 
 	/**
@@ -133,7 +151,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function send_time_has_passed( int $post_id ): bool {
 		$scheduled_at = get_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT, true );
@@ -159,7 +177,7 @@ final class Sender {
 	 * @param string $meta_key Meta key.
 	 * @param string $value    Value.
 	 * @return void
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function update_locked_meta( int $post_id, string $meta_key, string $value ): void {
 		self::$bypass_meta_lock = true;
@@ -174,7 +192,7 @@ final class Sender {
 	 * @param string $publication_id   Publication the beehiiv post was created in.
 	 * @param string $post_template_id Template it was created with.
 	 * @return void
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function record_linked_publication(
 		int $post_id,
@@ -191,7 +209,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return void
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function clear_linked_publication( int $post_id ): void {
 		delete_post_meta( $post_id, Meta::BEEHIIV_LINKED_PUBLICATION_ID );
@@ -380,8 +398,272 @@ final class Sender {
 		self::clear_linked_publication( $post_id );
 		delete_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT );
 		delete_post_meta( $post_id, Meta::BEEHIIV_SYNCED_SUBTITLE );
+		delete_post_meta( $post_id, Meta::BEEHIIV_POST_STATE );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, true );
 		self::clear_error( $post_id );
+	}
+
+	/**
+	 * Create or update the beehiiv draft that Preview shows, from the saved post.
+	 *
+	 * The draft is linked to the post in a distinct draft state, built with the same
+	 * payload builder as a real send, and never confirmed here. A draft whose publication
+	 * or template no longer matches the post's choice is recreated, because the update API
+	 * cannot move a post or change its template. Failures are returned, never stored as
+	 * the post's newsletter error, and the Send toggle is left as is.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array{beehiiv_post_id: string, created: bool}|WP_Error
+	 * @since 1.2.0
+	 */
+	public static function sync_preview_draft( int $post_id ) {
+		if ( ! self::acquire_preview_lock( $post_id ) ) {
+			return new WP_Error(
+				'beehiiv_preview_in_progress',
+				__( 'A preview of this post is already being prepared. Try again in a moment.', 'beehiiv' )
+			);
+		}
+
+		try {
+			return self::sync_preview_draft_locked( $post_id );
+		} finally {
+			self::release_preview_lock( $post_id );
+		}
+	}
+
+	/**
+	 * Take the per-post preview lock so two simultaneous previews cannot both create a draft.
+	 *
+	 * Uses an option insert, which is atomic in the database. A lock older than
+	 * {@see PREVIEW_LOCK_SECONDS} is treated as abandoned and taken over.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool Whether the lock was acquired.
+	 * @since 1.2.0
+	 */
+	private static function acquire_preview_lock( int $post_id ): bool {
+		$key = self::PREVIEW_LOCK_PREFIX . $post_id;
+
+		self::purge_stale_preview_locks();
+		// The purge bypasses the options cache, so drop any cached copy of this lock.
+		wp_cache_delete( $key, 'options' );
+
+		if ( add_option( $key, time(), '', false ) ) {
+			return true;
+		}
+
+		$taken_at = (int) get_option( $key, 0 );
+
+		if ( $taken_at > time() - self::PREVIEW_LOCK_SECONDS ) {
+			return false;
+		}
+
+		// Abandoned lock: replace it, then re-check that this request holds it.
+		delete_option( $key );
+
+		return add_option( $key, time(), '', false );
+	}
+
+	/**
+	 * Whether a preview sync of this post is running right now.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since 1.2.0
+	 */
+	public static function is_preview_in_progress( int $post_id ): bool {
+		$taken_at = (int) get_option( self::PREVIEW_LOCK_PREFIX . $post_id, 0 );
+
+		return $taken_at > time() - self::PREVIEW_LOCK_SECONDS;
+	}
+
+	/**
+	 * Remove preview locks left behind by requests that died before releasing them.
+	 *
+	 * @return void
+	 * @since 1.2.0
+	 */
+	private static function purge_stale_preview_locks(): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Housekeeping of this feature's own lock rows.
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s AND CAST( option_value AS UNSIGNED ) < %d",
+				$wpdb->esc_like( self::PREVIEW_LOCK_PREFIX ) . '%',
+				time() - self::PREVIEW_LOCK_SECONDS
+			)
+		);
+	}
+
+	/**
+	 * Release the per-post preview lock.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 * @since 1.2.0
+	 */
+	private static function release_preview_lock( int $post_id ): void {
+		delete_option( self::PREVIEW_LOCK_PREFIX . $post_id );
+	}
+
+	/**
+	 * Create or update the Preview draft; the caller holds the preview lock.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array{beehiiv_post_id: string, created: bool}|WP_Error
+	 * @since 1.2.0
+	 */
+	private static function sync_preview_draft_locked( int $post_id ) {
+		// One definition of "can this post be previewed" for the whole feature.
+		$eligibility = PreviewEligibility::check( $post_id );
+
+		if ( is_wp_error( $eligibility ) ) {
+			return $eligibility;
+		}
+
+		$target         = PublicationResolver::resolve_target( $post_id );
+		$publication_id = $target['publication_id'];
+
+		if ( '' === $publication_id ) {
+			return new WP_Error( 'beehiiv_no_publication', self::no_post_publication_message() );
+		}
+
+		if ( self::is_draft_linked( $post_id ) ) {
+			$linked_publication_id = PublicationResolver::get_linked_publication_id( $post_id );
+
+			if ( self::draft_needs_recreate( $post_id, $linked_publication_id, $publication_id ) ) {
+				if ( ! self::delete_linked_draft( $post_id ) ) {
+					return new WP_Error(
+						'beehiiv_draft_update_failed',
+						'The previous draft could not be replaced in beehiiv.'
+					);
+				}
+			} else {
+				$beehiiv_post_id = self::get_beehiiv_post_id( $post_id );
+				$payload         = PostSettingsBuilder::build_draft_update_payload( $post_id, $linked_publication_id );
+
+				if ( is_wp_error( $payload ) ) {
+					return $payload;
+				}
+
+				$result = Posts::update( $linked_publication_id, $beehiiv_post_id, $payload );
+
+				if ( ! $result['success'] ) {
+					return new WP_Error( 'beehiiv_draft_update_failed', $result['error'] );
+				}
+
+				return [
+					'beehiiv_post_id' => $beehiiv_post_id,
+					'created'         => false,
+				];
+			}
+		}
+
+		$payload = PostSettingsBuilder::build_draft_payload( $post_id, $publication_id );
+
+		if ( is_wp_error( $payload ) ) {
+			return $payload;
+		}
+
+		$result = Posts::create( $publication_id, $payload );
+
+		if ( ! $result['success'] ) {
+			return new WP_Error( 'beehiiv_draft_create_failed', $result['error'] );
+		}
+
+		self::record_linked_publication( $post_id, $publication_id, (string) ( $payload['post_template_id'] ?? '' ) );
+		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
+		update_post_meta( $post_id, Meta::BEEHIIV_POST_STATE, 'draft' );
+
+		return [
+			'beehiiv_post_id' => $result['post_id'],
+			'created'         => true,
+		];
+	}
+
+	/**
+	 * Whether the post's linked beehiiv post is a Preview draft.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool
+	 * @since 1.2.0
+	 */
+	public static function is_draft_linked( int $post_id ): bool {
+		return self::has_beehiiv_post_id( $post_id )
+			&& 'draft' === get_post_meta( $post_id, Meta::BEEHIIV_POST_STATE, true );
+	}
+
+	/**
+	 * Whether a linked draft must be recreated to match the post's publication or template.
+	 *
+	 * @param int    $post_id               Post ID.
+	 * @param string $linked_publication_id Publication the draft lives in.
+	 * @param string $target_publication_id Publication the post now targets.
+	 * @return bool
+	 * @since 1.2.0
+	 */
+	private static function draft_needs_recreate(
+		int $post_id,
+		string $linked_publication_id,
+		string $target_publication_id
+	): bool {
+		if ( $linked_publication_id !== $target_publication_id ) {
+			return true;
+		}
+
+		$linked_template_id = get_post_meta( $post_id, Meta::BEEHIIV_LINKED_POST_TEMPLATE_ID, true );
+		$linked_template_id = is_string( $linked_template_id ) ? trim( $linked_template_id ) : '';
+		$chosen_template_id = PostSettingsBuilder::resolve_post_template_id( $post_id, $target_publication_id );
+
+		return '' !== $linked_template_id && '' !== $chosen_template_id && $linked_template_id !== $chosen_template_id;
+	}
+
+	/**
+	 * Delete the linked Preview draft in beehiiv and clear the link.
+	 *
+	 * Never records a newsletter error; a failed delete leaves the link in place.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return bool Whether the link was cleared.
+	 * @since 1.2.0
+	 */
+	private static function delete_linked_draft( int $post_id ): bool {
+		if ( ! self::is_draft_linked( $post_id ) ) {
+			return false;
+		}
+
+		$publication_id = PublicationResolver::get_linked_publication_id( $post_id );
+
+		if ( Manager::is_connected() && '' !== $publication_id ) {
+			$result = Posts::delete( $publication_id, self::get_beehiiv_post_id( $post_id ) );
+
+			if ( ! $result['success'] ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( sprintf( 'beehiiv draft delete failed for post ID %d: %s', $post_id, $result['error'] ) );
+				return false;
+			}
+		}
+
+		delete_post_meta( $post_id, Meta::BEEHIIV_POST_ID );
+		delete_post_meta( $post_id, Meta::BEEHIIV_POST_STATE );
+		delete_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT );
+		self::clear_linked_publication( $post_id );
+
+		return true;
+	}
+
+	/**
+	 * Linked beehiiv post ID, or an empty string.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string
+	 * @since 1.2.0
+	 */
+	private static function get_beehiiv_post_id( int $post_id ): string {
+		$beehiiv_post_id = get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true );
+
+		return is_string( $beehiiv_post_id ) ? trim( $beehiiv_post_id ) : '';
 	}
 
 	/**
@@ -398,6 +680,35 @@ final class Sender {
 	public static function maybe_send_post_newsletter( WP_Post $post, ?WP_REST_Request $request = null ): void {
 		if ( self::POST_TYPE !== $post->post_type ) {
 			return;
+		}
+
+		if ( self::is_draft_linked( $post->ID ) ) {
+			// Turning the toggle off removes the draft.
+			if ( ! self::is_send_to_newsletter_enabled( $post->ID, $request ) ) {
+				self::delete_linked_draft( $post->ID );
+				return;
+			}
+
+			// Saves of a post that is not published or scheduled never touch the draft.
+			if ( ! self::can_sync_newsletter( $post ) ) {
+				return;
+			}
+
+			// Publishing or scheduling replaces the draft with a real send, so the email
+			// is never left behind as an unsent draft. A failed cleanup is reported and retried.
+			self::clear_error( $post->ID );
+
+			if ( ! self::delete_linked_draft( $post->ID ) ) {
+				self::record_error(
+					$post->ID,
+					'send',
+					__(
+						"We couldn't replace the email draft in beehiiv. Try saving the post again.",
+						'beehiiv'
+					)
+				);
+				return;
+			}
 		}
 
 		if ( self::has_beehiiv_post_id( $post->ID ) ) {
@@ -536,6 +847,8 @@ final class Sender {
 			(string) ( $beehiiv_post_data['post_template_id'] ?? '' )
 		);
 		update_post_meta( $post_id, Meta::BEEHIIV_POST_ID, $result['post_id'] );
+		// This first sync converted Group blocks to sections; later syncs of this post must too.
+		update_post_meta( $post_id, Meta::BEEHIIV_GROUP_SECTIONS, true );
 		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, false );
 		delete_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT );
 		self::persist_synced_subtitle( $post_id, $beehiiv_post_data );
@@ -559,6 +872,10 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	public static function update( int $post_id ): void {
+		if ( self::is_draft_linked( $post_id ) ) {
+			return;
+		}
+
 		self::clear_error( $post_id );
 
 		if ( ! Manager::is_connected() ) {
@@ -699,7 +1016,7 @@ final class Sender {
 	 * @param int    $post_id               Post ID.
 	 * @param string $linked_publication_id Publication the beehiiv post lives in.
 	 * @return string Target publication ID, or empty when no move is needed.
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function get_move_target_publication( int $post_id, string $linked_publication_id ): string {
 		if ( self::is_newsletter_published( $post_id ) ) {
@@ -814,7 +1131,7 @@ final class Sender {
 	 * @param int                  $post_id Post ID.
 	 * @param array<string, mixed> $payload Payload that was sent.
 	 * @return void
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function persist_synced_subtitle( int $post_id, array $payload ): void {
 		if ( ! array_key_exists( 'subtitle', $payload ) ) {
@@ -898,7 +1215,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function is_newsletter_sent( int $post_id ): bool {
 		return rest_sanitize_boolean( get_post_meta( $post_id, Meta::BEEHIIV_NEWSLETTER_SENT, true ) );
@@ -912,7 +1229,7 @@ final class Sender {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function should_confirm_sent_state( int $post_id ): bool {
 		$scheduled_at = get_post_meta( $post_id, Meta::BEEHIIV_SCHEDULED_AT, true );
@@ -935,7 +1252,7 @@ final class Sender {
 	 *
 	 * @param array<string, mixed> $beehiiv_post Post data from beehiiv.
 	 * @return bool
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function is_sent_beehiiv_post( array $beehiiv_post ): bool {
 		if ( isset( $beehiiv_post['status'] ) && 'archived' === $beehiiv_post['status'] ) {
@@ -1017,6 +1334,8 @@ final class Sender {
 					'Choose a default post template in <a>beehiiv settings</a>, or pick one for this post in the beehiiv sidebar.',
 					'beehiiv'
 				);
+			case 'beehiiv_post_template_choice_required':
+				return __( 'Choose a post template before sending this post to beehiiv.', 'beehiiv' );
 			case 'beehiiv_post_template_required':
 				return __( "Pick a post template for this post's publication in the beehiiv sidebar.", 'beehiiv' );
 			case 'beehiiv_publication_missing':
@@ -1092,7 +1411,7 @@ final class Sender {
 	 * User-facing message when a post has no publication and there is no default.
 	 *
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function no_post_publication_message(): string {
 		return __( 'Choose a publication for this post in the beehiiv sidebar.', 'beehiiv' );
@@ -1104,7 +1423,7 @@ final class Sender {
 	 * @param string $removed_publication_id Publication no longer connected.
 	 * @param string $default_publication_id Default publication used instead.
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private static function publication_fallback_message(
 		string $removed_publication_id,
@@ -1309,7 +1628,9 @@ final class Sender {
 	 * @since 1.0.0
 	 */
 	private static function should_cancel_newsletter_for_status_change( string $new_status, WP_Post $post ): bool {
-		return self::has_beehiiv_post_id( $post->ID ) && self::is_non_public_status( $new_status );
+		return self::has_beehiiv_post_id( $post->ID )
+			&& ! self::is_draft_linked( $post->ID )
+			&& self::is_non_public_status( $new_status );
 	}
 
 	/**
@@ -1326,7 +1647,7 @@ final class Sender {
 		string $old_status,
 		WP_Post $post
 	): bool {
-		if ( self::has_beehiiv_post_id( $post->ID ) ) {
+		if ( self::has_beehiiv_post_id( $post->ID ) && ! self::is_draft_linked( $post->ID ) ) {
 			return false;
 		}
 

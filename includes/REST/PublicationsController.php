@@ -19,21 +19,21 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Exposes connected publications so the settings screen and editor can refresh their lists.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 final class PublicationsController {
 
 	/**
 	 * REST namespace.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	private const NAMESPACE = 'beehiiv/v1';
 
 	/**
 	 * Register REST routes.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return void
 	 */
@@ -62,7 +62,7 @@ final class PublicationsController {
 	 *
 	 * Settings screen requires manage_options; the editor's Publication selector requires publish_posts.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @return bool
 	 */
@@ -74,7 +74,7 @@ final class PublicationsController {
 	/**
 	 * Return the publications connected to the beehiiv account.
 	 *
-	 * @since x.x.x
+	 * @since 1.1.0
 	 *
 	 * @param WP_REST_Request $request REST request.
 	 *

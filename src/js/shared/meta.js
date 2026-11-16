@@ -17,3 +17,4 @@ export const META_NEWSLETTER_TITLE = '_beehiiv_newsletter_title';
 export const META_NEWSLETTER_SUBTITLE = '_beehiiv_newsletter_subtitle';
 export const META_NEWSLETTER_SHOW_TITLE_IN_EMAIL =
 	'_beehiiv_newsletter_show_title_in_email';
+export const META_BEEHIIV_POST_STATE = '_beehiiv_post_state';

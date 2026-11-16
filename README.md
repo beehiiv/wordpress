@@ -197,6 +197,34 @@ define( 'BEEHIIV_SSLVERIFY', false ); // optional; local private CA only
 
 Post template for API payloads uses the plugin default `post_template_id`; omit `post_template_id` from the request when unset (`Newsletter\PostSettingsBuilder`).
 
+## WordPress VIP runtime config
+
+On WordPress VIP, the platform defines `VIP_BEEHIIV_CONFIG` before the plugin loads. It is a plain PHP array built from the config form in the VIP Dashboard. The plugin reads it in `Beehiiv\OAuth\Config`. The field is declared in `vip-manifest.yaml`.
+
+| Key            | Type | Required | Effect                                                                 |
+| -------------- | ---- | -------- | ---------------------------------------------------------------------- |
+| `api_base_url` | url  | No       | Overrides the beehiiv API base URL. Empty or invalid values are ignored. |
+
+The plugin resolves the API base URL in this order: `VIP_BEEHIIV_CONFIG['api_base_url']`, then the `BEEHIIV_API_BASE_URL` constant from `wp-config.php`, then the production default. The plugin never fatals on missing or malformed config. It falls back to the next source.
+
+Valid example:
+
+```php
+define( 'VIP_BEEHIIV_CONFIG', [
+	'api_base_url' => 'https://api.example.test/v2',
+] );
+```
+
+Incomplete example (setup in progress, the field saved blank). The plugin ignores the blank value and uses the default API URL:
+
+```php
+define( 'VIP_BEEHIIV_CONFIG', [
+	'api_base_url' => '',
+] );
+```
+
+Test fixtures for the valid, minimal, incomplete and invalid states live in `tests/phpunit/fixtures/`.
+
 ## Linting
 
 ```bash
