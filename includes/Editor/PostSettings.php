@@ -410,6 +410,7 @@ final class PostSettings {
 			'hasPostTemplate'       => '' !== trim( (string) ( $settings['post_template_id'] ?? '' ) ),
 			'publicationId'         => trim( (string) ( $settings['publication_id'] ?? '' ) ),
 			'defaultPostTemplateId' => trim( (string) ( $settings['post_template_id'] ?? '' ) ),
+			'gateFormId'            => Options::get_gate_settings()['form_id'],
 			'requireTemplateChoice' => ! empty( $settings['require_template_choice'] ),
 			'canPublishPosts'       => current_user_can( 'publish_posts' ),
 			'defaultPublicationId'  => $default_pub_id,

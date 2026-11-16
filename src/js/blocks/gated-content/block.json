@@ -1,0 +1,43 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "beehiiv/gated-content",
+	"version": "1.0.0",
+	"title": "beehiiv Gated Content",
+	"category": "beehiiv-blocks",
+	"icon": "lock",
+	"description": "Shows a preview, then blurs and locks the rest until the reader subscribes through a beehiiv form.",
+	"keywords": [ "beehiiv", "gate", "paywall", "subscribe", "newsletter" ],
+	"textdomain": "beehiiv",
+	"supports": {
+		"html": false,
+		"anchor": true
+	},
+	"attributes": {
+		"formId": {
+			"type": "string",
+			"default": ""
+		},
+		"headline": {
+			"type": "string",
+			"default": ""
+		},
+		"text": {
+			"type": "string",
+			"default": ""
+		},
+		"cardBackgroundColor": {
+			"type": "string",
+			"default": ""
+		},
+		"cardTextColor": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"render": "file:./render.php",
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"viewScript": "file:./view.js"
+}

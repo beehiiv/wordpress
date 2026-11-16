@@ -71,9 +71,27 @@ function ensurePrettyPermalinks() {
 	}
 }
 
+/**
+ * Ensures a real theme is active.
+ *
+ * A tests site created before `themes` was added to `.wp-env.json` can keep
+ * `stylesheet` set to `default`, a theme that is not installed. Every
+ * front-end request then returns an empty page (404 for posts), so any spec
+ * that loads a post on the site fails with "element(s) not found". Admin
+ * pages and REST calls still work, so only front-end specs notice.
+ * @param {string} slug
+ */
+function ensureActiveTheme( slug = 'twentytwentyfive' ) {
+	const active = wpCliSafe( 'theme list --status=active --field=name' );
+	if ( ! active ) {
+		wpCli( `theme activate ${ slug }` );
+	}
+}
+
 module.exports = {
 	wpCli,
 	wpCliSafe,
 	ensurePluginActive,
 	ensurePrettyPermalinks,
+	ensureActiveTheme,
 };

@@ -27,6 +27,19 @@ final class Registrar {
 	private const PAGE_SETTINGS_SECTION_ID = 'beehiiv_page_settings';
 
 	/**
+	 * Settings API section ID for the subscriber gating defaults.
+	 */
+	private const GATE_SETTINGS_SECTION_ID = 'beehiiv_gate_settings';
+
+	/**
+	 * Settings API page slug that holds the subscriber gating section.
+	 *
+	 * Separate from the main page slug so the section prints whether or not
+	 * the Publication section is shown.
+	 */
+	public const GATE_SETTINGS_PAGE = Config::PLUGIN_SLUG . '_gating';
+
+	/**
 	 * Whether Settings API registration has already run this request.
 	 *
 	 * @var bool
@@ -45,6 +58,7 @@ final class Registrar {
 
 		self::$registered = true;
 		Options::register();
+		self::register_gate_settings_section( self::GATE_SETTINGS_PAGE );
 
 		if ( Manager::is_connected() ) {
 			self::register_page_settings_section( Config::PLUGIN_SLUG );
@@ -100,11 +114,188 @@ final class Registrar {
 	}
 
 	/**
+	 * Register the subscriber gating section and fields.
+	 *
+	 * @param string $page_slug Settings API page slug for this section.
+	 * @since 1.2.0
+	 */
+	private static function register_gate_settings_section( string $page_slug ): void {
+		add_settings_section(
+			self::GATE_SETTINGS_SECTION_ID,
+			__( 'Subscriber gating', 'beehiiv' ),
+			[ self::class, 'render_gate_settings_description' ],
+			$page_slug
+		);
+
+		add_settings_field(
+			'beehiiv_gate_headline',
+			__( 'Default gate headline', 'beehiiv' ),
+			[ self::class, 'render_gate_headline_field' ],
+			$page_slug,
+			self::GATE_SETTINGS_SECTION_ID,
+			[ 'label_for' => 'beehiiv_gate_headline' ]
+		);
+
+		add_settings_field(
+			'beehiiv_gate_text',
+			__( 'Default gate text', 'beehiiv' ),
+			[ self::class, 'render_gate_text_field' ],
+			$page_slug,
+			self::GATE_SETTINGS_SECTION_ID,
+			[ 'label_for' => 'beehiiv_gate_text' ]
+		);
+
+		add_settings_field(
+			'beehiiv_gate_form_id',
+			__( 'Default subscribe form ID', 'beehiiv' ),
+			[ self::class, 'render_gate_form_id_field' ],
+			$page_slug,
+			self::GATE_SETTINGS_SECTION_ID,
+			[ 'label_for' => 'beehiiv_gate_form_id' ]
+		);
+
+		add_settings_field(
+			'beehiiv_gate_cookie_days',
+			__( 'Unlock cookie lifetime', 'beehiiv' ),
+			[ self::class, 'render_gate_cookie_days_field' ],
+			$page_slug,
+			self::GATE_SETTINGS_SECTION_ID,
+			[ 'label_for' => 'beehiiv_gate_cookie_days' ]
+		);
+	}
+
+	/**
+	 * Subscriber gating section intro text.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function render_gate_settings_description(): void {
+		echo '<p>' . esc_html__(
+			'Defaults for gated content blocks. A gated content block can override the headline and text.',
+			'beehiiv'
+		) . '</p>';
+		echo '<p>' . esc_html__(
+			'Gated content stays in the page source. Gating prompts a subscription; it does not protect content.',
+			'beehiiv'
+		) . '</p>';
+	}
+
+	/**
+	 * Default gate headline field.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function render_gate_headline_field(): void {
+		$settings = Options::get();
+		?>
+		<input
+			type="text"
+			id="beehiiv_gate_headline"
+			class="regular-text"
+			name="<?php echo esc_attr( Config::OPTION_NAME . '[gate_headline]' ); ?>"
+			value="<?php echo esc_attr( (string) $settings['gate_headline'] ); ?>"
+		/>
+		<p class="description">
+			<?php esc_html_e( 'Plain text. Leave blank to show no headline.', 'beehiiv' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Default gate text field.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function render_gate_text_field(): void {
+		$settings = Options::get();
+		?>
+		<input
+			type="text"
+			id="beehiiv_gate_text"
+			class="large-text"
+			name="<?php echo esc_attr( Config::OPTION_NAME . '[gate_text]' ); ?>"
+			value="<?php echo esc_attr( (string) $settings['gate_text'] ); ?>"
+		/>
+		<p class="description">
+			<?php esc_html_e( 'Plain text. Leave blank to show no text.', 'beehiiv' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Default subscribe form ID field.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function render_gate_form_id_field(): void {
+		$settings = Options::get();
+		?>
+		<input
+			type="text"
+			id="beehiiv_gate_form_id"
+			class="regular-text"
+			name="<?php echo esc_attr( Config::OPTION_NAME . '[gate_form_id]' ); ?>"
+			value="<?php echo esc_attr( (string) $settings['gate_form_id'] ); ?>"
+		/>
+		<p class="description">
+			<?php
+			esc_html_e( 'Used by every gated content block that has no form ID of its own.', 'beehiiv' );
+			echo ' ';
+			esc_html_e( 'Paste the form ID from your beehiiv embed code (the value of data-beehiiv-form).', 'beehiiv' );
+			echo ' ';
+			esc_html_e( 'The form must be Inline and set to Show a success message, not Redirect.', 'beehiiv' );
+			?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Unlock cookie lifetime field.
+	 *
+	 * @since 1.2.0
+	 */
+	public static function render_gate_cookie_days_field(): void {
+		$settings = Options::get();
+		?>
+		<input
+			type="number"
+			id="beehiiv_gate_cookie_days"
+			class="small-text"
+			name="<?php echo esc_attr( Config::OPTION_NAME . '[gate_cookie_days]' ); ?>"
+			value="<?php echo esc_attr( (string) $settings['gate_cookie_days'] ); ?>"
+			min="<?php echo esc_attr( (string) Options::GATE_COOKIE_DAYS_MIN ); ?>"
+			max="<?php echo esc_attr( (string) Options::GATE_COOKIE_DAYS_MAX ); ?>"
+			step="1"
+			placeholder="<?php echo esc_attr( (string) Options::GATE_COOKIE_DAYS_DEFAULT ); ?>"
+		/>
+		<?php esc_html_e( 'days', 'beehiiv' ); ?>
+		<p class="description">
+			<?php
+			echo esc_html(
+				sprintf(
+					/* translators: 1: minimum days, 2: maximum days, 3: default days. */
+					__( 'How long a reader stays unlocked after subscribing. Whole days from %1$d to %2$d. Anything else uses %3$d.', 'beehiiv' ), // phpcs:ignore Generic.Files.LineLength.MaxExceeded,Generic.Files.LineLength.TooLong -- Single string for translators / i18n tools.
+					Options::GATE_COOKIE_DAYS_MIN,
+					Options::GATE_COOKIE_DAYS_MAX,
+					Options::GATE_COOKIE_DAYS_DEFAULT
+				)
+			);
+			?>
+		</p>
+		<?php
+	}
+
+	/**
 	 * Section intro text.
 	 *
 	 * @since 1.0.0
 	 */
 	public static function render_page_settings_description(): void {
+		printf(
+			'<input type="hidden" name="%s" value="1" />',
+			esc_attr( Config::OPTION_NAME . '[' . Options::PUBLICATION_SECTION_FLAG . ']' )
+		);
+
 		echo '<p>' . esc_html__(
 			'Default beehiiv publication and post template for newsletters sent from this site.',
 			'beehiiv'
@@ -126,7 +317,6 @@ final class Registrar {
 			id="beehiiv_publication_id"
 			class="beehiiv-settings-select"
 			name="<?php echo esc_attr( $name ); ?>"
-			required
 		>
 			<option value="" <?php selected( $selected, '' ); ?>>
 				<?php esc_html_e( 'Select a publication', 'beehiiv' ); ?>
@@ -196,6 +386,7 @@ final class Registrar {
 			id="beehiiv_post_template_id"
 			class="beehiiv-settings-select"
 			name="<?php echo esc_attr( $name ); ?>"
+			<?php disabled( '' === $publication_id ); ?>
 		>
 			<option value="" <?php selected( $selected, '' ); ?>>
 				<?php esc_html_e( 'No default template', 'beehiiv' ); ?>
