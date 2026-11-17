@@ -699,3 +699,365 @@ test.describe( 'US-002: send the roundup to beehiiv', () => {
 		expect( later ).toBeTruthy();
 	} );
 } );
+
+// ---------------------------------------------------------------------------
+test.describe( 'US-003: choose and edit what each card shows', () => {
+	const attributesOf = ( page ) =>
+		page.evaluate( ( name ) => {
+			const block = window.wp.data
+				.select( 'core/block-editor' )
+				.getBlocks()
+				.find( ( item ) => item.name === name );
+			return block ? block.attributes : null;
+		}, BLOCK );
+
+	test( 'AC-008: the author chooses which items cards show, in the editor and in what is sent', async ( {
+		page,
+	} ) => {
+		await loginAsAdmin( page );
+		seed();
+		const id = createItem( {
+			title: 'QA RR display AC-008',
+			type: TYPE,
+			status: 'draft',
+			content: roundupBlock( {
+				mode: 'manual',
+				uid: 'ac008',
+				posts: [ { id: Number( postIds.p2 ), type: 'post' } ],
+				display: {
+					image: false,
+					title: true,
+					excerpt: false,
+					button: true,
+				},
+			} ),
+			meta: { [ META_SEND ]: '1' },
+		} );
+
+		await openEditor( page, `/wp-admin/post.php?post=${ id }&action=edit` );
+		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+		const block = canvas.locator( `[data-type="${ BLOCK }"]` );
+		const card = block.locator( '.beehiiv-post-roundup__card' );
+		await expect( card ).toHaveCount( 1 );
+		await expect( card.locator( 'img' ) ).toHaveCount( 0 );
+		await expect(
+			card.locator( '.beehiiv-post-roundup__excerpt' )
+		).toHaveCount( 0 );
+		await expect(
+			card.locator( '.beehiiv-post-roundup__title' )
+		).toHaveText( 'QA RR Post Two' );
+		await expect(
+			card.locator( '.beehiiv-post-roundup__button' )
+		).toHaveText( 'Read more' );
+
+		// Turning the excerpt and image on shows them in the editor.
+		await block.click();
+		await openSettingsSidebar( page );
+		await page.getByRole( 'checkbox', { name: 'Excerpt' } ).check();
+		await page.getByRole( 'checkbox', { name: 'Featured image' } ).check();
+		await expect( card.locator( 'img' ) ).toBeVisible();
+		await expect(
+			card.locator( '.beehiiv-post-roundup__excerpt' )
+		).toHaveText( 'QA RR excerpt two' );
+
+		// Turning everything off warns the author.
+		for ( const name of [
+			'Featured image',
+			'Title',
+			'Excerpt',
+			'Read more button',
+		] ) {
+			await page.getByRole( 'checkbox', { name } ).uncheck();
+		}
+		await expect(
+			page.locator( '.components-notice__content', {
+				hasText: 'nothing is sent for this roundup',
+			} )
+		).toBeVisible();
+		expect( ( await attributesOf( page ) ).display ).toEqual( {
+			image: false,
+			title: false,
+			excerpt: false,
+			button: false,
+		} );
+
+		// What is sent follows the stored choices: no image, no excerpt.
+		const rest = await restAsAdmin( page );
+		const res = await rest( 'POST', `/wp/v2/${ REST_BASE }/${ id }`, {
+			status: 'publish',
+			content: roundupBlock( {
+				mode: 'manual',
+				uid: 'ac008',
+				posts: [ { id: Number( postIds.p2 ), type: 'post' } ],
+				display: {
+					image: false,
+					title: true,
+					excerpt: false,
+					button: true,
+				},
+			} ),
+		} );
+		expect( res.status ).toBe( 200 );
+		const sent = creates( getLog() ).pop().body.blocks;
+		const json = JSON.stringify( sent );
+		expect( json ).toContain( 'QA RR Post Two' );
+		expect( json ).toContain( 'Read more' );
+		expect( json ).not.toContain( 'QA RR excerpt two' );
+		expect( json ).not.toContain( 'qa-e2e-roundup' );
+		expect( sent.map( ( item ) => item.type ) ).toEqual( [
+			'paragraph',
+			'button',
+		] );
+	} );
+
+	test( 'AC-009: the author edits a card, resets it, and the edits reach beehiiv without changing the post', async ( {
+		page,
+	} ) => {
+		await loginAsAdmin( page );
+		seed();
+		const id = createItem( {
+			title: 'QA RR edit AC-009',
+			type: TYPE,
+			status: 'draft',
+			content: roundupBlock( {
+				mode: 'manual',
+				uid: 'ac009',
+				posts: [ { id: Number( postIds.p1 ), type: 'post' } ],
+			} ),
+			meta: { [ META_SEND ]: '1' },
+		} );
+
+		await openEditor( page, `/wp-admin/post.php?post=${ id }&action=edit` );
+		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+		const card = canvas.locator( '.beehiiv-post-roundup__card' );
+		await expect( card ).toHaveCount( 1 );
+
+		const edit = async ( locator, text ) => {
+			await locator.click();
+			await page.keyboard.press( 'ControlOrMeta+A' );
+			await page.keyboard.type( text );
+		};
+		await edit(
+			card.locator( '.beehiiv-post-roundup__title a' ),
+			'RR Edited headline'
+		);
+		await edit(
+			card.locator( '.beehiiv-post-roundup__excerpt' ),
+			'RR Edited summary'
+		);
+		await edit(
+			card.locator( '.beehiiv-post-roundup__button' ),
+			'RR Keep reading'
+		);
+
+		await expect
+			.poll( async () => ( await attributesOf( page ) ).overrides )
+			.toEqual( {
+				[ postIds.p1 ]: {
+					title: 'RR Edited headline',
+					excerpt: 'RR Edited summary',
+					buttonLabel: 'RR Keep reading',
+				},
+			} );
+		const stored = ( await attributesOf( page ) ).overrides;
+
+		// The edits are part of the saved newsletter and survive a reload.
+		await page.keyboard.press( 'ControlOrMeta+S' );
+		await expect
+			.poll( () => wpCli( `post get ${ id } --field=post_content` ) )
+			.toContain( 'RR Edited headline' );
+		await openEditor( page, `/wp-admin/post.php?post=${ id }&action=edit` );
+		await expect(
+			canvas.locator( '.beehiiv-post-roundup__title a' )
+		).toHaveText( 'RR Edited headline' );
+
+		// Sending carries the edited text; the link is still the post's own.
+		const rest = await restAsAdmin( page );
+		const res = await rest( 'POST', `/wp/v2/${ REST_BASE }/${ id }`, {
+			status: 'publish',
+		} );
+		expect( res.status ).toBe( 200 );
+		const json = JSON.stringify( creates( getLog() ).pop().body.blocks );
+		expect( json ).toContain( 'RR Edited headline' );
+		expect( json ).toContain( 'RR Edited summary' );
+		expect( json ).toContain( 'RR Keep reading' );
+		expect( json ).not.toContain( 'QA RR excerpt one' );
+		expect( json ).toContain(
+			wpCli( `post get ${ postIds.p1 } --field=url` )
+		);
+
+		// The source post is unchanged.
+		expect( wpCli( `post get ${ postIds.p1 } --field=post_title` ) ).toBe(
+			'QA RR Post One'
+		);
+		expect( wpCli( `post get ${ postIds.p1 } --field=post_excerpt` ) ).toBe(
+			'QA RR excerpt one'
+		);
+		expect( stored ).toBeTruthy();
+
+		// Reset to post restores the post's own values and drops the edits.
+		await openEditor( page, `/wp-admin/post.php?post=${ id }&action=edit` );
+		await canvas.locator( '.beehiiv-post-roundup__reset' ).click();
+		await expect(
+			canvas.locator( '.beehiiv-post-roundup__title a' )
+		).toHaveText( 'QA RR Post One' );
+		await expect(
+			canvas.locator( '.beehiiv-post-roundup__button' )
+		).toHaveText( 'Read more' );
+		expect( ( await attributesOf( page ) ).overrides ).toEqual( {} );
+	} );
+} );
+
+// ---------------------------------------------------------------------------
+test.describe( 'US-004: choose how each card is laid out', () => {
+	test( 'AC-010: the author picks a card layout and image placement, in the editor and in what is sent', async ( {
+		page,
+	} ) => {
+		await loginAsAdmin( page );
+		seed();
+		const content = ( extra ) =>
+			roundupBlock( {
+				mode: 'manual',
+				uid: 'ac010',
+				posts: [ { id: Number( postIds.p2 ), type: 'post' } ],
+				...extra,
+			} );
+		const id = createItem( {
+			title: 'QA RR layout AC-010',
+			type: TYPE,
+			status: 'draft',
+			content: content( {} ),
+			meta: { [ META_SEND ]: '1' },
+		} );
+
+		await openEditor( page, `/wp-admin/post.php?post=${ id }&action=edit` );
+		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+		const block = canvas.locator( `[data-type="${ BLOCK }"]` );
+		const card = block.locator( '.beehiiv-post-roundup__card' );
+		const image = card.locator( '.beehiiv-post-roundup__media' );
+		const body = card.locator( '.beehiiv-post-roundup__body' );
+		await expect( card ).toHaveCount( 1 );
+
+		// Full: the image sits above the text and placement cannot be changed.
+		await block.click();
+		await openSettingsSidebar( page );
+		await expect(
+			page.getByRole( 'button', { name: 'Full', exact: true } )
+		).toHaveAttribute( 'aria-pressed', 'true' );
+		await expect(
+			page.getByRole( 'button', { name: 'Right', exact: true } )
+		).toBeDisabled();
+		const above = {
+			image: await image.boundingBox(),
+			body: await body.boundingBox(),
+		};
+		expect( above.image.y ).toBeLessThan( above.body.y );
+
+		// 30:70 with the image on the left.
+		await page
+			.getByRole( 'button', { name: '30:70', exact: true } )
+			.click();
+		await expect( card ).toHaveClass( /beehiiv-post-roundup__card--split/ );
+		await expect(
+			page.getByRole( 'button', { name: 'Right', exact: true } )
+		).toBeEnabled();
+		let boxes = {
+			card: await card.boundingBox(),
+			image: await image.boundingBox(),
+			body: await body.boundingBox(),
+		};
+		expect( boxes.image.x ).toBeLessThan( boxes.body.x );
+		expect( boxes.image.width / boxes.card.width ).toBeGreaterThan( 0.25 );
+		expect( boxes.image.width / boxes.card.width ).toBeLessThan( 0.35 );
+
+		// 70:30 with the image on the right.
+		await page
+			.getByRole( 'button', { name: '70:30', exact: true } )
+			.click();
+		await page
+			.getByRole( 'button', { name: 'Right', exact: true } )
+			.click();
+		await expect( card ).toHaveClass(
+			/beehiiv-post-roundup__card--image-right/
+		);
+		boxes = {
+			card: await card.boundingBox(),
+			image: await image.boundingBox(),
+			body: await body.boundingBox(),
+		};
+		expect( boxes.image.x ).toBeGreaterThan( boxes.body.x );
+		expect( Math.abs( boxes.image.y - boxes.body.y ) ).toBeLessThan( 4 );
+		expect( boxes.image.width / boxes.card.width ).toBeGreaterThan( 0.65 );
+		expect( boxes.image.width / boxes.card.width ).toBeLessThan( 0.75 );
+
+		const attrs = await page.evaluate( ( name ) => {
+			const found = window.wp.data
+				.select( 'core/block-editor' )
+				.getBlocks()
+				.find( ( item ) => item.name === name );
+			return {
+				layout: found.attributes.layout,
+				imagePlacement: found.attributes.imagePlacement,
+			};
+		}, BLOCK );
+		expect( attrs ).toEqual( { layout: '70-30', imagePlacement: 'right' } );
+
+		// What is sent: two columns, text first, image second, widths 30 and 70.
+		const rest = await restAsAdmin( page );
+		const res = await rest( 'POST', `/wp/v2/${ REST_BASE }/${ id }`, {
+			status: 'publish',
+			content: content( { layout: '70-30', imagePlacement: 'right' } ),
+		} );
+		expect( res.status ).toBe( 200 );
+		const sent = creates( getLog() ).pop().body.blocks;
+		expect( sent.map( ( item ) => item.type ) ).toEqual( [ 'columns' ] );
+		const [ first, second ] = sent[ 0 ].columns;
+		expect( first.verticalAlign ).toBe( 'top' );
+		expect( second.verticalAlign ).toBe( 'top' );
+		expect( first.width ).toBe( 30 );
+		expect( first.blocks.map( ( item ) => item.type ) ).toEqual( [
+			'paragraph',
+			'paragraph',
+			'button',
+		] );
+		expect( second.width ).toBe( 70 );
+		expect( second.blocks.map( ( item ) => item.type ) ).toEqual( [
+			'image',
+		] );
+		expect( JSON.stringify( second ) ).toContain( 'qa-e2e-roundup' );
+	} );
+} );
+
+// ---------------------------------------------------------------------------
+test.describe( 'Roundup inside other blocks', () => {
+	test( 'a roundup inside a Columns block shows its cards and does not error', async ( {
+		page,
+	} ) => {
+		await loginAsAdmin( page );
+		seed();
+		const id = createItem( {
+			title: 'QA RR nested',
+			type: TYPE,
+			status: 'draft',
+			content: `<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column">${ roundupBlock(
+				{
+					mode: 'manual',
+					uid: 'nested1',
+					posts: [ { id: Number( postIds.p2 ), type: 'post' } ],
+				}
+			) }</div><!-- /wp:column --></div><!-- /wp:columns -->`,
+		} );
+
+		const errors = [];
+		page.on( 'pageerror', ( error ) => errors.push( error.message ) );
+		await openEditor( page, `/wp-admin/post.php?post=${ id }&action=edit` );
+		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+		await expect(
+			canvas.locator( '.beehiiv-post-roundup__card' )
+		).toHaveCount( 1 );
+		await expect(
+			canvas.getByText( 'This block has encountered an error' )
+		).toHaveCount( 0 );
+		expect( errors ).toEqual( [] );
+	} );
+} );

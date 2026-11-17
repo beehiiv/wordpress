@@ -853,4 +853,401 @@ class PostRoundupTest extends WP_UnitTestCase {
 		$this->assertSame( 'n4', PostRoundup::block_key( array(), 4 ) );
 		$this->assertSame( 'n0', PostRoundup::block_key( array( 'uid' => '' ), 0 ) );
 	}
+
+	/* ----------------------------------------------- AC-008 and AC-009 display and edits. */
+
+	/**
+	 * Every card item is shown when the block stores no display choice.
+	 */
+	public function test_every_item_is_shown_by_default(): void {
+		$this->assertSame(
+			array(
+				'image'   => true,
+				'title'   => true,
+				'excerpt' => true,
+				'button'  => true,
+			),
+			PostRoundup::display( array() )
+		);
+		$this->assertFalse( PostRoundup::display( array( 'display' => array( 'excerpt' => false ) ) )['excerpt'] );
+		$this->assertTrue( PostRoundup::display( array( 'display' => array( 'excerpt' => false ) ) )['title'] );
+	}
+
+	/**
+	 * Turned-off items are not sent, and the others still are, in order.
+	 */
+	public function test_turned_off_items_are_left_out_of_the_send(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$this->add_featured_image( $one, 'alpha.jpg' );
+
+		$attrs = array( 'count' => 1 );
+
+		$cases = array(
+			'image'   => array( 'paragraph', 'paragraph', 'button' ),
+			'title'   => array( 'image', 'paragraph', 'button' ),
+			'excerpt' => array( 'image', 'paragraph', 'button' ),
+			'button'  => array( 'image', 'paragraph', 'paragraph' ),
+		);
+
+		foreach ( $cases as $item => $expected ) {
+			$blocks = $this->convert(
+				$this->create_newsletter(
+					$this->roundup( array_merge( $attrs, array( 'display' => array( $item => false ) ) ) )
+				)
+			);
+
+			$this->assertSame( $expected, $this->types( $blocks ), 'Turning off ' . $item );
+		}
+
+		$titleless = $this->convert(
+			$this->create_newsletter(
+				$this->roundup( array_merge( $attrs, array( 'display' => array( 'title' => false ) ) ) )
+			)
+		);
+		$this->assertSame( 'Excerpt of Alpha story', $titleless[1]['plaintext'] );
+		$this->assertArrayNotHasKey( 'formattedText', $titleless[1] );
+	}
+
+	/**
+	 * A roundup with every item off sends nothing, and no stray separators.
+	 */
+	public function test_every_item_off_sends_nothing_for_the_roundup(): void {
+		$this->create_article( 'Alpha story', 1 );
+		$this->create_article( 'Beta story', 2 );
+
+		$display = array(
+			'image'   => false,
+			'title'   => false,
+			'excerpt' => false,
+			'button'  => false,
+		);
+
+		$blocks = $this->convert(
+			$this->create_newsletter(
+				$this->paragraph( 'Intro' ) . $this->roundup( array( 'count' => 2, 'display' => $display ) )
+			)
+		);
+
+		$this->assertSame( array( 'paragraph' ), $this->types( $blocks ) );
+	}
+
+	/**
+	 * Edited title, excerpt and button label reach beehiiv, the link stays the post's own,
+	 * and the source post is untouched.
+	 */
+	public function test_card_edits_replace_the_posts_text_and_never_change_the_post(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$two = $this->create_article( 'Beta story', 2 );
+
+		$overrides = array(
+			(string) $one => array(
+				'title'       => 'A better headline',
+				'excerpt'     => 'A shorter summary.',
+				'buttonLabel' => 'Keep reading',
+			),
+		);
+
+		$blocks = $this->convert(
+			$this->create_newsletter( $this->roundup( array( 'count' => 2, 'overrides' => $overrides ) ) )
+		);
+
+		$this->assertSame( 'A better headline', $blocks[0]['formattedText'][0]['text'] ?? wp_json_encode( $blocks[0] ) );
+		$this->assertStringContainsString( 'A better headline', wp_json_encode( $blocks[0] ) );
+		$this->assertSame( get_permalink( $one ), $blocks[0]['formattedText'][0]['link']['href'] );
+		$this->assertSame( 'A shorter summary.', $blocks[1]['plaintext'] );
+		$this->assertSame( 'Keep reading', $blocks[2]['text'] );
+		$this->assertSame( get_permalink( $one ), $blocks[2]['href'] );
+
+		// The second post keeps its own values.
+		$this->assertStringContainsString( 'Beta story', wp_json_encode( $blocks[4] ) );
+		$this->assertSame( 'Read more', $blocks[6]['text'] );
+
+		// The source post is unchanged.
+		$this->assertSame( 'Alpha story', get_the_title( $one ) );
+		$this->assertSame( 'Excerpt of Alpha story', get_post( $one )->post_excerpt );
+		$this->assertSame( 'Beta story', get_the_title( $two ) );
+	}
+
+	/**
+	 * A cleared edit falls back to the post's own value.
+	 */
+	public function test_empty_edits_fall_back_to_the_post(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+
+		$overrides = array(
+			(string) $one => array(
+				'title'       => '   ',
+				'excerpt'     => '',
+				'buttonLabel' => ' ',
+			),
+		);
+
+		$blocks = $this->convert(
+			$this->create_newsletter( $this->roundup( array( 'count' => 1, 'overrides' => $overrides ) ) )
+		);
+
+		$this->assertStringContainsString( 'Alpha story', wp_json_encode( $blocks[0] ) );
+		$this->assertSame( 'Excerpt of Alpha story', $blocks[1]['plaintext'] );
+		$this->assertSame( 'Read more', $blocks[2]['text'] );
+	}
+
+	/**
+	 * Edits are plain text: markup is stripped and entities are decoded.
+	 */
+	public function test_edits_are_sanitized_to_plain_text(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+
+		$overrides = PostRoundup::overrides(
+			array(
+				'overrides' => array(
+					(string) $one => array(
+						'title'       => '<script>alert(1)</script>Fish &amp; <em>Chips</em>',
+						'excerpt'     => '<p onclick="x()">Tidy</p>',
+						'buttonLabel' => 'Go <br>now',
+						'imageId'     => 'abc',
+					),
+					'0'           => array( 'title' => 'Ignored' ),
+					'bad'         => array( 'title' => 'Ignored' ),
+				),
+			)
+		);
+
+		$this->assertSame( array( $one ), array_keys( $overrides ) );
+		$this->assertSame( 'Fish & Chips', $overrides[ $one ]['title'] );
+		$this->assertSame( 'Tidy', $overrides[ $one ]['excerpt'] );
+		$this->assertSame( 'Go now', $overrides[ $one ]['button_label'] );
+		$this->assertSame( 0, $overrides[ $one ]['image_id'] );
+	}
+
+	/**
+	 * An edited image replaces the featured image; an invalid or deleted one falls back to it.
+	 */
+	public function test_edited_image_replaces_the_featured_image_and_invalid_ids_fall_back(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$this->add_featured_image( $one, 'alpha.jpg' );
+
+		$chosen = self::factory()->attachment->create(
+			array(
+				'post_mime_type' => 'image/jpeg',
+				'file'           => 'chosen.jpg',
+			)
+		);
+		update_post_meta( $chosen, '_wp_attachment_image_alt', 'Alt of chosen' );
+
+		$blocks = $this->convert(
+			$this->create_newsletter(
+				$this->roundup( array( 'count' => 1, 'overrides' => array( (string) $one => array( 'imageId' => $chosen ) ) ) )
+			)
+		);
+		$this->assertStringContainsString( 'chosen.jpg', $blocks[0]['imageUrl'] );
+		$this->assertSame( 'Alt of chosen', $blocks[0]['alt_text'] );
+		$this->assertSame( get_permalink( $one ), $blocks[0]['url'] );
+
+		// A post ID is not an image attachment, so the featured image stays.
+		$not_image = $this->create_article( 'Not an image', 5 );
+		$blocks    = $this->convert(
+			$this->create_newsletter(
+				$this->roundup( array( 'count' => 1, 'overrides' => array( (string) $one => array( 'imageId' => $not_image ) ) ) )
+			)
+		);
+		$this->assertStringContainsString( 'alpha.jpg', $blocks[0]['imageUrl'] );
+
+		// A deleted attachment also falls back.
+		wp_delete_attachment( $chosen, true );
+		$blocks = $this->convert(
+			$this->create_newsletter(
+				$this->roundup( array( 'count' => 1, 'overrides' => array( (string) $one => array( 'imageId' => $chosen ) ) ) )
+			)
+		);
+		$this->assertStringContainsString( 'alpha.jpg', $blocks[0]['imageUrl'] );
+	}
+
+	/**
+	 * A card with no featured image can still get an edited image.
+	 */
+	public function test_edited_image_is_added_to_a_post_without_a_featured_image(): void {
+		$one    = $this->create_article( 'Alpha story', 1 );
+		$chosen = self::factory()->attachment->create(
+			array(
+				'post_mime_type' => 'image/jpeg',
+				'file'           => 'chosen.jpg',
+			)
+		);
+
+		$blocks = $this->convert(
+			$this->create_newsletter(
+				$this->roundup( array( 'count' => 1, 'overrides' => array( (string) $one => array( 'imageId' => $chosen ) ) ) )
+			)
+		);
+
+		$this->assertSame( 'image', $blocks[0]['type'] );
+		$this->assertStringContainsString( 'chosen.jpg', $blocks[0]['imageUrl'] );
+	}
+
+	/**
+	 * Edits follow the post, not its position, and work in manual mode.
+	 */
+	public function test_edits_follow_the_post_in_manual_mode(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$two = $this->create_article( 'Beta story', 2 );
+
+		$blocks = $this->convert(
+			$this->create_newsletter(
+				$this->roundup(
+					array(
+						'mode'      => 'manual',
+						'posts'     => array( array( 'id' => $two ), array( 'id' => $one ) ),
+						'overrides' => array( (string) $one => array( 'buttonLabel' => 'Open it' ) ),
+					)
+				)
+			)
+		);
+
+		// Order is Beta then Alpha; only Alpha's button changed.
+		$this->assertSame( 'Read more', $blocks[2]['text'] );
+		$this->assertSame( 'Open it', $blocks[6]['text'] );
+	}
+
+	/**
+	 * The preview data carries the default button label for the editor to show.
+	 */
+	public function test_cards_carry_the_default_button_label(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+
+		$this->assertSame( 'Read more', PostRoundup::cards( array( $one ) )[0]['button_label'] );
+	}
+
+	/* ------------------------------------------------------------ AC-010 card layout. */
+
+	/**
+	 * Layout defaults to full width and image placement to the left.
+	 */
+	public function test_layout_defaults_to_full_and_placement_to_left(): void {
+		$this->assertSame( 'full', PostRoundup::layout( array() ) );
+		$this->assertSame( 'full', PostRoundup::layout( array( 'layout' => '40-60' ) ) );
+		$this->assertSame( '30-70', PostRoundup::layout( array( 'layout' => '30-70' ) ) );
+		$this->assertSame( 'left', PostRoundup::image_placement( array() ) );
+		$this->assertSame( 'left', PostRoundup::image_placement( array( 'imagePlacement' => 'up' ) ) );
+		$this->assertSame( 'right', PostRoundup::image_placement( array( 'imagePlacement' => 'right' ) ) );
+	}
+
+	/**
+	 * Full keeps the image above the text, as before.
+	 */
+	public function test_full_layout_keeps_the_image_above_the_text(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$this->add_featured_image( $one, 'alpha.jpg' );
+
+		$blocks = $this->convert(
+			$this->create_newsletter( $this->roundup( array( 'count' => 1, 'layout' => 'full', 'imagePlacement' => 'right' ) ) )
+		);
+
+		$this->assertSame( array( 'image', 'paragraph', 'paragraph', 'button' ), $this->types( $blocks ) );
+	}
+
+	/**
+	 * A split layout sends the image and the text as two columns with the ratio as widths.
+	 */
+	public function test_split_layouts_send_two_columns_at_the_ratio(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$this->add_featured_image( $one, 'alpha.jpg' );
+
+		$cases = array(
+			'50-50' => array( 50, 50 ),
+			'30-70' => array( 30, 70 ),
+			'70-30' => array( 70, 30 ),
+		);
+
+		foreach ( $cases as $layout => $widths ) {
+			foreach ( array( 'left', 'right' ) as $placement ) {
+				$blocks = $this->convert(
+					$this->create_newsletter(
+						$this->roundup( array( 'count' => 1, 'layout' => $layout, 'imagePlacement' => $placement ) )
+					)
+				);
+
+				$this->assertSame( array( 'columns' ), $this->types( $blocks ), "$layout $placement" );
+				$this->assertTrue( $blocks[0]['stackOnMobile'] );
+				$this->assertSame( array( 'top', 'top' ), array_column( $blocks[0]['columns'], 'verticalAlign' ) );
+
+				$columns = $blocks[0]['columns'];
+				$this->assertCount( 2, $columns );
+
+				$image_at = 'left' === $placement ? 0 : 1;
+				$text_at  = 1 - $image_at;
+
+				$this->assertSame( array( 'image' ), array_column( $columns[ $image_at ]['blocks'], 'type' ) );
+				$this->assertSame( $widths[0], $columns[ $image_at ]['width'], "$layout $placement image width" );
+				$this->assertSame(
+					array( 'paragraph', 'paragraph', 'button' ),
+					array_column( $columns[ $text_at ]['blocks'], 'type' )
+				);
+				$this->assertSame( $widths[1], $columns[ $text_at ]['width'], "$layout $placement text width" );
+				$this->assertStringContainsString( 'alpha.jpg', $columns[ $image_at ]['blocks'][0]['imageUrl'] );
+				$this->assertArrayNotHasKey( 'imageAlignment', $columns[ $image_at ]['blocks'][0] );
+			}
+		}
+	}
+
+	/**
+	 * A card with no image stays full width, and cards are separated as before.
+	 */
+	public function test_split_layout_falls_back_for_cards_without_an_image(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$two = $this->create_article( 'Beta story', 2 );
+		$this->add_featured_image( $one, 'alpha.jpg' );
+
+		$blocks = $this->convert(
+			$this->create_newsletter( $this->roundup( array( 'count' => 2, 'layout' => '30-70' ) ) )
+		);
+
+		$this->assertSame(
+			array( 'columns', 'content_break', 'paragraph', 'paragraph', 'button' ),
+			$this->types( $blocks )
+		);
+		$this->assertSame( get_permalink( $two ), $blocks[4]['href'] );
+	}
+
+	/**
+	 * Hidden items and a hidden image leave the card full width.
+	 */
+	public function test_split_layout_respects_the_display_choices(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$this->add_featured_image( $one, 'alpha.jpg' );
+
+		$without_image = $this->convert(
+			$this->create_newsletter(
+				$this->roundup( array( 'count' => 1, 'layout' => '50-50', 'display' => array( 'image' => false ) ) )
+			)
+		);
+		$this->assertSame( array( 'paragraph', 'paragraph', 'button' ), $this->types( $without_image ) );
+
+		$image_only = $this->convert(
+			$this->create_newsletter(
+				$this->roundup(
+					array(
+						'count'   => 1,
+						'layout'  => '50-50',
+						'display' => array(
+							'title'   => false,
+							'excerpt' => false,
+							'button'  => false,
+						),
+					)
+				)
+			)
+		);
+		$this->assertSame( array( 'image' ), $this->types( $image_only ) );
+
+		$no_button = $this->convert(
+			$this->create_newsletter(
+				$this->roundup( array( 'count' => 1, 'layout' => '70-30', 'display' => array( 'button' => false ) ) )
+			)
+		);
+		$this->assertSame( array( 'columns' ), $this->types( $no_button ) );
+		$this->assertSame(
+			array( 'paragraph', 'paragraph' ),
+			array_column( $no_button[0]['columns'][1]['blocks'], 'type' )
+		);
+	}
 }
