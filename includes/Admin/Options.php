@@ -25,8 +25,9 @@ final class Options {
 	 * @var array<string, mixed>
 	 */
 	private const DEFAULTS = [
-		'publication_id'   => '',
-		'post_template_id' => '',
+		'publication_id'          => '',
+		'post_template_id'        => '',
+		'require_template_choice' => false,
 	];
 
 	/**
@@ -81,6 +82,9 @@ final class Options {
 			? sanitize_text_field( (string) $input['post_template_id'] )
 			: '';
 
+		// An unchecked checkbox is missing from the form, so absence means off.
+		$require_template_choice = ! empty( $input['require_template_choice'] );
+
 		// Saving settings clears the cached template list for the selected
 		// publication so the dropdown reflects any beehiiv-side changes.
 		if ( '' !== $publication_id ) {
@@ -88,8 +92,9 @@ final class Options {
 		}
 
 		return [
-			'publication_id'   => $publication_id,
-			'post_template_id' => $post_template_id,
+			'publication_id'          => $publication_id,
+			'post_template_id'        => $post_template_id,
+			'require_template_choice' => $require_template_choice,
 		];
 	}
 }

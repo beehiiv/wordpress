@@ -72,6 +72,7 @@ const SETTINGS_PATH = '/wp-admin/admin.php?page=beehiiv';
 const PUB_SELECT = '#beehiiv_publication_id';
 const TPL_SELECT = '#beehiiv_post_template_id';
 const REFRESH_BTN = '#beehiiv_refresh_post_templates';
+const REQUIRE_TOGGLE = '#beehiiv_require_template_choice';
 
 /**
  * Whether a response is the post-templates REST call containing `needle`.
@@ -523,7 +524,7 @@ test.describe( 'Publication and Template Configuration', () => {
 		await page.locator( '#submit' ).click();
 		await page.waitForURL( /page=beehiiv/ );
 
-		expect( readSettingsOption() ).toEqual( {
+		expect( readSettingsOption() ).toMatchObject( {
 			publication_id: pubId,
 			post_template_id: tplId,
 		} );
@@ -577,5 +578,132 @@ test.describe( 'Publication and Template Configuration', () => {
 		expect( cached.map( ( item ) => item.id ) ).toEqual( [
 			'qa-e2e-tpl-ac013-new',
 		] );
+	} );
+
+	test( 'AC-014: settings form includes a toggle labeled "Require editors to choose a post template"', async ( {
+		page,
+	} ) => {
+		seedConnectedAndAuthorized();
+		seedPublications( [ { id: 'qa-e2e-pub-ac014', name: 'QA Pub 14' } ] );
+		setSettingsOption( '', '' );
+
+		await page.goto( SETTINGS_PATH );
+
+		const toggle = page.locator( REQUIRE_TOGGLE );
+		await expect( toggle ).toBeVisible();
+		await expect( toggle ).toHaveAttribute( 'type', 'checkbox' );
+		await expect(
+			page.getByLabel( 'Require editors to choose a post template' )
+		).toHaveCount( 1 );
+	} );
+
+	test( 'AC-015: toggle is off by default for a site that never saved the setting', async ( {
+		page,
+	} ) => {
+		seedConnectedAndAuthorized();
+		seedPublications( [ { id: 'qa-e2e-pub-ac015', name: 'QA Pub 15' } ] );
+		wpCliSafe( `option delete ${ SETTINGS_OPTION }` );
+
+		await page.goto( SETTINGS_PATH );
+
+		await expect( page.locator( REQUIRE_TOGGLE ) ).not.toBeChecked();
+	} );
+
+	test( 'AC-016: saving stores the toggle state and it persists across sessions', async ( {
+		page,
+		browser,
+	} ) => {
+		seedConnectedAndAuthorized();
+		const pubId = 'qa-e2e-pub-ac016';
+		seedPublications( [ { id: pubId, name: 'QA Pub 16' } ] );
+		setSettingsOption( pubId, '' );
+
+		await page.goto( SETTINGS_PATH );
+		await page.locator( REQUIRE_TOGGLE ).check();
+		await page.locator( '#submit' ).click();
+		await page.waitForURL( /page=beehiiv/ );
+
+		expect( readSettingsOption().require_template_choice ).toBe( true );
+
+		// A brand-new browser context (fresh login) still sees it checked.
+		const context = await browser.newContext();
+		const fresh = await context.newPage();
+		await loginAsAdmin( fresh );
+		await fresh.goto( SETTINGS_PATH );
+		await expect( fresh.locator( REQUIRE_TOGGLE ) ).toBeChecked();
+		await context.close();
+
+		// Turning it off and saving stores false.
+		await page.goto( SETTINGS_PATH );
+		await page.locator( REQUIRE_TOGGLE ).uncheck();
+		await page.locator( '#submit' ).click();
+		await page.waitForURL( /page=beehiiv/ );
+		expect( readSettingsOption().require_template_choice ).toBe( false );
+		await expect( page.locator( REQUIRE_TOGGLE ) ).not.toBeChecked();
+	} );
+
+	test( 'AC-017: help text under the toggle explains the required-template behavior', async ( {
+		page,
+	} ) => {
+		seedConnectedAndAuthorized();
+		seedPublications( [ { id: 'qa-e2e-pub-ac017', name: 'QA Pub 17' } ] );
+		setSettingsOption( '', '' );
+
+		await page.goto( SETTINGS_PATH );
+
+		const help = page
+			.locator( 'td' )
+			.filter( { has: page.locator( REQUIRE_TOGGLE ) } )
+			.locator( 'p.description' );
+		await expect( help ).toBeVisible();
+		await expect( help ).toContainText( 'editors must pick a template' );
+		await expect( help ).toContainText(
+			'default template is not applied automatically'
+		);
+		await expect( help ).toContainText(
+			'sending is blocked until a template is chosen'
+		);
+	} );
+
+	test( 'AC-018: toggle is hidden for users on plans that cannot write posts', async ( {
+		page,
+	} ) => {
+		wpCli(
+			'eval \'beehiiv_e2e_seed_connection(); beehiiv_e2e_mock_permissions( [ "posts" => [ "read" ] ] );\''
+		);
+		setSettingsOption( '', '' );
+
+		await page.goto( SETTINGS_PATH );
+
+		await expect( page.locator( PUB_SELECT ) ).toHaveCount( 0 );
+		await expect( page.locator( REQUIRE_TOGGLE ) ).toHaveCount( 0 );
+	} );
+
+	test( 'AC-019: changing the toggle does not change publication or default template selection', async ( {
+		page,
+	} ) => {
+		seedConnectedAndAuthorized();
+		const pubId = 'qa-e2e-pub-ac019';
+		const tplId = 'qa-e2e-tpl-ac019';
+		seedPublications( [ { id: pubId, name: 'QA Publication AC019' } ] );
+		seedTemplates( pubId, [ { id: tplId, name: 'QA Template AC019' } ] );
+		setSettingsOption( pubId, tplId );
+
+		await page.goto( SETTINGS_PATH );
+		await expect( page.locator( PUB_SELECT ) ).toHaveValue( pubId );
+		await expect( page.locator( TPL_SELECT ) ).toHaveValue( tplId );
+
+		await page.locator( REQUIRE_TOGGLE ).check();
+		await expect( page.locator( PUB_SELECT ) ).toHaveValue( pubId );
+		await expect( page.locator( TPL_SELECT ) ).toHaveValue( tplId );
+
+		await page.locator( '#submit' ).click();
+		await page.waitForURL( /page=beehiiv/ );
+
+		expect( readSettingsOption() ).toEqual( {
+			publication_id: pubId,
+			post_template_id: tplId,
+			require_template_choice: true,
+		} );
 	} );
 } );

@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
  * publication; once its beehiiv post exists, every later action targets the
  * publication that beehiiv post was created in.
  *
- * @since x.x.x
+ * @since 1.1.0
  */
 final class PublicationResolver {
 
@@ -28,7 +28,7 @@ final class PublicationResolver {
 	 * Site-wide default publication ID from the plugin settings.
 	 *
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function get_default_publication_id(): string {
 		$settings = Options::get();
@@ -40,7 +40,7 @@ final class PublicationResolver {
 	 * Publications connected to the beehiiv account (cached list).
 	 *
 	 * @return array<int, array{id: string, name: string}>
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function get_connected_publications(): array {
 		return Publications::get_publications();
@@ -53,7 +53,7 @@ final class PublicationResolver {
 	 * unavailable, so a beehiiv outage does not block sending.
 	 *
 	 * @return array<int, array{id: string, name: string}>
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function get_editor_publications(): array {
 		$publications = self::get_connected_publications();
@@ -81,7 +81,7 @@ final class PublicationResolver {
 	 *
 	 * @param string $publication_id Publication ID.
 	 * @return bool|null Null when the connected list is unavailable.
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function is_connected_publication( string $publication_id ): ?bool {
 		$publications = self::get_connected_publications();
@@ -104,7 +104,7 @@ final class PublicationResolver {
 	 *
 	 * @param string $publication_id Publication ID.
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function get_publication_name( string $publication_id ): string {
 		foreach ( self::get_connected_publications() as $publication ) {
@@ -128,7 +128,7 @@ final class PublicationResolver {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return array{publication_id: string, is_default: bool, fallback_from: string}
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function resolve_target( int $post_id ): array {
 		$default_id = self::get_default_publication_id();
@@ -165,7 +165,7 @@ final class PublicationResolver {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function get_linked_publication_id( int $post_id ): string {
 		$linked_id = trim( (string) get_post_meta( $post_id, Meta::BEEHIIV_LINKED_PUBLICATION_ID, true ) );
@@ -181,7 +181,7 @@ final class PublicationResolver {
 	 *
 	 * @param int $post_id Post ID.
 	 * @return string
-	 * @since x.x.x
+	 * @since 1.1.0
 	 */
 	public static function resolve_for_post( int $post_id ): string {
 		$beehiiv_post_id = trim( (string) get_post_meta( $post_id, Meta::BEEHIIV_POST_ID, true ) );

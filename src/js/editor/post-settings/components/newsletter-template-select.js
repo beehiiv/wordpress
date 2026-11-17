@@ -21,6 +21,7 @@ import { useBeehiivEditorConfig } from '../hooks/use-beehiiv-editor-config';
  * @param {string}                  props.publicationId        Publication whose templates are listed.
  * @param {boolean}                 props.isDefaultPublication Whether that is the site-wide default publication.
  * @param {boolean}                 [props.disabled]           Whether the choice is locked.
+ * @param {boolean}                 [props.requireChoice]      Whether the editor must choose a template (no automatic default).
  */
 export default function NewsletterTemplateSelect( {
 	value,
@@ -28,13 +29,16 @@ export default function NewsletterTemplateSelect( {
 	publicationId,
 	isDefaultPublication,
 	disabled = false,
+	requireChoice = false,
 } ) {
 	const { defaultPostTemplateId: siteDefaultPostTemplateId } =
 		useBeehiivEditorConfig();
-	// Only the site-wide default publication has a default template.
-	const defaultPostTemplateId = isDefaultPublication
-		? siteDefaultPostTemplateId
-		: '';
+	// Only the site-wide default publication has a default template, and
+	// it is not applied automatically when the editor must choose.
+	const defaultPostTemplateId =
+		isDefaultPublication && ! requireChoice
+			? siteDefaultPostTemplateId
+			: '';
 	const [ templates, setTemplates ] = useState( [] );
 	const [ isLoading, setIsLoading ] = useState( false );
 	const [ justRefreshed, setJustRefreshed ] = useState( false );
@@ -144,21 +148,73 @@ export default function NewsletterTemplateSelect( {
 		}
 
 		if ( value && ! opts.some( ( option ) => option.value === value ) ) {
+			// Only call it unavailable once the list has loaded with templates in it,
+			// so a slow or failed fetch does not mislabel a good template.
+			const isUnavailable = ! isLoading && templates.length > 0;
+
 			opts.push( {
 				value,
-				label: value,
+				label: isUnavailable
+					? sprintf(
+							/* translators: %s: post template ID */
+							__( '%s (unavailable)', 'beehiiv' ),
+							value
+					  )
+					: value,
 			} );
 		}
 
 		if ( ! selectedValue ) {
 			opts.unshift( {
 				value: '',
-				label: __( 'Select a template', 'beehiiv' ),
+				label: requireChoice
+					? __( 'Choose a template', 'beehiiv' )
+					: __( 'Select a template', 'beehiiv' ),
 			} );
 		}
 
 		return opts;
-	}, [ templates, value, selectedValue, defaultPostTemplateId ] );
+	}, [
+		templates,
+		value,
+		selectedValue,
+		defaultPostTemplateId,
+		requireChoice,
+		isLoading,
+	] );
+
+	const getHelpText = () => {
+		if ( disabled ) {
+			return __(
+				"The template can't be changed once the newsletter is in beehiiv.",
+				'beehiiv'
+			);
+		}
+
+		if ( requireChoice && ! selectedValue ) {
+			return __(
+				'Choose a post template before sending this post to beehiiv.',
+				'beehiiv'
+			);
+		}
+
+		if ( ! value && defaultPostTemplateId ) {
+			const defaultTemplate = templates.find(
+				( item ) => item?.id === defaultPostTemplateId
+			);
+
+			return sprintf(
+				/* translators: %s: default post template name */
+				__(
+					'This post uses the default template, "%s", unless you choose another.',
+					'beehiiv'
+				),
+				defaultTemplate?.name || defaultPostTemplateId
+			);
+		}
+
+		return undefined;
+	};
 
 	if ( isLoading && options.length === 0 ) {
 		return (
@@ -174,19 +230,13 @@ export default function NewsletterTemplateSelect( {
 
 	return (
 		<div className="beehiiv-newsletter-template">
+			{ isLoading && <Spinner /> }
 			<SelectControl
 				label={ __( 'Post template', 'beehiiv' ) }
 				value={ selectedValue }
 				options={ options }
 				onChange={ onChange }
-				help={
-					disabled
-						? __(
-								"The template can't be changed once the newsletter is in beehiiv.",
-								'beehiiv'
-						  )
-						: undefined
-				}
+				help={ getHelpText() }
 				disabled={ disabled || isLoading }
 				__nextHasNoMarginBottom
 			/>

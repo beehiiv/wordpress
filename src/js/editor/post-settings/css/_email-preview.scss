@@ -1,0 +1,107 @@
+.beehiiv-email-preview__note,
+.beehiiv-email-preview__reason {
+	color: #757575;
+	margin: 0 0 8px;
+}
+
+.beehiiv-email-preview__modal {
+
+	.beehiiv-email-preview__error {
+		margin-bottom: 16px;
+	}
+
+	.beehiiv-email-preview__stage {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 16px;
+		height: 100%;
+	}
+
+	.beehiiv-email-preview__toolbar {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.beehiiv-email-preview__devices {
+		display: flex;
+		gap: 4px;
+	}
+
+	.beehiiv-email-preview__device {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		min-height: 0;
+		width: 100%;
+		background: #fff;
+		border: 1px solid #ddd;
+		border-radius: 8px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+		overflow: hidden;
+
+		&.is-desktop {
+			max-width: 1280px;
+		}
+
+		&.is-mobile {
+			max-width: 448px;
+		}
+	}
+
+	.beehiiv-email-preview__chrome {
+		display: flex;
+		gap: 8px;
+		padding: 12px 16px;
+		background: #f4f4f4;
+		border-bottom: 1px solid #e5e5e5;
+
+		span {
+			width: 12px;
+			height: 12px;
+			border-radius: 50%;
+
+			&:nth-child(1) {
+				background: #ff5f57;
+			}
+
+			&:nth-child(2) {
+				background: #febc2e;
+			}
+
+			&:nth-child(3) {
+				background: #28c840;
+			}
+		}
+	}
+
+	.beehiiv-email-preview__meta {
+		display: grid;
+		grid-template-columns: max-content 1fr;
+		gap: 8px 24px;
+		margin: 0;
+		padding: 16px 24px;
+		background: #fafafa;
+		border-bottom: 1px solid #e5e5e5;
+		font-size: 13px;
+
+		dt {
+			color: #757575;
+		}
+
+		dd {
+			margin: 0;
+			font-weight: 500;
+			overflow-wrap: anywhere;
+		}
+	}
+
+	.beehiiv-email-preview__frame {
+		flex: 1;
+		border: 0;
+		background: #fff;
+		min-height: 60vh;
+		width: 100%;
+	}
+}

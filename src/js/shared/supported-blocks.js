@@ -9,6 +9,7 @@
  * @property {string[]} supported   Blocks converted to beehiiv newsletter blocks.
  * @property {string[]} nestedOnly  Inner blocks handled by a parent.
  * @property {string[]} snippetOnly Blocks only used in snippet newsletter mode.
+ * @property {number}   maxColumns  Most columns a Columns block can hold before it is omitted.
  */
 
 /** @type {BeehiivBlockSupportConfig} */
@@ -16,6 +17,7 @@ const DEFAULT_CONFIG = {
 	supported: [],
 	nestedOnly: [],
 	snippetOnly: [],
+	maxColumns: 3,
 };
 
 /**
@@ -92,10 +94,34 @@ export function isMediaTextWithUnsupportedVideo( block ) {
 	return 'video' === block.attributes?.mediaType;
 }
 
+const COLUMNS_BLOCK = 'core/columns';
+const COLUMN_BLOCK = 'core/column';
+
+/**
+ * Whether a Columns block has more columns than beehiiv accepts.
+ *
+ * The entire block is omitted from the beehiiv payload when it has.
+ *
+ * @param {{ name?: string, innerBlocks?: Array<{ name?: string }> }} block Parsed block.
+ * @return {boolean} True when the block has too many columns.
+ */
+export function isColumnsWithTooManyColumns( block ) {
+	if ( block?.name !== COLUMNS_BLOCK ) {
+		return false;
+	}
+
+	const { maxColumns } = getConfig();
+	const columns = ( block.innerBlocks ?? [] ).filter(
+		( inner ) => inner?.name === COLUMN_BLOCK
+	);
+
+	return columns.length > ( maxColumns ?? DEFAULT_CONFIG.maxColumns );
+}
+
 /**
  * Whether a block is omitted from the beehiiv newsletter payload.
  *
- * @param {{ name?: string, attributes?: { mediaType?: string } }} block Parsed block.
+ * @param {{ name?: string, attributes?: { mediaType?: string }, innerBlocks?: Array<{ name?: string }> }} block Parsed block.
  * @return {boolean} True when the block will not be sent.
  */
 export function isOmittedFromNewsletter( block ) {
@@ -104,6 +130,10 @@ export function isOmittedFromNewsletter( block ) {
 	}
 
 	if ( isMediaTextWithUnsupportedVideo( block ) ) {
+		return true;
+	}
+
+	if ( isColumnsWithTooManyColumns( block ) ) {
 		return true;
 	}
 

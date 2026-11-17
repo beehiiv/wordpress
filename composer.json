@@ -9,7 +9,12 @@
 		}
 	},
 	"scripts": {
-		"test": "phpunit -c phpunit.xml.dist"
+		"test": [
+			"@test:unit",
+			"@test:e2e"
+		],
+		"test:unit": "phpunit -c phpunit.xml.dist",
+		"test:e2e": "npx playwright test"
 	},
 	"minimum-stability": "stable",
 	"require": {
