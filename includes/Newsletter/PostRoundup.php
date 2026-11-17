@@ -236,17 +236,23 @@ final class PostRoundup {
 	}
 
 	/**
-	 * Snapshot key of a top-level roundup block: its stored id, else its position.
+	 * Snapshot key of a roundup block: its stored id, else its position among the
+	 * top-level roundups. A roundup inside a layout block has no stable position, so
+	 * without a stored id it is keyed by its own settings.
 	 *
 	 * @param array<string, mixed> $attrs   Block attributes.
-	 * @param int                  $ordinal Position among the roundup blocks.
+	 * @param int|null             $ordinal Position among the top-level roundups, null when nested.
 	 * @return string
 	 * @since x.x.x
 	 */
-	public static function block_key( array $attrs, int $ordinal ): string {
+	public static function block_key( array $attrs, ?int $ordinal ): string {
 		$uid = isset( $attrs['uid'] ) ? sanitize_key( (string) $attrs['uid'] ) : '';
 
-		return '' !== $uid ? $uid : 'n' . $ordinal;
+		if ( '' !== $uid ) {
+			return $uid;
+		}
+
+		return null === $ordinal ? 'x' . substr( md5( (string) wp_json_encode( $attrs ) ), 0, 8 ) : 'n' . $ordinal;
 	}
 
 	/**
@@ -445,10 +451,11 @@ final class PostRoundup {
 	 * @param array<string, mixed> $attrs   Block attributes.
 	 * @param int                  $post_id Newsletter post ID.
 	 * @param string               $key     Snapshot key of the block.
+	 * @param bool                 $separate Whether to put a separator between cards. Off inside a column.
 	 * @return array<int, array<string, mixed>>
 	 * @since x.x.x
 	 */
-	public static function expand( array $attrs, int $post_id, string $key ): array {
+	public static function expand( array $attrs, int $post_id, string $key, bool $separate = true ): array {
 		$blocks = [];
 
 		$cards = self::apply_settings( self::cards( self::resolve_ids( $attrs, $post_id, $key ) ), $attrs );
@@ -461,7 +468,7 @@ final class PostRoundup {
 				continue;
 			}
 
-			if ( ! empty( $blocks ) ) {
+			if ( $separate && ! empty( $blocks ) ) {
 				$blocks[] = [ 'type' => 'content_break' ];
 			}
 

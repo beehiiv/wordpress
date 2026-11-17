@@ -42,15 +42,10 @@ final class PostRoundupSnapshot {
 
 		$existing = self::get( $post->ID );
 		$next     = [];
-		$ordinal  = 0;
 
-		foreach ( parse_blocks( $post->post_content ) as $block ) {
-			if ( PostRoundup::BLOCK !== ( $block['blockName'] ?? '' ) ) {
-				continue;
-			}
-
-			$attrs = (array) ( $block['attrs'] ?? [] );
-			$key   = PostRoundup::block_key( $attrs, $ordinal++ );
+		foreach ( self::find_roundups( parse_blocks( $post->post_content ) ) as $roundup ) {
+			$attrs = $roundup['attrs'];
+			$key   = $roundup['key'];
 
 			if ( PostRoundup::MODE_AUTO !== PostRoundup::mode( $attrs ) ) {
 				continue;
@@ -72,6 +67,38 @@ final class PostRoundupSnapshot {
 		}
 
 		update_post_meta( $post->ID, Meta::ROUNDUP_SNAPSHOT, $next );
+	}
+
+	/**
+	 * Every roundup in the blocks, including those inside layout blocks, with its key.
+	 *
+	 * Top-level roundups are keyed like the converter keys them, by position when they
+	 * have no stored id. Nested roundups are keyed by stored id or by their settings.
+	 *
+	 * @param array<int, array<string, mixed>> $blocks   Parsed blocks.
+	 * @param bool                             $is_nested Whether the blocks sit inside another block.
+	 * @return array<int, array{attrs: array<string, mixed>, key: string}>
+	 */
+	private static function find_roundups( array $blocks, bool $is_nested = false ): array {
+		$found   = [];
+		$ordinal = 0;
+
+		foreach ( $blocks as $block ) {
+			if ( PostRoundup::BLOCK === ( $block['blockName'] ?? '' ) ) {
+				$attrs   = (array) ( $block['attrs'] ?? [] );
+				$found[] = [
+					'attrs' => $attrs,
+					'key'   => PostRoundup::block_key( $attrs, $is_nested ? null : $ordinal++ ),
+				];
+				continue;
+			}
+
+			if ( ! empty( $block['innerBlocks'] ) ) {
+				$found = array_merge( $found, self::find_roundups( (array) $block['innerBlocks'], true ) );
+			}
+		}
+
+		return $found;
 	}
 
 	/**

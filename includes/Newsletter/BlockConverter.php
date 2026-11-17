@@ -103,6 +103,7 @@ final class BlockConverter {
 	 * @param WP_Post                          $post_object                Post object.
 	 * @param bool                             $is_send_newsletter_snippet Whether snippet mode is enabled.
 	 * @param bool                             $convert_groups             Whether Group blocks become sections.
+	 * @param bool                             $is_nested                  Whether the blocks sit inside a layout block.
 	 * @return array<int, array<string, mixed>>
 	 * @since 1.0.0
 	 */
@@ -110,7 +111,8 @@ final class BlockConverter {
 		array $wp_blocks,
 		WP_Post $post_object,
 		bool $is_send_newsletter_snippet,
-		bool $convert_groups = false
+		bool $convert_groups = false,
+		bool $is_nested = false
 	): array {
 		$beehiiv_blocks  = [];
 		$roundup_ordinal = 0;
@@ -143,7 +145,7 @@ final class BlockConverter {
 
 			if ( PostRoundup::BLOCK === $block_name ) {
 				$attrs = (array) ( $wp_block['attrs'] ?? [] );
-				$key   = PostRoundup::block_key( $attrs, $roundup_ordinal++ );
+				$key   = PostRoundup::block_key( $attrs, $is_nested ? null : $roundup_ordinal++ );
 
 				// A roundup left in a regular post is ignored.
 				if ( ContentTypes::is_newsletter( $post_object->post_type ) ) {
@@ -168,7 +170,10 @@ final class BlockConverter {
 			}
 
 			if ( 'core/columns' === $block_name ) {
-				$beehiiv_blocks = array_merge( $beehiiv_blocks, self::convert_columns_block_to_blocks( $wp_block ) );
+				$beehiiv_blocks = array_merge(
+					$beehiiv_blocks,
+					self::convert_columns_block_to_blocks( $wp_block, $post_object )
+				);
 				continue;
 			}
 
@@ -203,7 +208,8 @@ final class BlockConverter {
 			$wp_block['innerBlocks'] ?? [],
 			$post_object,
 			false,
-			false
+			false,
+			true
 		);
 
 		if ( empty( $inner_blocks ) ) {
@@ -632,11 +638,12 @@ final class BlockConverter {
 	 * block nested inside a column is not converted to a columns block: its inner
 	 * blocks follow the outer columns block at the top level.
 	 *
-	 * @param array<string, mixed> $wp_block Parsed block.
+	 * @param array<string, mixed> $wp_block    Parsed block.
+	 * @param WP_Post|null         $post_object Post being converted. Lets a Post Roundup inside a column expand.
 	 * @return array<int, array<string, mixed>>
 	 * @since 1.2.0
 	 */
-	public static function convert_columns_block_to_blocks( array $wp_block ): array {
+	public static function convert_columns_block_to_blocks( array $wp_block, ?WP_Post $post_object = null ): array {
 		if ( 'core/columns' !== ( $wp_block['blockName'] ?? '' ) ) {
 			return [];
 		}
@@ -658,7 +665,8 @@ final class BlockConverter {
 			$column_blocks[]     = $column_block;
 			$converted_columns[] = self::convert_layout_block_inner_blocks(
 				$column_block['innerBlocks'] ?? [],
-				$nested_blocks
+				$nested_blocks,
+				$post_object
 			);
 		}
 
@@ -708,14 +716,20 @@ final class BlockConverter {
 	 * added to it for the caller to emit at the top level. Without it, the nested block
 	 * is omitted.
 	 *
+	 * A Post Roundup expands in place when the post is a newsletter. Its cards are sent
+	 * full width with no separators between cards, because a beehiiv column cannot hold
+	 * another columns block and a divider inside a column is not known to be accepted.
+	 *
 	 * @param array<int, array<string, mixed>>      $wp_blocks     Parsed inner blocks.
 	 * @param array<int, array<string, mixed>>|null $nested_blocks Receives the inner blocks of nested columns.
+	 * @param WP_Post|null                          $post_object   Post being converted.
 	 * @return array<int, array<string, mixed>>
 	 * @since 1.0.0
 	 */
 	private static function convert_layout_block_inner_blocks(
 		array $wp_blocks,
-		?array &$nested_blocks = null
+		?array &$nested_blocks = null,
+		?WP_Post $post_object = null
 	): array {
 		$beehiiv_blocks = [];
 
@@ -732,13 +746,27 @@ final class BlockConverter {
 						if ( 'core/column' === ( $nested_column['blockName'] ?? '' ) ) {
 							$nested_converted = self::convert_layout_block_inner_blocks(
 								$nested_column['innerBlocks'] ?? [],
-								$nested_blocks
+								$nested_blocks,
+								$post_object
 							);
 							$nested_blocks    = array_merge( $nested_blocks, $nested_converted );
 						}
 					}
 				}
 
+				continue;
+			}
+
+			if ( PostRoundup::BLOCK === $block_name ) {
+				if ( $post_object instanceof WP_Post && ContentTypes::is_newsletter( $post_object->post_type ) ) {
+					$attrs           = (array) ( $wp_block['attrs'] ?? [] );
+					$attrs['layout'] = PostRoundup::LAYOUT_FULL;
+
+					$beehiiv_blocks = array_merge(
+						$beehiiv_blocks,
+						PostRoundup::expand( $attrs, $post_object->ID, PostRoundup::block_key( $attrs, null ), false )
+					);
+				}
 				continue;
 			}
 

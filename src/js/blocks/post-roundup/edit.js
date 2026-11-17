@@ -231,7 +231,7 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 	const display = getDisplay( attributes );
 	const showsNothing = Object.values( display ).every( ( shown ) => ! shown );
 
-	const { postId, firstUidClientId } = useSelect(
+	const { postId, firstUidClientId, isInColumn } = useSelect(
 		( select ) => {
 			// Look at every block, not only the top level: the roundup can sit
 			// inside layout blocks such as Columns.
@@ -243,12 +243,19 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 
 			return {
 				postId: select( 'core/editor' )?.getCurrentPostId(),
+				// A beehiiv column cannot hold another columns block, so a roundup
+				// inside a column is always sent with full-width cards.
+				isInColumn: editor
+					.getBlockParents( clientId )
+					.some(
+						( id ) => editor.getBlockName( id ) === 'core/column'
+					),
 				firstUidClientId: roundups.find(
 					( block ) => block.attributes.uid === uid
 				)?.clientId,
 			};
 		},
-		[ uid ]
+		[ uid, clientId ]
 	);
 
 	// Each roundup needs its own id so its frozen list is kept apart from others.
@@ -300,6 +307,17 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 
 	const blockProps = useBlockProps();
 
+	const columnNotice = isInColumn && (
+		<Notice status="info" isDismissible={ false }>
+			{ __(
+				'Inside a Columns block, cards are sent full width.',
+				'beehiiv'
+			) }
+		</Notice>
+	);
+
+	const cardLayout = isInColumn ? LAYOUT_FULL : layout;
+
 	let preview;
 
 	if ( isLoading && ! cards.length ) {
@@ -328,7 +346,7 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 				key={ card.id }
 				card={ card }
 				display={ display }
-				layout={ layout }
+				layout={ cardLayout }
 				imagePlacement={ imagePlacement }
 				override={ overrides?.[ card.id ] }
 				onChange={ ( changes ) =>
@@ -357,6 +375,7 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 					title={ __( 'Post Roundup', 'beehiiv' ) }
 					initialOpen
 				>
+					{ columnNotice }
 					<RadioControl
 						label={ __( 'Posts', 'beehiiv' ) }
 						selected={ mode }
@@ -416,7 +435,8 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 					<OptionButtons
 						label={ __( 'Table width ratio', 'beehiiv' ) }
 						options={ LAYOUT_OPTIONS }
-						value={ layout }
+						value={ cardLayout }
+						disabled={ isInColumn }
 						onChange={ ( value ) =>
 							setAttributes( { layout: value } )
 						}
@@ -425,7 +445,7 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 						label={ __( 'Image placement', 'beehiiv' ) }
 						options={ PLACEMENT_OPTIONS }
 						value={ imagePlacement }
-						disabled={ layout === LAYOUT_FULL }
+						disabled={ cardLayout === LAYOUT_FULL }
 						onChange={ ( value ) =>
 							setAttributes( { imagePlacement: value } )
 						}
