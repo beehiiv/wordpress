@@ -389,8 +389,12 @@ test.describe( 'US-002: keep newsletters off the public site', () => {
 		}
 
 		// Site search.
+		// The search page echoes the query in its title, so look for the
+		// newsletter's own title and body, not the bare marker.
 		const search = await request.get( `/?s=${ marker }` );
-		expect( await search.text() ).not.toContain( marker );
+		const searchText = await search.text();
+		expect( searchText ).not.toContain( `${ marker } newsletter` );
+		expect( searchText ).not.toContain( `${ marker } body` );
 
 		// Feeds.
 		for ( const url of [
