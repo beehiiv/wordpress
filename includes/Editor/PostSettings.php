@@ -11,6 +11,7 @@ use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\Workspace;
 use Beehiiv\Config;
 use Beehiiv\Connection\Manager;
+use Beehiiv\Newsletter\ContentTypes;
 use Beehiiv\Newsletter\PublicationResolver;
 use Beehiiv\Newsletter\SupportedBlocks;
 use Beehiiv\OAuth\Config as OAuthConfig;
@@ -18,8 +19,8 @@ use Beehiiv\OAuth\Config as OAuthConfig;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Registers post meta and enqueues the beehiiv plugin sidebar for the default
- * `post` post type.
+ * Registers post meta and enqueues the beehiiv plugin sidebar for the supported
+ * content types ({@see ContentTypes}).
  *
  * @since 1.0.0
  */
@@ -39,11 +40,6 @@ final class PostSettings {
 	 * Style handle for the post settings sidebar (`build/post-settings.css`).
 	 */
 	private const STYLE_HANDLE = 'beehiiv-post-settings';
-
-	/**
-	 * Post type that receives beehiiv post meta and editor settings.
-	 */
-	private const POST_TYPE = 'post';
 
 	/**
 	 * Post meta keys registered for the block editor (REST-visible).
@@ -119,10 +115,30 @@ final class PostSettings {
 	 * @since 1.0.0
 	 */
 	public static function register_meta(): void {
-		add_filter( 'rest_prepare_post', [ self::class, 'prepare_rest_post' ], 10, 3 );
+		foreach ( ContentTypes::supported() as $post_type ) {
+			add_filter( 'rest_prepare_' . $post_type, [ self::class, 'prepare_rest_post' ], 10, 3 );
+		}
+
 		add_filter( 'rest_request_before_callbacks', [ self::class, 'drop_readonly_meta_from_request' ], 10, 3 );
 
+		foreach ( ContentTypes::supported() as $post_type ) {
+			self::register_post_type_meta( $post_type );
+		}
+	}
+
+	/**
+	 * Register every beehiiv meta key for one supported post type.
+	 *
+	 * @param string $post_type Post type name.
+	 * @return void
+	 * @since x.x.x
+	 */
+	private static function register_post_type_meta( string $post_type ): void {
 		foreach ( self::META_KEYS as $key => $config ) {
+			if ( Meta::SEND_TO_NEWSLETTER === $key ) {
+				$config['default'] = ContentTypes::send_default( $post_type );
+			}
+
 			$show_in_rest = true;
 
 			if ( ! empty( $config['readonly'] ) ) {
@@ -147,7 +163,7 @@ final class PostSettings {
 				$args['sanitize_callback'] = $config['sanitize'];
 			}
 
-			register_post_meta( self::POST_TYPE, $key, $args );
+			register_post_meta( $post_type, $key, $args );
 		}
 	}
 
@@ -201,7 +217,7 @@ final class PostSettings {
 		}
 
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
-		if ( $screen && self::POST_TYPE !== $screen->post_type ) {
+		if ( $screen && ! ContentTypes::is_supported( $screen->post_type ) ) {
 			return;
 		}
 
@@ -210,7 +226,7 @@ final class PostSettings {
 	}
 
 	/**
-	 * Enqueue the compiled editor plugin only on `post` edit screens.
+	 * Enqueue the compiled editor plugin only on supported edit screens.
 	 *
 	 * @since 1.0.0
 	 */
@@ -220,7 +236,7 @@ final class PostSettings {
 		}
 
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
-		if ( $screen && self::POST_TYPE !== $screen->post_type ) {
+		if ( $screen && ! ContentTypes::is_supported( $screen->post_type ) ) {
 			return;
 		}
 
@@ -310,7 +326,7 @@ final class PostSettings {
 			return $response;
 		}
 
-		if ( ! preg_match( '#^/wp/v2/posts(?:/\d+(?:/autosaves)?)?$#', $request->get_route() ) ) {
+		if ( ! preg_match( ContentTypes::rest_route_pattern(), $request->get_route() ) ) {
 			return $response;
 		}
 
@@ -349,7 +365,7 @@ final class PostSettings {
 			return $response;
 		}
 
-		if ( self::POST_TYPE !== $post->post_type || 'edit' !== $request->get_param( 'context' ) ) {
+		if ( ! ContentTypes::is_supported( $post->post_type ) || 'edit' !== $request->get_param( 'context' ) ) {
 			return $response;
 		}
 
@@ -412,6 +428,8 @@ final class PostSettings {
 			'defaultPostTemplateId' => trim( (string) ( $settings['post_template_id'] ?? '' ) ),
 			'requireTemplateChoice' => ! empty( $settings['require_template_choice'] ),
 			'canPublishPosts'       => current_user_can( 'publish_posts' ),
+			'supportedPostTypes'    => ContentTypes::supported(),
+			'newsletterPostType'    => ContentTypes::NEWSLETTER,
 			'defaultPublicationId'  => $default_pub_id,
 			'publications'          => $is_connected ? PublicationResolver::get_editor_publications() : [],
 		];

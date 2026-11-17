@@ -14,6 +14,8 @@ const DEFAULT_CONFIG = {
 	defaultPostTemplateId: '',
 	requireTemplateChoice: false,
 	canPublishPosts: false,
+	supportedPostTypes: [ 'post' ],
+	newsletterPostType: 'beehiiv_newsletter',
 	defaultPublicationId: '',
 	publications: [],
 };

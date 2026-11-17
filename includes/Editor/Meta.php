@@ -66,6 +66,14 @@ final class Meta {
 	public const BEEHIIV_LINKED_POST_TEMPLATE_ID = '_beehiiv_linked_post_template_id';
 
 	/**
+	 * Post IDs frozen for automatic Post Roundup blocks at the first send or schedule.
+	 * Server-only; not registered for REST.
+	 *
+	 * @since x.x.x
+	 */
+	public const ROUNDUP_SNAPSHOT = '_beehiiv_roundup_snapshot';
+
+	/**
 	 * Beehiiv post ID after the newsletter has been created via the API.
 	 *
 	 * @since 1.0.0

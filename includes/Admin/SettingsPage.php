@@ -34,7 +34,11 @@ final class SettingsPage {
 	 */
 	public static function render(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
+			wp_die(
+				esc_html__( 'Sorry, you are not allowed to access this page.', 'beehiiv' ),
+				'',
+				[ 'response' => 403 ]
+			);
 		}
 
 		require Config::ADMIN_VIEWS_DIR . 'settings-page.php';

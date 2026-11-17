@@ -44,6 +44,7 @@ final class SupportedBlocks {
 		'core/buttons',
 		'core/separator',
 		'beehiiv/advertisement',
+		'beehiiv/post-roundup',
 	];
 
 	/**

@@ -29,7 +29,9 @@ final class Plugin {
 
 		Frontend\Assets::init();
 		Admin\Assets::init();
+		Newsletter\NewsletterPostType::init();
 		Newsletter\Sender::init();
+		Newsletter\PostRoundup::init();
 		Advertisement\Sync::init();
 		OAuth\Config::register_hooks();
 		OAuth\AdminActions::init();
@@ -40,13 +42,15 @@ final class Plugin {
 		add_action( 'init', [ Editor\PostSettings::class, 'register_meta' ] );
 		add_action( 'enqueue_block_editor_assets', [ Editor\PostSettings::class, 'enqueue_assets' ] );
 		add_action( 'enqueue_block_assets', [ Editor\PostSettings::class, 'enqueue_canvas_styles' ] );
-		add_action( 'admin_menu', [ Admin\Menu::class, 'register' ] );
+		add_action( 'admin_menu', [ Admin\Menu::class, 'register' ], 5 );
+		add_action( 'admin_menu', [ Admin\Menu::class, 'prune_for_non_administrators' ], 11 );
 		add_action( 'admin_menu', [ OAuth\CallbackHandler::class, 'register_page' ] );
 		add_action( 'admin_init', [ self::class, 'bootstrap_admin_features' ] );
 		add_action( 'rest_api_init', [ REST\PostTemplatesController::class, 'register_routes' ] );
 		add_action( 'rest_api_init', [ REST\PublicationsController::class, 'register_routes' ] );
 		add_action( 'rest_api_init', [ REST\AdvertisementOpportunitiesController::class, 'register_routes' ] );
 		add_action( 'rest_api_init', [ REST\TestSendController::class, 'register_routes' ] );
+		add_action( 'rest_api_init', [ REST\PostRoundupController::class, 'register_routes' ] );
 		add_action( 'rest_api_init', [ REST\EmailPreviewController::class, 'register_routes' ] );
 	}
 

@@ -1,0 +1,111 @@
+@use "../../css" as beehiiv;
+
+.wp-block-beehiiv-post-roundup {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+
+	@include beehiiv.block-placeholder-outline;
+}
+
+/* stylelint-disable selector-class-pattern -- BEM + @wordpress/components */
+.beehiiv-post-roundup__card {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding-bottom: 1.5rem;
+	border-bottom: 1px solid #ddd;
+
+	&:last-child {
+		padding-bottom: 0;
+		border-bottom: 0;
+	}
+
+	p {
+		margin: 0;
+	}
+
+	a {
+		color: inherit;
+		text-decoration: underline;
+	}
+}
+
+/* The image and the text sit in two boxes so a split card can lay them side by side. */
+.beehiiv-post-roundup__media,
+.beehiiv-post-roundup__body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.beehiiv-post-roundup__card--split {
+	flex-direction: row;
+	align-items: flex-start;
+	gap: 1rem;
+
+	.beehiiv-post-roundup__media {
+		flex: 0 0 var(--beehiiv-image-width);
+		max-width: var(--beehiiv-image-width);
+	}
+
+	.beehiiv-post-roundup__body {
+		flex: 1 1 0;
+		min-width: 0;
+	}
+}
+
+.beehiiv-post-roundup__card--image-right {
+	flex-direction: row-reverse;
+}
+
+.beehiiv-post-roundup__options {
+	margin-bottom: 16px;
+}
+
+.beehiiv-post-roundup__options-label {
+	display: block;
+	margin-bottom: 8px;
+	font-size: 11px;
+	font-weight: 500;
+	text-transform: uppercase;
+}
+
+.beehiiv-post-roundup__options-group {
+	display: flex;
+
+	.components-button {
+		flex: 1;
+		justify-content: center;
+		border-radius: 0;
+	}
+}
+
+.beehiiv-post-roundup__title strong {
+	font-weight: 700;
+}
+
+.beehiiv-post-roundup__image {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
+
+.beehiiv-post-roundup__image-button,
+.beehiiv-post-roundup__reset {
+	align-self: flex-start;
+}
+
+.beehiiv-post-roundup__button {
+	align-self: flex-start;
+	padding: 0.5rem 1rem;
+	border-radius: 2px;
+	background: #1e1e1e;
+	color: #fff;
+	font-size: 0.875rem;
+}
+
+.beehiiv-post-roundup__picker {
+	margin-top: 16px;
+}
+/* stylelint-enable selector-class-pattern */

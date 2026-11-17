@@ -47,13 +47,6 @@ final class TestSender {
 	private const ELIGIBLE_STATUSES = [ 'draft', 'pending', 'future' ];
 
 	/**
-	 * Post type that supports beehiiv newsletters.
-	 *
-	 * @since 1.0.0
-	 */
-	private const POST_TYPE = 'post';
-
-	/**
 	 * Longest a test send waits for beehiiv to finish creating a temporary draft, in seconds.
 	 *
 	 * @since 1.0.0
@@ -119,7 +112,7 @@ final class TestSender {
 	public static function check_eligibility( int $post_id ) {
 		$post = get_post( $post_id );
 
-		if ( ! $post instanceof WP_Post || self::POST_TYPE !== $post->post_type ) {
+		if ( ! $post instanceof WP_Post || ! ContentTypes::is_supported( $post->post_type ) ) {
 			return new WP_Error(
 				'beehiiv_test_send_post_not_found',
 				__( 'This post no longer exists. Save or reload the editor and try again.', 'beehiiv' )
