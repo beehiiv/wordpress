@@ -1030,22 +1030,26 @@ test.describe( 'US-004: choose how each card is laid out', () => {
 
 // ---------------------------------------------------------------------------
 test.describe( 'Roundup inside other blocks', () => {
+	const inColumn = ( extra = {} ) =>
+		`<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column">${ roundupBlock(
+			{
+				mode: 'manual',
+				uid: 'nested1',
+				posts: [ { id: Number( postIds.p2 ), type: 'post' } ],
+				...extra,
+			}
+		) }</div><!-- /wp:column --><!-- wp:column --><div class="wp-block-column"><!-- wp:paragraph --><p>RR-BESIDE</p><!-- /wp:paragraph --></div><!-- /wp:column --></div><!-- /wp:columns -->`;
+
 	test( 'a roundup inside a Columns block shows its cards and does not error', async ( {
 		page,
 	} ) => {
 		await loginAsAdmin( page );
 		seed();
 		const id = createItem( {
-			title: 'QA RR nested',
+			title: 'QA RR nested editor',
 			type: TYPE,
 			status: 'draft',
-			content: `<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column">${ roundupBlock(
-				{
-					mode: 'manual',
-					uid: 'nested1',
-					posts: [ { id: Number( postIds.p2 ), type: 'post' } ],
-				}
-			) }</div><!-- /wp:column --></div><!-- /wp:columns -->`,
+			content: inColumn(),
 		} );
 
 		const errors = [];
@@ -1058,6 +1062,67 @@ test.describe( 'Roundup inside other blocks', () => {
 		await expect(
 			canvas.getByText( 'This block has encountered an error' )
 		).toHaveCount( 0 );
+
+		// The author is told cards are full width inside a column.
+		await canvas.locator( `[data-type="${ BLOCK }"]` ).click();
+		await openSettingsSidebar( page );
+		await expect(
+			page.locator( '.components-notice__content', {
+				hasText: 'cards are sent full width',
+			} )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'button', { name: '30:70', exact: true } )
+		).toBeDisabled();
 		expect( errors ).toEqual( [] );
+	} );
+
+	test( 'a roundup inside a Columns block and a Group block is sent to beehiiv', async ( {
+		page,
+	} ) => {
+		await loginAsAdmin( page );
+		seed();
+		const id = createItem( {
+			title: 'QA RR nested send',
+			type: TYPE,
+			status: 'draft',
+			content: [
+				// A split layout is sent full width inside a column.
+				inColumn( { layout: '30-70' } ),
+				`<!-- wp:group --><div class="wp-block-group">${ roundupBlock( {
+					mode: 'manual',
+					uid: 'nested2',
+					posts: [ { id: Number( postIds.p1 ), type: 'post' } ],
+				} ) }</div><!-- /wp:group -->`,
+			].join( '\n' ),
+			meta: { [ META_SEND ]: '1' },
+		} );
+		const rest = await restAsAdmin( page );
+		const res = await rest( 'POST', `/wp/v2/${ REST_BASE }/${ id }`, {
+			status: 'publish',
+		} );
+		expect( res.status ).toBe( 200 );
+
+		const sent = creates( getLog() ).pop().body.blocks;
+		const columns = sent.find( ( item ) => item.type === 'columns' );
+		expect( columns ).toBeTruthy();
+
+		// The roundup is in the first column, full width: image, title, excerpt, button.
+		const first = JSON.stringify( columns.columns[ 0 ] );
+		expect( first ).toContain( 'QA RR Post Two' );
+		expect( first ).toContain( 'QA RR excerpt two' );
+		expect( first ).toContain( 'Read more' );
+		expect(
+			columns.columns[ 0 ].blocks.map( ( item ) => item.type )
+		).toEqual( [ 'image', 'paragraph', 'paragraph', 'button' ] );
+		expect( JSON.stringify( columns.columns[ 1 ] ) ).toContain(
+			'RR-BESIDE'
+		);
+
+		// The roundup in the Group is inside the beehiiv section.
+		const section = sent.find( ( item ) => item.type === 'section' );
+		expect( section ).toBeTruthy();
+		expect( JSON.stringify( section ) ).toContain( 'QA RR Post One' );
+		expect( JSON.stringify( section ) ).toContain( 'QA RR excerpt one' );
 	} );
 } );

@@ -1250,4 +1250,101 @@ class PostRoundupTest extends WP_UnitTestCase {
 			array_column( $no_button[0]['columns'][1]['blocks'], 'type' )
 		);
 	}
+
+	/**
+	 * A roundup inside a column is expanded in place, full width even for a split layout.
+	 */
+	public function test_roundup_inside_a_column_is_expanded_full_width(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$this->add_featured_image( $one, 'alpha.jpg' );
+
+		$columns = '<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column">'
+			. $this->roundup( array( 'count' => 1, 'layout' => '30-70', 'uid' => 'inside' ) )
+			. '</div><!-- /wp:column --><!-- wp:column --><div class="wp-block-column">'
+			. $this->paragraph( 'Beside' ) . '</div><!-- /wp:column --></div><!-- /wp:columns -->';
+
+		$blocks = $this->convert( $this->create_newsletter( $columns ) );
+
+		$this->assertSame( array( 'columns' ), $this->types( $blocks ) );
+		$this->assertSame(
+			array( 'image', 'paragraph', 'paragraph', 'button' ),
+			array_column( $blocks[0]['columns'][0]['blocks'], 'type' )
+		);
+		$this->assertStringContainsString( 'Alpha story', wp_json_encode( $blocks[0]['columns'][0] ) );
+		$this->assertStringContainsString( 'Beside', wp_json_encode( $blocks[0]['columns'][1] ) );
+	}
+
+	/**
+	 * Cards inside a column follow each other with no separator between them.
+	 */
+	public function test_roundup_inside_a_column_has_no_separators_between_cards(): void {
+		$this->create_article( 'Alpha story', 1 );
+		$this->create_article( 'Beta story', 2 );
+
+		$columns = '<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column">'
+			. $this->roundup( array( 'count' => 2, 'uid' => 'twocards' ) )
+			. '</div><!-- /wp:column --></div><!-- /wp:columns -->';
+
+		$blocks = $this->convert( $this->create_newsletter( $columns ) );
+
+		$this->assertSame(
+			array( 'paragraph', 'paragraph', 'button', 'paragraph', 'paragraph', 'button' ),
+			array_column( $blocks[0]['columns'][0]['blocks'], 'type' )
+		);
+
+		// At the top level the separator stays.
+		$top = $this->convert( $this->create_newsletter( $this->roundup( array( 'count' => 2 ) ) ) );
+		$this->assertContains( 'content_break', $this->types( $top ) );
+	}
+
+	/**
+	 * A roundup inside a group is expanded inside the section and keeps its layout.
+	 */
+	public function test_roundup_inside_a_group_is_expanded_inside_the_section(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$this->add_featured_image( $one, 'alpha.jpg' );
+
+		$group = '<!-- wp:group --><div class="wp-block-group">'
+			. $this->roundup( array( 'count' => 1, 'uid' => 'ingroup' ) )
+			. '</div><!-- /wp:group -->';
+
+		$blocks = BlockConverter::convert_supported_blocks( get_post( $this->create_newsletter( $group ) ), true );
+
+		$this->assertSame( array( 'section' ), $this->types( $blocks ) );
+		$this->assertSame(
+			array( 'image', 'paragraph', 'paragraph', 'button' ),
+			array_column( $blocks[0]['blocks'], 'type' )
+		);
+	}
+
+	/**
+	 * An automatic roundup in a column is frozen at send like a top-level one.
+	 */
+	public function test_nested_automatic_roundup_is_frozen_at_send(): void {
+		$old = $this->create_article( 'Old story', 2 );
+
+		$columns = '<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column">'
+			. $this->roundup( array( 'count' => 1, 'uid' => 'frozen1' ) )
+			. '</div><!-- /wp:column --></div><!-- /wp:columns -->';
+		$post    = get_post( $this->create_newsletter( $columns ) );
+
+		PostRoundupSnapshot::freeze( $post );
+		$this->create_article( 'Newer story', 0 );
+
+		$json = wp_json_encode( $this->convert( $post->ID ) );
+		$this->assertStringContainsString( 'Old story', $json );
+		$this->assertStringNotContainsString( 'Newer story', $json );
+		$this->assertSame( array( $old ), PostRoundupSnapshot::ids_for( $post->ID, 'frozen1', 1 ) );
+	}
+
+	/**
+	 * Without a stored id a nested roundup is keyed by its settings, a top-level one by position.
+	 */
+	public function test_block_key_for_nested_roundups_without_an_id_is_stable(): void {
+		$attrs = array( 'count' => 2 );
+
+		$this->assertSame( PostRoundup::block_key( $attrs, null ), PostRoundup::block_key( $attrs, null ) );
+		$this->assertNotSame( PostRoundup::block_key( $attrs, null ), PostRoundup::block_key( array( 'count' => 3 ), null ) );
+		$this->assertSame( 'n1', PostRoundup::block_key( $attrs, 1 ) );
+	}
 }
