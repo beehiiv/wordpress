@@ -7,6 +7,7 @@
 
 namespace Beehiiv\Newsletter;
 
+use Beehiiv\Newsletter\Converters\ColumnsBlockConverter;
 use WP_Block_Editor_Context;
 use WP_Block_Type_Registry;
 use WP_Post;
@@ -45,6 +46,28 @@ final class PostRoundup {
 	 * @since x.x.x
 	 */
 	public const IMAGE_SIZE = 'large';
+
+	public const LAYOUT_FULL = 'full';
+
+	/**
+	 * Card layouts and the share of the card width the image takes.
+	 *
+	 * The ratio is image to text, so 30-70 gives the image 30 percent.
+	 *
+	 * @since x.x.x
+	 */
+	public const LAYOUT_IMAGE_WIDTH = [
+		'50-50' => 50,
+		'30-70' => 30,
+		'70-30' => 70,
+	];
+
+	/**
+	 * Card items the author can show or hide.
+	 *
+	 * @since x.x.x
+	 */
+	public const DISPLAY_ITEMS = [ 'image', 'title', 'excerpt', 'button' ];
 
 	/**
 	 * Register hooks.
@@ -248,14 +271,15 @@ final class PostRoundup {
 			$alt          = $thumbnail_id ? get_post_meta( $thumbnail_id, '_wp_attachment_image_alt', true ) : '';
 
 			$cards[] = [
-				'id'        => $post->ID,
-				'title'     => html_entity_decode( wp_strip_all_tags( get_the_title( $post ) ), ENT_QUOTES, 'UTF-8' ),
-				'url'       => (string) get_permalink( $post ),
-				'excerpt'   => trim(
+				'id'           => $post->ID,
+				'title'        => self::plain_text( get_the_title( $post ) ),
+				'url'          => (string) get_permalink( $post ),
+				'excerpt'      => trim(
 					html_entity_decode( wp_strip_all_tags( get_the_excerpt( $post ) ), ENT_QUOTES, 'UTF-8' )
 				),
-				'image_url' => $image_url ? (string) $image_url : '',
-				'image_alt' => is_string( $alt ) ? trim( wp_strip_all_tags( $alt ) ) : '',
+				'image_url'    => $image_url ? (string) $image_url : '',
+				'image_alt'    => is_string( $alt ) ? trim( wp_strip_all_tags( $alt ) ) : '',
+				'button_label' => __( 'Read more', 'beehiiv' ),
 			];
 		}
 
@@ -263,11 +287,160 @@ final class PostRoundup {
 	}
 
 	/**
+	 * Which card items a block shows. Every item is shown unless turned off.
+	 *
+	 * @param array<string, mixed> $attrs Block attributes.
+	 * @return array<string, bool>
+	 * @since x.x.x
+	 */
+	public static function display( array $attrs ): array {
+		$stored  = isset( $attrs['display'] ) && is_array( $attrs['display'] ) ? $attrs['display'] : [];
+		$display = [];
+
+		foreach ( self::DISPLAY_ITEMS as $item ) {
+			$is_set           = array_key_exists( $item, $stored );
+			$display[ $item ] = ! $is_set || filter_var( $stored[ $item ], FILTER_VALIDATE_BOOLEAN );
+		}
+
+		return $display;
+	}
+
+	/**
+	 * Card layout of a block: full width, or image beside the text at a ratio.
+	 *
+	 * @param array<string, mixed> $attrs Block attributes.
+	 * @return string `full` or a key of {@see LAYOUT_IMAGE_WIDTH}.
+	 * @since x.x.x
+	 */
+	public static function layout( array $attrs ): string {
+		$layout = $attrs['layout'] ?? self::LAYOUT_FULL;
+
+		return is_string( $layout ) && isset( self::LAYOUT_IMAGE_WIDTH[ $layout ] ) ? $layout : self::LAYOUT_FULL;
+	}
+
+	/**
+	 * Side the image sits on when a card is split. Defaults to left.
+	 *
+	 * @param array<string, mixed> $attrs Block attributes.
+	 * @return string `left` or `right`.
+	 * @since x.x.x
+	 */
+	public static function image_placement( array $attrs ): string {
+		return isset( $attrs['imagePlacement'] ) && 'right' === $attrs['imagePlacement'] ? 'right' : 'left';
+	}
+
+	/**
+	 * Plain-text card edits stored on the block, keyed by post ID.
+	 *
+	 * Text is stripped of markup. An image must be an image attachment. An empty
+	 * value means "use the post's own value".
+	 *
+	 * @param array<string, mixed> $attrs Block attributes.
+	 * @return array<int, array{title: string, excerpt: string, button_label: string, image_id: int}>
+	 * @since x.x.x
+	 */
+	public static function overrides( array $attrs ): array {
+		$overrides = [];
+
+		foreach ( (array) ( $attrs['overrides'] ?? [] ) as $id => $values ) {
+			if ( ! is_numeric( $id ) || (int) $id <= 0 || ! is_array( $values ) ) {
+				continue;
+			}
+
+			$image_id = isset( $values['imageId'] ) ? absint( $values['imageId'] ) : 0;
+
+			$overrides[ (int) $id ] = [
+				'title'        => self::plain_text( $values['title'] ?? '' ),
+				'excerpt'      => self::plain_text( $values['excerpt'] ?? '' ),
+				'button_label' => self::plain_text( $values['buttonLabel'] ?? '' ),
+				'image_id'     => $image_id && wp_attachment_is_image( $image_id ) ? $image_id : 0,
+			];
+		}
+
+		return $overrides;
+	}
+
+	/**
+	 * Strip markup from an edited value and decode entities.
+	 *
+	 * @param mixed $value Stored value.
+	 * @return string
+	 * @since x.x.x
+	 */
+	private static function plain_text( $value ): string {
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+
+		return trim( html_entity_decode( wp_strip_all_tags( $value ), ENT_QUOTES, 'UTF-8' ) );
+	}
+
+	/**
+	 * Apply a block's card edits and display choices to the cards of its posts.
+	 *
+	 * A hidden item is blanked. An edit replaces the post's value only when it is
+	 * not empty. The link always stays the post's own permalink.
+	 *
+	 * @param array<int, array<string, mixed>> $cards Cards from {@see cards()}.
+	 * @param array<string, mixed>             $attrs Block attributes.
+	 * @return array<int, array<string, mixed>>
+	 * @since x.x.x
+	 */
+	public static function apply_settings( array $cards, array $attrs ): array {
+		$display   = self::display( $attrs );
+		$overrides = self::overrides( $attrs );
+		$result    = [];
+
+		foreach ( $cards as $card ) {
+			$edit = $overrides[ (int) $card['id'] ] ?? null;
+
+			if ( null !== $edit ) {
+				foreach ( [ 'title', 'excerpt', 'button_label' ] as $field ) {
+					if ( '' !== $edit[ $field ] ) {
+						$card[ $field ] = $edit[ $field ];
+					}
+				}
+
+				if ( $edit['image_id'] ) {
+					$image_url = wp_get_attachment_image_url( $edit['image_id'], self::IMAGE_SIZE );
+					$alt       = get_post_meta( $edit['image_id'], '_wp_attachment_image_alt', true );
+
+					if ( $image_url ) {
+						$card['image_url'] = (string) $image_url;
+						$card['image_alt'] = is_string( $alt ) ? trim( wp_strip_all_tags( $alt ) ) : '';
+					}
+				}
+			}
+
+			if ( ! $display['image'] ) {
+				$card['image_url'] = '';
+			}
+
+			if ( ! $display['title'] ) {
+				$card['title'] = '';
+			}
+
+			if ( ! $display['excerpt'] ) {
+				$card['excerpt'] = '';
+			}
+
+			if ( ! $display['button'] ) {
+				$card['button_label'] = '';
+			}
+
+			$result[] = $card;
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Expand a roundup block into beehiiv blocks.
 	 *
-	 * Per post: an image (when there is a featured image), a bold linked title
-	 * paragraph (a heading cannot carry a link), an excerpt paragraph and a Read more
-	 * button, with a separator between posts.
+	 * Per post: an image (when there is one), a bold linked title paragraph (a
+	 * heading cannot carry a link), an excerpt paragraph and a button, with a
+	 * separator between posts. Items the author turned off are left out, and the
+	 * author's card edits replace the post's own values.
 	 *
 	 * @param array<string, mixed> $attrs   Block attributes.
 	 * @param int                  $post_id Newsletter post ID.
@@ -278,12 +451,21 @@ final class PostRoundup {
 	public static function expand( array $attrs, int $post_id, string $key ): array {
 		$blocks = [];
 
-		foreach ( self::cards( self::resolve_ids( $attrs, $post_id, $key ) ) as $card ) {
+		$cards = self::apply_settings( self::cards( self::resolve_ids( $attrs, $post_id, $key ) ), $attrs );
+
+		foreach ( $cards as $card ) {
+			$card_blocks = self::card_blocks( $card, self::layout( $attrs ), self::image_placement( $attrs ) );
+
+			// A card with every item turned off adds nothing, not even a separator.
+			if ( empty( $card_blocks ) ) {
+				continue;
+			}
+
 			if ( ! empty( $blocks ) ) {
 				$blocks[] = [ 'type' => 'content_break' ];
 			}
 
-			$blocks = array_merge( $blocks, self::card_blocks( $card ) );
+			$blocks = array_merge( $blocks, $card_blocks );
 		}
 
 		return $blocks;
@@ -292,16 +474,26 @@ final class PostRoundup {
 	/**
 	 * Beehiiv blocks for one card, through the existing converters.
 	 *
-	 * @param array<string, mixed> $card Card data from {@see cards()}.
+	 * With a split layout and an image, the image is one column and the text is the
+	 * other, so beehiiv shows them side by side. A card with no image stays full width.
+	 *
+	 * @param array<string, mixed> $card      Card data from {@see cards()}.
+	 * @param string               $layout    Card layout.
+	 * @param string               $placement Image side for a split layout.
 	 * @return array<int, array<string, mixed>>
 	 * @since x.x.x
 	 */
-	private static function card_blocks( array $card ): array {
+	private static function card_blocks(
+		array $card,
+		string $layout = self::LAYOUT_FULL,
+		string $placement = 'left'
+	): array {
 		$url    = esc_url( $card['url'] );
 		$blocks = [];
+		$image  = [];
 
 		if ( '' !== $card['image_url'] ) {
-			$blocks[] = BlockConverter::convert_image_block(
+			$image = BlockConverter::convert_image_block(
 				[
 					'blockName' => 'core/image',
 					'attrs'     => [],
@@ -315,17 +507,19 @@ final class PostRoundup {
 			);
 		}
 
-		$blocks[] = BlockConverter::convert_paragraph_block(
-			[
-				'blockName' => 'core/paragraph',
-				'attrs'     => [],
-				'innerHTML' => sprintf(
-					'<p><strong><a href="%1$s">%2$s</a></strong></p>',
-					$url,
-					esc_html( $card['title'] )
-				),
-			]
-		);
+		if ( '' !== $card['title'] ) {
+			$blocks[] = BlockConverter::convert_paragraph_block(
+				[
+					'blockName' => 'core/paragraph',
+					'attrs'     => [],
+					'innerHTML' => sprintf(
+						'<p><strong><a href="%1$s">%2$s</a></strong></p>',
+						$url,
+						esc_html( $card['title'] )
+					),
+				]
+			);
+		}
 
 		if ( '' !== $card['excerpt'] ) {
 			$blocks[] = BlockConverter::convert_paragraph_block(
@@ -337,18 +531,63 @@ final class PostRoundup {
 			);
 		}
 
-		$blocks[] = BlockConverter::convert_button_block(
-			[
-				'blockName' => 'core/button',
-				'attrs'     => [],
-				'innerHTML' => sprintf(
-					'<div class="wp-block-button"><a class="wp-block-button__link" href="%1$s">%2$s</a></div>',
-					$url,
-					esc_html__( 'Read more', 'beehiiv' )
-				),
-			]
+		if ( '' !== $card['button_label'] ) {
+			$blocks[] = BlockConverter::convert_button_block(
+				[
+					'blockName' => 'core/button',
+					'attrs'     => [],
+					'innerHTML' => sprintf(
+						'<div class="wp-block-button"><a class="wp-block-button__link" href="%1$s">%2$s</a></div>',
+						$url,
+						esc_html( $card['button_label'] )
+					),
+				]
+			);
+		}
+
+		$text  = array_values( array_filter( $blocks ) );
+		$image = array_filter( $image );
+
+		if ( empty( $image ) ) {
+			return $text;
+		}
+
+		if ( self::LAYOUT_FULL === $layout || empty( $text ) ) {
+			return array_merge( [ $image ], $text );
+		}
+
+		return [ self::split_blocks( $image, $text, $layout, $placement ) ];
+	}
+
+	/**
+	 * Image and text as two beehiiv columns, widths following the layout ratio.
+	 *
+	 * @param array<string, mixed>             $image     Converted image block.
+	 * @param array<int, array<string, mixed>> $text      Converted text blocks.
+	 * @param string                           $layout    A key of {@see LAYOUT_IMAGE_WIDTH}.
+	 * @param string                           $placement `left` or `right`.
+	 * @return array<string, mixed>
+	 * @since x.x.x
+	 */
+	private static function split_blocks( array $image, array $text, string $layout, string $placement ): array {
+		unset( $image['imageAlignment'] );
+
+		$image_width = self::LAYOUT_IMAGE_WIDTH[ $layout ];
+
+		$image_column = ColumnsBlockConverter::build_beehiiv_column_from_definition(
+			[ $image ],
+			$image_width,
+			'top'
+		);
+		$text_column  = ColumnsBlockConverter::build_beehiiv_column_from_definition(
+			$text,
+			100 - $image_width,
+			'top'
 		);
 
-		return array_values( array_filter( $blocks ) );
+		return ColumnsBlockConverter::build_beehiiv_columns_block(
+			'right' === $placement ? [ $text_column, $image_column ] : [ $image_column, $text_column ],
+			true
+		);
 	}
 }

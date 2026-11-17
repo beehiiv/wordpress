@@ -27,6 +27,29 @@
 			"type": "array",
 			"default": []
 		},
+		"layout": {
+			"type": "string",
+			"enum": [ "full", "50-50", "30-70", "70-30" ],
+			"default": "full"
+		},
+		"imagePlacement": {
+			"type": "string",
+			"enum": [ "left", "right" ],
+			"default": "left"
+		},
+		"display": {
+			"type": "object",
+			"default": {
+				"image": true,
+				"title": true,
+				"excerpt": true,
+				"button": true
+			}
+		},
+		"overrides": {
+			"type": "object",
+			"default": {}
+		},
 		"uid": {
 			"type": "string",
 			"default": ""

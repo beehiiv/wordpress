@@ -55,3 +55,104 @@ export function getPreviewPath( postId, attributes ) {
 
 	return `/beehiiv/v1/post-roundup?${ params.toString() }`;
 }
+
+export const LAYOUT_FULL = 'full';
+
+// Share of the card width the image takes, per layout (image to text).
+export const LAYOUT_IMAGE_WIDTH = { '50-50': 50, '30-70': 30, '70-30': 70 };
+
+export const DISPLAY_ITEMS = [ 'image', 'title', 'excerpt', 'button' ];
+
+/**
+ * Which card items the block shows. Every item is shown unless turned off.
+ *
+ * @param {Object} attributes Block attributes.
+ * @return {Object} Boolean flag per item.
+ */
+export function getDisplay( attributes ) {
+	const stored = attributes?.display || {};
+
+	return DISPLAY_ITEMS.reduce(
+		( display, item ) => ( {
+			...display,
+			[ item ]: stored[ item ] !== false,
+		} ),
+		{}
+	);
+}
+
+/**
+ * A card with the author's edits applied. An empty edit keeps the post's value.
+ *
+ * @param {Object}      card     Card from the preview endpoint.
+ * @param {Object|null} override Stored edits for the post.
+ * @return {Object} Card with title, excerpt and buttonLabel to show.
+ */
+export function mergeCard( card, override ) {
+	const edit = override || {};
+
+	return {
+		...card,
+		title: edit.title || card.title,
+		excerpt: edit.excerpt || card.excerpt,
+		buttonLabel: edit.buttonLabel || card.button_label,
+		imageId: edit.imageId || 0,
+	};
+}
+
+/**
+ * Store one card edit, dropping empty values and empty entries.
+ *
+ * @param {Object} overrides Current overrides keyed by post ID.
+ * @param {number} postId    Post the edit belongs to.
+ * @param {Object} changes   Fields to change.
+ * @return {Object} New overrides.
+ */
+export function setOverride( overrides, postId, changes ) {
+	const next = {
+		...( overrides || {} ),
+		[ postId ]: { ...( overrides?.[ postId ] || {} ), ...changes },
+	};
+
+	Object.keys( next[ postId ] ).forEach( ( field ) => {
+		if ( ! next[ postId ][ field ] ) {
+			delete next[ postId ][ field ];
+		}
+	} );
+
+	if ( ! Object.keys( next[ postId ] ).length ) {
+		delete next[ postId ];
+	}
+
+	return next;
+}
+
+/**
+ * Drop edits for posts that are no longer listed.
+ *
+ * @param {Object}   overrides Overrides keyed by post ID.
+ * @param {number[]} listedIds Post IDs in the roundup now.
+ * @return {Object} Overrides for listed posts only.
+ */
+export function pruneOverrides( overrides, listedIds ) {
+	return Object.keys( overrides || {} ).reduce(
+		( kept, id ) =>
+			listedIds.includes( Number( id ) )
+				? { ...kept, [ id ]: overrides[ id ] }
+				: kept,
+		{}
+	);
+}
+
+/**
+ * Escape plain text so it can be used as RichText content.
+ *
+ * @param {string} text Plain text.
+ * @return {string} HTML-safe text.
+ */
+export function escapeText( text ) {
+	return String( text || '' )
+		.replace( /&/g, '&amp;' )
+		.replace( /</g, '&lt;' )
+		.replace( />/g, '&gt;' );
+}

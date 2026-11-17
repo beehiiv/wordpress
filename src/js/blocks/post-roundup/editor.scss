@@ -28,7 +28,56 @@
 	a {
 		color: inherit;
 		text-decoration: underline;
-		pointer-events: none;
+	}
+}
+
+/* The image and the text sit in two boxes so a split card can lay them side by side. */
+.beehiiv-post-roundup__media,
+.beehiiv-post-roundup__body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.beehiiv-post-roundup__card--split {
+	flex-direction: row;
+	align-items: flex-start;
+	gap: 1rem;
+
+	.beehiiv-post-roundup__media {
+		flex: 0 0 var(--beehiiv-image-width);
+		max-width: var(--beehiiv-image-width);
+	}
+
+	.beehiiv-post-roundup__body {
+		flex: 1 1 0;
+		min-width: 0;
+	}
+}
+
+.beehiiv-post-roundup__card--image-right {
+	flex-direction: row-reverse;
+}
+
+.beehiiv-post-roundup__options {
+	margin-bottom: 16px;
+}
+
+.beehiiv-post-roundup__options-label {
+	display: block;
+	margin-bottom: 8px;
+	font-size: 11px;
+	font-weight: 500;
+	text-transform: uppercase;
+}
+
+.beehiiv-post-roundup__options-group {
+	display: flex;
+
+	.components-button {
+		flex: 1;
+		justify-content: center;
+		border-radius: 0;
 	}
 }
 
@@ -40,6 +89,11 @@
 	display: block;
 	max-width: 100%;
 	height: auto;
+}
+
+.beehiiv-post-roundup__image-button,
+.beehiiv-post-roundup__reset {
+	align-self: flex-start;
 }
 
 .beehiiv-post-roundup__button {
