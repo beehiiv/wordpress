@@ -36,6 +36,7 @@ import { useBeehiivPostMeta } from './hooks/use-beehiiv-post-meta';
 import { usePostPublication } from './hooks/use-post-publication';
 
 import './filters/with-omitted-block-indicator';
+import './filters/with-newsletter-only-html';
 import './editor.scss';
 import { PLUGIN_NAME, SIDEBAR_NAME } from './constants';
 

@@ -17,7 +17,8 @@ defined( 'ABSPATH' ) || exit;
  * `core/group` is supported as a beehiiv section for posts first synced with section
  * support; see `BlockConverter::convert_group_block()`. `core/columns` is supported, but a
  * Columns block with more than 3 columns is omitted; see
- * `BlockConverter::convert_columns_block_to_blocks()`. Other layout blocks are not
+ * `BlockConverter::convert_columns_block_to_blocks()`. `core/html` is sent as a beehiiv HTML
+ * block; see `HtmlBlockConverter`. Other layout blocks are not
  * supported. They and all of their inner blocks are omitted from the newsletter payload.
  *
  * @since 1.0.0
@@ -41,6 +42,7 @@ final class SupportedBlocks {
 		'core/media-text',
 		'core/columns',
 		'core/group',
+		'core/html',
 		'core/buttons',
 		'core/separator',
 		'beehiiv/advertisement',
