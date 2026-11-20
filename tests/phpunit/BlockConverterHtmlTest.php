@@ -26,6 +26,11 @@ class BlockConverterHtmlTest extends WP_UnitTestCase {
 	public function set_up(): void {
 		parent::set_up();
 
+		// Run as an administrator, who may save unfiltered HTML. Without a user, WordPress strips
+		// script tags when a post is saved and leaves their text behind, which is not what a
+		// publisher who can add a Custom HTML block gets.
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+
 		update_option(
 			Config::OPTION_NAME,
 			array(
