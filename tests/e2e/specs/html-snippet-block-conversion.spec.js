@@ -43,6 +43,35 @@ const OMITTED_NOTICE = '.beehiiv-post-settings-notice__omitted';
 const UNSUPPORTED_NOTICE = '.beehiiv-html-unsupported-notice';
 const NEWSLETTER_ONLY_LABEL = '.beehiiv-newsletter-only-label';
 
+/**
+ * Returns, for each element matching `selector`, the position among the Custom
+ * HTML blocks of the block it belongs to.
+ *
+ * The label and the notice render just before their block, as siblings of the
+ * block element, not inside it. So each one belongs to the next Custom HTML
+ * block after it.
+ *
+ * @param {import('@playwright/test').FrameLocator} canvas   Editor canvas.
+ * @param {string}                                  selector CSS selector of the label or notice.
+ * @return {Promise<number[]>} Block positions, in document order.
+ */
+async function ownersOf( canvas, selector ) {
+	return canvas.locator( selector ).evaluateAll( ( elements ) =>
+		elements.map( ( element ) => {
+			const all = [
+				...element.ownerDocument.querySelectorAll(
+					'[data-type="core/html"]'
+				),
+			];
+			let next = element.nextElementSibling;
+			while ( next && next.dataset.type !== 'core/html' ) {
+				next = next.nextElementSibling;
+			}
+			return all.indexOf( next );
+		} )
+	);
+}
+
 const createdPosts = [];
 
 const b64 = ( value ) =>
@@ -539,15 +568,14 @@ test.describe( 'US-002: keep unsupported elements out of the newsletter', () => 
 
 		const message =
 			'Script and iframe elements are not included in the newsletter.';
+		await expect( canvas.locator( UNSUPPORTED_NOTICE ) ).toHaveCount( 2 );
 		await expect(
-			blocks.nth( 0 ).locator( UNSUPPORTED_NOTICE )
+			canvas.locator( UNSUPPORTED_NOTICE ).first()
 		).toContainText( message );
-		await expect(
-			blocks.nth( 1 ).locator( UNSUPPORTED_NOTICE )
-		).toContainText( message );
-		await expect(
-			blocks.nth( 2 ).locator( UNSUPPORTED_NOTICE )
-		).toHaveCount( 0 );
+		// Blocks 1 and 2 hold a script and an iframe. Block 3 holds neither.
+		expect( await ownersOf( canvas, UNSUPPORTED_NOTICE ) ).toEqual( [
+			0, 1,
+		] );
 	} );
 } );
 
@@ -603,16 +631,29 @@ test.describe( 'US-003: send advertiser HTML to the newsletter only', () => {
 		const toggle = page.getByRole( 'checkbox', {
 			name: 'Newsletter only',
 		} );
-		const visible = await toggle
-			.waitFor( { state: 'visible', timeout: 3000 } )
-			.then( () => true )
-			.catch( () => false );
-		if ( ! visible ) {
-			// Settings sidebar is closed or showing another panel.
-			await page
-				.getByRole( 'button', { name: 'Settings', exact: true } )
-				.first()
-				.click();
+		// Open the settings sidebar on the Block tab and its Settings sub-tab,
+		// where the option sits. Open it only if it is closed, so a click does not close it.
+		const settingsButton = page
+			.getByRole( 'button', { name: 'Settings', exact: true } )
+			.first();
+		if (
+			( await settingsButton.getAttribute( 'aria-pressed' ) ) !== 'true'
+		) {
+			await settingsButton.click();
+		}
+		const blockTab = page.getByRole( 'tab', {
+			name: 'Block',
+			exact: true,
+		} );
+		if ( await blockTab.isVisible().catch( () => false ) ) {
+			await blockTab.click();
+		}
+		const settingsTab = page.getByRole( 'tab', {
+			name: 'Settings',
+			exact: true,
+		} );
+		if ( await settingsTab.isVisible().catch( () => false ) ) {
+			await settingsTab.click();
 		}
 		await expect( toggle ).toBeVisible();
 		await expect( toggle ).not.toBeChecked();
@@ -714,12 +755,13 @@ test.describe( 'US-003: send advertiser HTML to the newsletter only', () => {
 		const blocks = canvas.locator( '[data-type="core/html"]' );
 		await expect( blocks ).toHaveCount( 2 );
 
-		await expect(
-			blocks.nth( 0 ).locator( NEWSLETTER_ONLY_LABEL )
-		).toHaveText( 'Newsletter only' );
-		await expect(
-			blocks.nth( 1 ).locator( NEWSLETTER_ONLY_LABEL )
-		).toHaveCount( 0 );
+		await expect( canvas.locator( NEWSLETTER_ONLY_LABEL ) ).toHaveText(
+			'Newsletter only'
+		);
+		// Only the first block has the option on.
+		expect( await ownersOf( canvas, NEWSLETTER_ONLY_LABEL ) ).toEqual( [
+			0,
+		] );
 		// BR-007: the block is still shown in full so it can be edited.
 		await expect( blocks.nth( 0 ) ).toBeVisible();
 	} );
@@ -850,17 +892,14 @@ test.describe( 'US-004: verify the full flow on a test post', () => {
 		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
 		const editorBlocks = canvas.locator( '[data-type="core/html"]' );
 		await expect( editorBlocks ).toHaveCount( 2 );
-		await expect(
-			editorBlocks.nth( 1 ).locator( NEWSLETTER_ONLY_LABEL )
-		).toHaveText( 'Newsletter only' );
-		await expect(
-			editorBlocks.nth( 1 ).locator( UNSUPPORTED_NOTICE )
-		).toBeVisible();
-		await expect(
-			editorBlocks.nth( 0 ).locator( NEWSLETTER_ONLY_LABEL )
-		).toHaveCount( 0 );
-		await expect(
-			editorBlocks.nth( 0 ).locator( UNSUPPORTED_NOTICE )
-		).toHaveCount( 0 );
+		await expect( canvas.locator( NEWSLETTER_ONLY_LABEL ) ).toHaveText(
+			'Newsletter only'
+		);
+		await expect( canvas.locator( UNSUPPORTED_NOTICE ) ).toBeVisible();
+		// The label and the notice belong to the second block only.
+		expect( await ownersOf( canvas, NEWSLETTER_ONLY_LABEL ) ).toEqual( [
+			1,
+		] );
+		expect( await ownersOf( canvas, UNSUPPORTED_NOTICE ) ).toEqual( [ 1 ] );
 	} );
 } );

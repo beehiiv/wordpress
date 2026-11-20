@@ -8,7 +8,11 @@
 import { __ } from '@wordpress/i18n';
 import { addFilter } from '@wordpress/hooks';
 import { createHigherOrderComponent } from '@wordpress/compose';
-import { InspectorControls } from '@wordpress/block-editor';
+import { useSelect } from '@wordpress/data';
+import {
+	InspectorControls,
+	store as blockEditorStore,
+} from '@wordpress/block-editor';
 import { Notice, PanelBody, ToggleControl } from '@wordpress/components';
 
 import {
@@ -43,13 +47,27 @@ function addNewsletterOnlyAttribute( settings, name ) {
 
 const withNewsletterOnlyHtml = createHigherOrderComponent( ( BlockEdit ) => {
 	return function BeehiivHtmlBlockEdit( props ) {
+		// Newer WordPress versions leave a saved Custom HTML block without a
+		// `content` attribute until it is edited. The saved markup is then only
+		// on the parsed block, so read it from there as a fallback.
+		const savedContent = useSelect(
+			( select ) =>
+				props.name === HTML_BLOCK
+					? select( blockEditorStore ).getBlock( props.clientId )
+							?.originalContent
+					: undefined,
+			[ props.name, props.clientId ]
+		);
+
 		if ( props.name !== HTML_BLOCK ) {
 			return <BlockEdit { ...props } />;
 		}
 
 		const { attributes, setAttributes } = props;
 		const isNewsletterOnly = !! attributes[ NEWSLETTER_ONLY_ATTRIBUTE ];
-		const hasUnsupported = hasUnsupportedHtmlElements( attributes.content );
+		const hasUnsupported = hasUnsupportedHtmlElements(
+			attributes.content ?? savedContent
+		);
 
 		return (
 			<>
