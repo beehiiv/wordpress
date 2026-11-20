@@ -94,16 +94,16 @@ If your local app uses HTTPS with a private CA, set `BEEHIIV_SSLVERIFY` to `fals
 Point wp-env at a specific PHP / WordPress core version to check compatibility with older or newer combinations than your default local setup, and get an HTML dashboard for that combination:
 
 ```bash
-npm run test:compat -- --php=8.3 --wp=6.8
+npm run test:compat -- --php=8.3 --wp=7.0
 ```
 
-That selects PHP 8.3 / WP 6.8 (leaving it set for subsequent `npm run env:start` runs; clear with `npm run env:set-version -- --clear`), **destroys and recreates the wp-env environment**, checks the actual PHP versions against the security requirements above, runs PHPUnit, and writes `tests/phpunit/test-results/php8.3-wp6.8/dashboard.html`. The dashboard contains pass/fail counts, a per-class breakdown, and failure details. Different `--php`/`--wp` combinations have separate report directories. `--php` accepts supported branches 8.2–8.5; `--wp` accepts a WordPress.org release number (e.g. `6.8`), `latest` (wp-env's own default), or `nightly`.
+That selects PHP 8.3 / WP 7.0 (leaving it set for subsequent `npm run env:start` runs; clear with `npm run env:set-version -- --clear`), **destroys and recreates the wp-env environment**, checks the actual PHP versions against the security requirements above, runs PHPUnit, and writes `tests/phpunit/test-results/php8.3-wp7.0/dashboard.html`. The dashboard contains pass/fail counts, a per-class breakdown, and failure details. Different `--php`/`--wp` combinations have separate report directories. `--php` accepts supported branches 8.2–8.5; `--wp` accepts a WordPress.org release number (e.g. `7.0`) or release candidate (e.g. `7.2-RC2`), `latest` (wp-env's own default), or `nightly`.
 
 ⚠️ `test:compat` deletes your current wp-env database and content for this project (`wp-env destroy`) every time it runs. Only use it against a wp-env instance you're fine wiping — not one with dev content you want to keep.
 
-To update only the configuration, use `npm run env:set-version -- --php=8.3 --wp=6.8`. It writes to the gitignored `.wp-env.override.json`; apply the change with `npm run env:start`. Back up local content before switching versions. For an intentionally clean environment, `npm run env:destroy` deletes the project's database and content. `npm run test:php:report` regenerates a dashboard from an existing JUnit report (e.g. after `composer test`) without re-running anything.
+To update only the configuration, use `npm run env:set-version -- --php=8.3 --wp=7.0`. It writes to the gitignored `.wp-env.override.json`; apply the change with `npm run env:start`. Back up local content before switching versions. For an intentionally clean environment, `npm run env:destroy` deletes the project's database and content. `npm run test:php:report` regenerates a dashboard from an existing JUnit report (e.g. after `composer test`) without re-running anything.
 
-CI runs PHP 8.2–8.5 against WP 6.8 and `latest` on every PR (see `.github/workflows/test.yml`) and uploads one `phpunit-report-php{X}-wp{Y}` dashboard artifact per combination. E2E tests and release builds require host PHP 8.4.27 or later in that branch; E2E containers use the guarded PHP 8.4 images.
+CI runs PHP 8.2–8.5 against WP 7.0, 7.1 and the newest 7.2 release candidate on every PR (the supported versions are the three most recent major WordPress releases; replace the release candidate entry with `7.2` once 7.2 is released) (see `.github/workflows/test.yml`) and uploads one `phpunit-report-php{X}-wp{Y}` dashboard artifact per combination. E2E tests and release builds require host PHP 8.4.27 or later in that branch; E2E containers use the guarded PHP 8.4 images.
 
 ## Development Commands
 

@@ -1,8 +1,8 @@
 === beehiiv ===
 Contributors: beehiiv
 Tags: newsletter, email, publishing, beehiiv, subscribe
-Requires at least: 6.8
-Tested up to: 7.0
+Requires at least: 7.0
+Tested up to: 7.2
 Requires PHP: 7.4
 Stable tag: 1.2.0
 License: GPLv2 or later
@@ -70,7 +70,7 @@ If you do not have one yet, you can [sign up at beehiiv.com](https://www.beehiiv
 
 = Requirements =
 
-* WordPress 6.8 or later
+* WordPress 7.0 or later
 * PHP 7.4 or later
 * An active [beehiiv](https://www.beehiiv.com/?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace) account on the Max or Enterprise plan ([learn more about plans](https://www.beehiiv.com/pricing?utm_source=wordpress&utm_medium=referral&utm_campaign=marketplace))
 
