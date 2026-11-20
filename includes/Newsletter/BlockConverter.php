@@ -11,6 +11,7 @@ use Beehiiv\Admin\Options;
 use Beehiiv\API\Resources\AdvertisementOpportunities;
 use Beehiiv\Editor\Meta;
 use Beehiiv\Newsletter\Converters\ColumnsBlockConverter;
+use Beehiiv\Newsletter\Converters\HtmlBlockConverter;
 use Beehiiv\Newsletter\Converters\GroupBlockConverter;
 use Beehiiv\Newsletter\Converters\MediaTextBlockConverter;
 use Beehiiv\Newsletter\Converters\TableBlockConverter;
@@ -154,6 +155,18 @@ final class BlockConverter {
 				continue;
 			}
 
+			if ( 'core/media-text' === $block_name ) {
+				$trailing_blocks = [];
+				$media_text      = self::convert_media_text_block( $wp_block, $trailing_blocks );
+
+				if ( ! empty( $media_text ) ) {
+					$beehiiv_blocks[] = $media_text;
+				}
+
+				$beehiiv_blocks = array_merge( $beehiiv_blocks, $trailing_blocks );
+				continue;
+			}
+
 			$beehiiv_block = self::convert_block( $wp_block );
 
 			if ( ! empty( $beehiiv_block ) ) {
@@ -235,6 +248,8 @@ final class BlockConverter {
 				return self::convert_embed_block( $wp_block );
 			case 'core/media-text':
 				return self::convert_media_text_block( $wp_block );
+			case 'core/html':
+				return HtmlBlockConverter::convert( $wp_block );
 			case 'beehiiv/advertisement':
 				return self::convert_advertisement_block( $wp_block );
 		}
@@ -631,6 +646,7 @@ final class BlockConverter {
 		$column_blocks         = [];
 		$converted_columns     = [];
 		$nested_blocks         = [];
+		$html_blocks           = [];
 
 		foreach ( $wp_block['innerBlocks'] ?? [] as $column_block ) {
 			if ( 'core/column' !== ( $column_block['blockName'] ?? '' ) ) {
@@ -640,7 +656,8 @@ final class BlockConverter {
 			$column_blocks[]     = $column_block;
 			$converted_columns[] = self::convert_layout_block_inner_blocks(
 				$column_block['innerBlocks'] ?? [],
-				$nested_blocks
+				$nested_blocks,
+				$html_blocks
 			);
 		}
 
@@ -678,7 +695,7 @@ final class BlockConverter {
 			ColumnsBlockConverter::resolve_stack_on_mobile( $attrs, $inner_html )
 		);
 
-		return array_values( array_filter( array_merge( [ $columns_block ], $nested_blocks ) ) );
+		return array_values( array_filter( array_merge( [ $columns_block ], $nested_blocks, $html_blocks ) ) );
 	}
 
 	/**
@@ -692,12 +709,15 @@ final class BlockConverter {
 	 *
 	 * @param array<int, array<string, mixed>>      $wp_blocks     Parsed inner blocks.
 	 * @param array<int, array<string, mixed>>|null $nested_blocks Receives the inner blocks of nested columns.
+	 * @param array<int, array<string, mixed>>|null $html_blocks   Receives the HTML blocks of inner Custom HTML
+	 *                                                             blocks, which a column cannot hold.
 	 * @return array<int, array<string, mixed>>
 	 * @since 1.0.0
 	 */
 	private static function convert_layout_block_inner_blocks(
 		array $wp_blocks,
-		?array &$nested_blocks = null
+		?array &$nested_blocks = null,
+		?array &$html_blocks = null
 	): array {
 		$beehiiv_blocks = [];
 
@@ -714,11 +734,24 @@ final class BlockConverter {
 						if ( 'core/column' === ( $nested_column['blockName'] ?? '' ) ) {
 							$nested_converted = self::convert_layout_block_inner_blocks(
 								$nested_column['innerBlocks'] ?? [],
-								$nested_blocks
+								$nested_blocks,
+								$html_blocks
 							);
 							$nested_blocks    = array_merge( $nested_blocks, $nested_converted );
 						}
 					}
+				}
+
+				continue;
+			}
+
+			// A beehiiv column cannot hold an HTML block, so the snippet is handed to the caller
+			// to emit right after the parent block. Without a caller to receive it, it is omitted.
+			if ( 'core/html' === $block_name ) {
+				$html_block = HtmlBlockConverter::convert( $wp_block );
+
+				if ( null !== $html_blocks && ! empty( $html_block ) ) {
+					$html_blocks[] = $html_block;
 				}
 
 				continue;
@@ -1110,11 +1143,13 @@ final class BlockConverter {
 	 * entirely. Respects media position, column widths, vertical alignment, and
 	 * mobile stacking.
 	 *
-	 * @param array<string, mixed> $wp_block Parsed block.
+	 * @param array<string, mixed>                  $wp_block        Parsed block.
+	 * @param array<int, array<string, mixed>>|null $trailing_blocks Receives the HTML blocks of inner Custom HTML
+	 *                                                               blocks, to emit after the returned block.
 	 * @return array<string, mixed>
 	 * @since 1.0.0
 	 */
-	public static function convert_media_text_block( array $wp_block ): array {
+	public static function convert_media_text_block( array $wp_block, ?array &$trailing_blocks = null ): array {
 		$attrs        = $wp_block['attrs'] ?? [];
 		$inner_html   = (string) ( $wp_block['innerHTML'] ?? '' );
 		$inner_blocks = $wp_block['innerBlocks'] ?? [];
@@ -1134,13 +1169,20 @@ final class BlockConverter {
 			return [];
 		}
 
-		$content_blocks = self::convert_layout_block_inner_blocks( $inner_blocks );
+		$html_blocks    = [];
+		$content_nested = null;
+		$content_blocks = self::convert_layout_block_inner_blocks( $inner_blocks, $content_nested, $html_blocks );
 
 		if ( empty( $content_blocks ) && '' !== $inner_html ) {
 			$content_html = MediaTextBlockConverter::extract_content_inner_html( $inner_html );
 
 			if ( '' !== $content_html ) {
-				$content_blocks = self::convert_layout_block_inner_blocks( parse_blocks( $content_html ) );
+				$html_blocks    = [];
+				$content_blocks = self::convert_layout_block_inner_blocks(
+					parse_blocks( $content_html ),
+					$content_nested,
+					$html_blocks
+				);
 			}
 		}
 
@@ -1172,6 +1214,10 @@ final class BlockConverter {
 
 		if ( empty( $columns ) ) {
 			return [];
+		}
+
+		if ( null !== $trailing_blocks ) {
+			$trailing_blocks = $html_blocks;
 		}
 
 		return ColumnsBlockConverter::build_beehiiv_columns_block( $columns, $stack_on_mobile );
