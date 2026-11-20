@@ -25,7 +25,7 @@ jobs:
           - { series: "8.3", patch: "8.3.36" }
           - { series: "8.4", patch: "8.4.27" }
           - { series: "8.5", patch: "8.5.12" }
-        wp-version: ["6.8", "6.9", "7.0", "latest"]
+        wp-version: ["7.0", "7.1", "7.2-RC2"]
 
     steps:
       - name: Checkout

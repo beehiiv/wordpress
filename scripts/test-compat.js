@@ -6,11 +6,11 @@
  * backward-compatibility testing.
  *
  * Usage:
- *   npm run test:compat -- --php=8.4 --wp=6.8
+ *   npm run test:compat -- --php=8.4 --wp=7.0
  *
  * Writes:
- *   tests/phpunit/test-results/php8.4-wp6.8/junit.xml
- *   tests/phpunit/test-results/php8.4-wp6.8/dashboard.html
+ *   tests/phpunit/test-results/php8.4-wp7.0/junit.xml
+ *   tests/phpunit/test-results/php8.4-wp7.0/dashboard.html
  *
  * Runs `wp-env destroy` before starting, so each combination gets a genuinely
  * clean WordPress install rather than the new core version's files sitting on
@@ -46,7 +46,7 @@ const args = parseArgs( process.argv.slice( 2 ) );
 
 if ( ! args.php || ! args.wp ) {
 	console.error(
-		'Usage: npm run test:compat -- --php=<version> --wp=<version|latest|nightly>'
+		'Usage: npm run test:compat -- --php=<version> --wp=<version|latest|nightly> (a release candidate such as 7.2-RC2 also works)'
 	);
 	process.exit( 1 );
 }
