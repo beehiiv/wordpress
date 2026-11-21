@@ -1244,3 +1244,199 @@ test.describe( "US-009: follow the post's email title/subtitle display choice", 
 		expect( updates( log ) ).toHaveLength( 1 );
 	} );
 } );
+
+// ---------------------------------------------------------------------------
+test.describe( 'US-013: keep the beehiiv template header when a post updates', () => {
+	const LINKED_TEMPLATE_META = '_beehiiv_linked_post_template_id';
+	const mergeStrategies = ( log ) =>
+		entries( log.map( ( r ) => r.body ) )
+			.filter( ( [ k ] ) => k === 'content_merge_strategy' )
+			.map( ( [ , v ] ) => v );
+
+	test( 'AC-050: updating a post created from a template sends append_to_template with its blocks', async ( {
+		page,
+	} ) => {
+		seed();
+		const id = createPost( {
+			title: 'QA E2E send AC-050',
+			meta: { [ META.send ]: '1' },
+		} );
+		const rest = await restAs( page );
+
+		// Publishing creates the beehiiv post from the configured template.
+		await rest( 'POST', `/wp/v2/posts/${ id }`, { status: 'publish' } );
+		expect( creates( getLog() ) ).toHaveLength( 1 );
+		expect( getMeta( id )[ LINKED_TEMPLATE_META ] ).toBe( TEMPLATE_ID );
+
+		clearLog();
+		await rest( 'POST', `/wp/v2/posts/${ id }`, {
+			content:
+				'<!-- wp:paragraph --><p>AC-050 edited body.</p><!-- /wp:paragraph -->',
+		} );
+		const patches = updates( getLog() );
+		expect( patches ).toHaveLength( 1 );
+		expect( patches[ 0 ].body.content_merge_strategy ).toBe(
+			'append_to_template'
+		);
+		expect( Array.isArray( patches[ 0 ].body.blocks ) ).toBe( true );
+		expect( JSON.stringify( patches[ 0 ].body.blocks ) ).toContain(
+			'AC-050 edited body.'
+		);
+	} );
+
+	test( 'AC-051: a post with no stored template ID is updated without a merge strategy', async ( {
+		page,
+	} ) => {
+		seed();
+		const legacyId = createLinkedPost( 'QA E2E send AC-051 legacy' );
+		const templatedId = createLinkedPost( 'QA E2E send AC-051 templated', {
+			meta: { [ LINKED_TEMPLATE_META ]: TEMPLATE_ID },
+		} );
+		const blankId = createLinkedPost( 'QA E2E send AC-051 blank', {
+			meta: { [ LINKED_TEMPLATE_META ]: '' },
+		} );
+		const rest = await restAs( page );
+
+		for ( const id of [ legacyId, blankId ] ) {
+			clearLog();
+			await rest( 'POST', `/wp/v2/posts/${ id }`, {
+				title: `QA E2E send AC-051 edited ${ id }`,
+			} );
+			const patches = updates( getLog() );
+			expect( patches ).toHaveLength( 1 );
+			expect( patches[ 0 ].body ).not.toHaveProperty(
+				'content_merge_strategy'
+			);
+			expect( Array.isArray( patches[ 0 ].body.blocks ) ).toBe( true );
+		}
+
+		clearLog();
+		await rest( 'POST', `/wp/v2/posts/${ templatedId }`, {
+			title: 'QA E2E send AC-051 templated edited',
+		} );
+		expect( updates( getLog() )[ 0 ].body.content_merge_strategy ).toBe(
+			'append_to_template'
+		);
+	} );
+
+	test( 'AC-052: every blocks update path, including the Preview draft, carries the strategy and re-syncs repeat the same body', async ( {
+		page,
+	} ) => {
+		seed();
+		const id = createLinkedPost( 'QA E2E send AC-052', {
+			meta: { [ LINKED_TEMPLATE_META ]: TEMPLATE_ID },
+		} );
+		const rest = await restAs( page );
+
+		// Save path: two re-syncs of the same post send identical content.
+		await rest( 'POST', `/wp/v2/posts/${ id }`, {
+			title: 'QA E2E send AC-052 edited',
+		} );
+		const first = updates( getLog() ).pop().body;
+		clearLog();
+		await rest( 'POST', `/wp/v2/posts/${ id }`, {
+			title: 'QA E2E send AC-052 edited',
+		} );
+		const second = updates( getLog() ).pop().body;
+		expect( first.content_merge_strategy ).toBe( 'append_to_template' );
+		expect( second.content_merge_strategy ).toBe( 'append_to_template' );
+		expect( second.blocks ).toEqual( first.blocks );
+
+		// Preview-draft path: a draft-linked post updated through email preview.
+		const draftId = createPost( {
+			title: 'QA E2E send AC-052 draft',
+			meta: {
+				[ META.send ]: '1',
+				[ META.postId ]: 'post_qa_e2e_draft',
+				_beehiiv_post_state: 'draft',
+				[ LINKED_TEMPLATE_META ]: TEMPLATE_ID,
+			},
+		} );
+		const preview = await rest( 'POST', '/beehiiv/v1/email-preview', {
+			post_id: Number( draftId ),
+		} );
+		expect( preview.status ).toBeLessThan( 500 );
+		const draftPatches = updates( getLog() ).filter( ( r ) =>
+			r.url.includes( '/posts/post_qa_e2e_draft' )
+		);
+		expect( draftPatches.length ).toBeGreaterThan( 0 );
+		for ( const patch of draftPatches ) {
+			expect( patch.body.content_merge_strategy ).toBe(
+				'append_to_template'
+			);
+			expect( Array.isArray( patch.body.blocks ) ).toBe( true );
+		}
+		// Template content lives in beehiiv, so duplication-free merging is
+		// beehiiv's job; the plugin's part is to send the same blocks each time.
+	} );
+
+	test( 'AC-053: only append_to_template is ever sent, and no update sends the body as one HTML string', async ( {
+		page,
+	} ) => {
+		seed();
+		const templatedId = createLinkedPost( 'QA E2E send AC-053 templated', {
+			meta: { [ LINKED_TEMPLATE_META ]: TEMPLATE_ID },
+		} );
+		const plainId = createLinkedPost( 'QA E2E send AC-053 plain' );
+		const rest = await restAs( page );
+
+		for ( const id of [ templatedId, plainId ] ) {
+			await rest( 'POST', `/wp/v2/posts/${ id }`, {
+				title: `QA E2E send AC-053 edited ${ id }`,
+			} );
+		}
+		const log = getLog();
+		const patches = updates( log );
+		expect( patches ).toHaveLength( 2 );
+		const strategies = mergeStrategies( log );
+		expect( strategies.length ).toBeGreaterThan( 0 );
+		for ( const strategy of strategies ) {
+			expect( strategy ).toBe( 'append_to_template' );
+			expect( [ 'append', 'prepend' ] ).not.toContain( strategy );
+		}
+		for ( const patch of patches ) {
+			expect( Array.isArray( patch.body.blocks ) ).toBe( true );
+			for ( const key of [ 'content', 'body_content', 'html' ] ) {
+				expect( typeof patch.body[ key ] ).not.toBe( 'string' );
+			}
+		}
+	} );
+
+	test( 'AC-054: the behavior has no setting and no option turns it off', async ( {
+		page,
+	} ) => {
+		seed();
+		const registered = JSON.parse(
+			wpCli(
+				`eval '$s = get_registered_settings(); $d = isset( $s["beehiiv_settings"]["default"] ) ? array_keys( (array) $s["beehiiv_settings"]["default"] ) : []; echo wp_json_encode( [ "keys" => $d, "all" => array_keys( $s ) ] );'`
+			)
+		);
+		const names = [ ...registered.keys, ...registered.all ].join( ' ' );
+		expect( names ).not.toMatch( /merge|replace_body|template_header/i );
+
+		// Even a stored value that names the strategy cannot switch it off.
+		wpCli(
+			`eval '$o = get_option( "beehiiv_settings", [] ); $o["content_merge_strategy"] = "replace"; $o["replace_body"] = true; update_option( "beehiiv_settings", $o );'`
+		);
+		const id = createLinkedPost( 'QA E2E send AC-054', {
+			meta: { [ LINKED_TEMPLATE_META ]: TEMPLATE_ID },
+		} );
+		const rest = await restAs( page );
+		await rest( 'POST', `/wp/v2/posts/${ id }`, {
+			title: 'QA E2E send AC-054 edited',
+		} );
+		expect( updates( getLog() ).pop().body.content_merge_strategy ).toBe(
+			'append_to_template'
+		);
+
+		await page.goto( '/wp-admin/admin.php?page=beehiiv' );
+		await expect( page.locator( '#wpbody-content' ) ).toBeVisible();
+		await expect(
+			page
+				.locator( '#wpbody-content' )
+				.getByText(
+					/merge strategy|replace the (whole )?body|template header/i
+				)
+		).toHaveCount( 0 );
+	} );
+} );
