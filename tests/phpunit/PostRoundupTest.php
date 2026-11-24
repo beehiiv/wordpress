@@ -1371,7 +1371,7 @@ class PostRoundupTest extends WP_UnitTestCase {
 		$this->assertSame( 'n1', PostRoundup::block_key( $attrs, 1 ) );
 	}
 
-	/* ------------------------------------------- AC-011 to AC-013 columns, meta, caption. */
+	/* ----------- AC-008, AC-009, AC-011, AC-013 columns, author, date and caption. */
 
 	/**
 	 * Columns default to 1 and stay between 1 and 3.

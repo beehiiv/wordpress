@@ -1246,7 +1246,7 @@ test.describe( 'US-005: columns, author, date and image captions', () => {
 		).toEqual( [ 'image', 'paragraph', 'paragraph', 'button' ] );
 	} );
 
-	test( 'AC-012: the author shows and edits the post author and date', async ( {
+	test( 'AC-008 and AC-009: the author shows and edits the post author and date', async ( {
 		page,
 	} ) => {
 		await loginAsAdmin( page );
