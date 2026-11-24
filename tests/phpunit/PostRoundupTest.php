@@ -477,7 +477,7 @@ class PostRoundupTest extends WP_UnitTestCase {
 	/* ------------------------------------------------------------ AC-005 expansion. */
 
 	/**
-	 * Per post: image, bold linked title, excerpt, Read more; a separator between cards; order kept.
+	 * Per post: image, bold linked title, excerpt, Read more; no divider between cards; order kept.
 	 */
 	public function test_roundup_expands_into_cards_in_order(): void {
 		$one = $this->create_article( 'Alpha story', 1 );
@@ -488,7 +488,7 @@ class PostRoundupTest extends WP_UnitTestCase {
 		$blocks     = $this->convert( $newsletter );
 
 		$this->assertSame(
-			array( 'image', 'paragraph', 'paragraph', 'button', 'content_break', 'paragraph', 'paragraph', 'button' ),
+			array( 'image', 'paragraph', 'paragraph', 'button', 'paragraph', 'paragraph', 'button' ),
 			$this->types( $blocks )
 		);
 
@@ -511,8 +511,8 @@ class PostRoundupTest extends WP_UnitTestCase {
 		$this->assertSame( get_permalink( $one ), $blocks[3]['href'] );
 
 		// Second card follows, with no image of its own.
-		$this->assertSame( 'Excerpt of Beta story', $blocks[6]['plaintext'] );
-		$this->assertSame( get_permalink( $two ), $blocks[7]['href'] );
+		$this->assertSame( 'Excerpt of Beta story', $blocks[5]['plaintext'] );
+		$this->assertSame( get_permalink( $two ), $blocks[6]['href'] );
 	}
 
 	/**
@@ -859,11 +859,13 @@ class PostRoundupTest extends WP_UnitTestCase {
 	/**
 	 * Every card item is shown when the block stores no display choice.
 	 */
-	public function test_every_item_is_shown_by_default(): void {
+	public function test_card_items_default_to_shown_except_author_and_date(): void {
 		$this->assertSame(
 			array(
 				'image'   => true,
 				'title'   => true,
+				'author'  => false,
+				'date'    => false,
 				'excerpt' => true,
 				'button'  => true,
 			),
@@ -959,8 +961,8 @@ class PostRoundupTest extends WP_UnitTestCase {
 		$this->assertSame( get_permalink( $one ), $blocks[2]['href'] );
 
 		// The second post keeps its own values.
-		$this->assertStringContainsString( 'Beta story', wp_json_encode( $blocks[4] ) );
-		$this->assertSame( 'Read more', $blocks[6]['text'] );
+		$this->assertStringContainsString( 'Beta story', wp_json_encode( $blocks[3] ) );
+		$this->assertSame( 'Read more', $blocks[5]['text'] );
 
 		// The source post is unchanged.
 		$this->assertSame( 'Alpha story', get_the_title( $one ) );
@@ -1105,7 +1107,7 @@ class PostRoundupTest extends WP_UnitTestCase {
 
 		// Order is Beta then Alpha; only Alpha's button changed.
 		$this->assertSame( 'Read more', $blocks[2]['text'] );
-		$this->assertSame( 'Open it', $blocks[6]['text'] );
+		$this->assertSame( 'Open it', $blocks[5]['text'] );
 	}
 
 	/**
@@ -1202,10 +1204,10 @@ class PostRoundupTest extends WP_UnitTestCase {
 		);
 
 		$this->assertSame(
-			array( 'columns', 'content_break', 'paragraph', 'paragraph', 'button' ),
+			array( 'columns', 'paragraph', 'paragraph', 'button' ),
 			$this->types( $blocks )
 		);
-		$this->assertSame( get_permalink( $two ), $blocks[4]['href'] );
+		$this->assertSame( get_permalink( $two ), $blocks[3]['href'] );
 	}
 
 	/**
@@ -1275,9 +1277,9 @@ class PostRoundupTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Cards inside a column follow each other with no separator between them.
+	 * Cards inside a column follow each other with no divider between them.
 	 */
-	public function test_roundup_inside_a_column_has_no_separators_between_cards(): void {
+	public function test_roundup_inside_a_column_has_no_dividers_between_cards(): void {
 		$this->create_article( 'Alpha story', 1 );
 		$this->create_article( 'Beta story', 2 );
 
@@ -1292,9 +1294,30 @@ class PostRoundupTest extends WP_UnitTestCase {
 			array_column( $blocks[0]['columns'][0]['blocks'], 'type' )
 		);
 
-		// At the top level the separator stays.
+		// The same at the top level: the template spaces the cards.
 		$top = $this->convert( $this->create_newsletter( $this->roundup( array( 'count' => 2 ) ) ) );
-		$this->assertContains( 'content_break', $this->types( $top ) );
+		$this->assertNotContains( 'content_break', $this->types( $top ) );
+	}
+
+	/**
+	 * The roundup adds no divider of its own, but a Separator block the author adds is still sent.
+	 */
+	public function test_only_the_authors_own_separator_blocks_become_dividers(): void {
+		$this->create_article( 'Alpha story', 1 );
+		$this->create_article( 'Beta story', 2 );
+
+		$content = $this->paragraph( 'Intro' )
+			. $this->roundup( array( 'count' => 2 ) )
+			. "<!-- wp:separator -->\n<hr class=\"wp-block-separator has-alpha-channel-opacity\"/>\n<!-- /wp:separator -->"
+			. $this->paragraph( 'Outro' );
+
+		$types = $this->types( $this->convert( $this->create_newsletter( $content ) ) );
+
+		$this->assertSame(
+			array( 'paragraph', 'paragraph', 'paragraph', 'button', 'paragraph', 'paragraph', 'button', 'content_break', 'paragraph' ),
+			$types
+		);
+
 	}
 
 	/**
@@ -1346,5 +1369,301 @@ class PostRoundupTest extends WP_UnitTestCase {
 		$this->assertSame( PostRoundup::block_key( $attrs, null ), PostRoundup::block_key( $attrs, null ) );
 		$this->assertNotSame( PostRoundup::block_key( $attrs, null ), PostRoundup::block_key( array( 'count' => 3 ), null ) );
 		$this->assertSame( 'n1', PostRoundup::block_key( $attrs, 1 ) );
+	}
+
+	/* ------------------------------------------- AC-011 to AC-013 columns, meta, caption. */
+
+	/**
+	 * Columns default to 1 and stay between 1 and 3.
+	 */
+	public function test_columns_default_to_one_and_stay_between_one_and_three(): void {
+		$this->assertSame( 1, PostRoundup::columns( array() ) );
+		$this->assertSame( 1, PostRoundup::columns( array( 'columns' => 'many' ) ) );
+		$this->assertSame( 1, PostRoundup::columns( array( 'columns' => 0 ) ) );
+		$this->assertSame( 2, PostRoundup::columns( array( 'columns' => 2 ) ) );
+		$this->assertSame( 3, PostRoundup::columns( array( 'columns' => 9 ) ) );
+	}
+
+	/**
+	 * Cards side by side become one beehiiv columns block per row, with no divider between rows.
+	 */
+	public function test_columns_send_rows_of_cards_side_by_side(): void {
+		foreach ( range( 1, 5 ) as $i ) {
+			$id = $this->create_article( 'Story ' . $i, $i );
+			$this->add_featured_image( $id, "story$i.jpg" );
+		}
+
+		$blocks = $this->convert(
+			$this->create_newsletter( $this->roundup( array( 'count' => 5, 'columns' => 2, 'uid' => 'cols2' ) ) )
+		);
+
+		// Rows of 2, 2 and a last row with one card at full width.
+		$this->assertSame(
+			array( 'columns', 'columns', 'image', 'paragraph', 'paragraph', 'button' ),
+			$this->types( $blocks )
+		);
+		$this->assertTrue( $blocks[0]['stackOnMobile'] );
+		$this->assertSame( array( 50, 50 ), array_column( $blocks[0]['columns'], 'width' ) );
+		$this->assertSame( array( 'top', 'top' ), array_column( $blocks[0]['columns'], 'verticalAlign' ) );
+
+		// Each card keeps its image above its text.
+		$this->assertSame(
+			array( 'image', 'paragraph', 'paragraph', 'button' ),
+			array_column( $blocks[0]['columns'][0]['blocks'], 'type' )
+		);
+		$this->assertStringContainsString( 'Story 1', wp_json_encode( $blocks[0]['columns'][0] ) );
+		$this->assertStringContainsString( 'Story 2', wp_json_encode( $blocks[0]['columns'][1] ) );
+		$this->assertStringContainsString( 'Story 5', wp_json_encode( array_slice( $blocks, 2 ) ) );
+	}
+
+	/**
+	 * Three columns split the width 33, 33 and 34, and a short last row shares the full width.
+	 */
+	public function test_three_columns_and_a_short_last_row(): void {
+		foreach ( range( 1, 5 ) as $i ) {
+			$this->create_article( 'Story ' . $i, $i );
+		}
+
+		$blocks = $this->convert(
+			$this->create_newsletter( $this->roundup( array( 'count' => 5, 'columns' => 3, 'uid' => 'cols3' ) ) )
+		);
+
+		$this->assertSame( array( 'columns', 'columns' ), $this->types( $blocks ) );
+		$this->assertSame( array( 33, 33, 34 ), array_column( $blocks[0]['columns'], 'width' ) );
+		$this->assertSame( array( 50, 50 ), array_column( $blocks[1]['columns'], 'width' ) );
+	}
+
+	/**
+	 * Cards with the image beside the text sit alone in their row, whatever the columns setting.
+	 */
+	public function test_split_layout_cards_sit_alone_in_their_row(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$two = $this->create_article( 'Beta story', 2 );
+		$this->add_featured_image( $one, 'alpha.jpg' );
+		$this->add_featured_image( $two, 'beta.jpg' );
+
+		$blocks = $this->convert(
+			$this->create_newsletter(
+				$this->roundup( array( 'count' => 2, 'columns' => 2, 'layout' => '30-70', 'imagePlacement' => 'right' ) )
+			)
+		);
+
+		// Two split cards, one per row, with no divider between the rows.
+		$this->assertSame( array( 'columns', 'columns' ), $this->types( $blocks ) );
+		foreach ( array( 0, 1 ) as $at ) {
+			$this->assertCount( 2, $blocks[ $at ]['columns'] );
+			$this->assertSame( array( 'paragraph', 'paragraph', 'button' ), array_column( $blocks[ $at ]['columns'][0]['blocks'], 'type' ) );
+			$this->assertSame( array( 'image' ), array_column( $blocks[ $at ]['columns'][1]['blocks'], 'type' ) );
+			$this->assertSame( array( 70, 30 ), array_column( $blocks[ $at ]['columns'], 'width' ) );
+		}
+		$this->assertStringContainsString( 'Alpha story', wp_json_encode( $blocks[0] ) );
+		$this->assertStringContainsString( 'Beta story', wp_json_encode( $blocks[1] ) );
+	}
+
+	/**
+	 * A roundup inside a column always stacks its cards, whatever columns it asks for.
+	 */
+	public function test_roundup_inside_a_column_ignores_the_columns_setting(): void {
+		$this->create_article( 'Alpha story', 1 );
+		$this->create_article( 'Beta story', 2 );
+
+		$columns = '<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column">'
+			. $this->roundup( array( 'count' => 2, 'columns' => 3, 'uid' => 'insidecol' ) )
+			. '</div><!-- /wp:column --></div><!-- /wp:columns -->';
+
+		$blocks = $this->convert( $this->create_newsletter( $columns ) );
+
+		$this->assertSame(
+			array( 'paragraph', 'paragraph', 'button', 'paragraph', 'paragraph', 'button' ),
+			array_column( $blocks[0]['columns'][0]['blocks'], 'type' )
+		);
+	}
+
+	/**
+	 * Author and date are off by default and send nothing.
+	 */
+	public function test_author_and_date_are_not_sent_by_default(): void {
+		$user = self::factory()->user->create( array( 'display_name' => 'Jane Writer' ) );
+		$this->create_article( 'Alpha story', 1, array( 'post_author' => $user ) );
+
+		$json = wp_json_encode(
+			$this->convert( $this->create_newsletter( $this->roundup( array( 'count' => 1 ) ) ) )
+		);
+
+		$this->assertStringNotContainsString( 'Jane Writer', $json );
+		$this->assertStringNotContainsString( 'By ', $json );
+	}
+
+	/**
+	 * Author and date go out as one line under the title, in the site's date format.
+	 */
+	public function test_author_and_date_are_sent_as_one_line_under_the_title(): void {
+		$user = self::factory()->user->create( array( 'display_name' => 'Jane Writer' ) );
+		$one  = $this->create_article( 'Alpha story', 1, array( 'post_author' => $user ) );
+		$date = get_the_date( '', $one );
+
+		$cases = array(
+			array( array( 'author' => true, 'date' => true ), 'By Jane Writer · ' . $date ),
+			array( array( 'author' => true, 'date' => false ), 'By Jane Writer' ),
+			array( array( 'author' => false, 'date' => true ), $date ),
+		);
+
+		foreach ( $cases as list( $flags, $expected ) ) {
+			$blocks = $this->convert(
+				$this->create_newsletter( $this->roundup( array( 'count' => 1, 'display' => $flags ) ) )
+			);
+
+			$this->assertSame( array( 'paragraph', 'paragraph', 'paragraph', 'button' ), $this->types( $blocks ) );
+			$this->assertSame( $expected, $blocks[1]['plaintext'] );
+			$this->assertStringContainsString( 'Alpha story', wp_json_encode( $blocks[0] ) );
+			$this->assertSame( 'Excerpt of Alpha story', $blocks[2]['plaintext'] );
+		}
+	}
+
+	/**
+	 * The author can edit the author name and the date for this newsletter only.
+	 */
+	public function test_author_and_date_can_be_edited_without_changing_the_post(): void {
+		$user = self::factory()->user->create( array( 'display_name' => 'Jane Writer' ) );
+		$one  = $this->create_article( 'Alpha story', 1, array( 'post_author' => $user ) );
+
+		$blocks = $this->convert(
+			$this->create_newsletter(
+				$this->roundup(
+					array(
+						'count'     => 1,
+						'display'   => array( 'author' => true, 'date' => true ),
+						'overrides' => array( (string) $one => array( 'author' => 'The Editors', 'date' => 'This week' ) ),
+					)
+				)
+			)
+		);
+
+		$this->assertSame( 'By The Editors · This week', $blocks[1]['plaintext'] );
+		$this->assertSame( 'Jane Writer', get_the_author_meta( 'display_name', $user ) );
+	}
+
+	/**
+	 * A caption is added to the image, only when the author writes one.
+	 */
+	public function test_image_caption_is_sent_with_the_image(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$this->add_featured_image( $one, 'alpha.jpg' );
+		$library_caption = wp_get_attachment_caption( (int) get_post_thumbnail_id( $one ) );
+
+		$plain = $this->convert( $this->create_newsletter( $this->roundup( array( 'count' => 1 ) ) ) );
+		$this->assertArrayNotHasKey( 'caption', $plain[0] );
+
+		$blocks = $this->convert(
+			$this->create_newsletter(
+				$this->roundup(
+					array(
+						'count'     => 1,
+						'overrides' => array( (string) $one => array( 'caption' => 'Photo: the trailhead' ) ),
+					)
+				)
+			)
+		);
+		$this->assertSame( 'image', $blocks[0]['type'] );
+		$this->assertSame( 'Photo: the trailhead', $blocks[0]['caption'] );
+		$this->assertSame( get_permalink( $one ), $blocks[0]['url'] );
+
+		// A hidden image takes its caption with it, and the post is unchanged.
+		$hidden = $this->convert(
+			$this->create_newsletter(
+				$this->roundup(
+					array(
+						'count'     => 1,
+						'display'   => array( 'image' => false ),
+						'overrides' => array( (string) $one => array( 'caption' => 'Photo: the trailhead' ) ),
+					)
+				)
+			)
+		);
+		$this->assertStringNotContainsString( 'trailhead', wp_json_encode( $hidden ) );
+		$this->assertSame( $library_caption, wp_get_attachment_caption( (int) get_post_thumbnail_id( $one ) ) );
+	}
+
+	/**
+	 * A caption on a card in a column goes with that card's image.
+	 */
+	public function test_caption_works_in_a_columns_row(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+		$two = $this->create_article( 'Beta story', 2 );
+		$this->add_featured_image( $one, 'alpha.jpg' );
+		$this->add_featured_image( $two, 'beta.jpg' );
+
+		$blocks = $this->convert(
+			$this->create_newsletter(
+				$this->roundup(
+					array(
+						'count'     => 2,
+						'columns'   => 2,
+						'overrides' => array( (string) $two => array( 'caption' => 'Second caption' ) ),
+					)
+				)
+			)
+		);
+
+		$this->assertArrayNotHasKey( 'caption', $blocks[0]['columns'][0]['blocks'][0] );
+		$this->assertSame( 'Second caption', $blocks[0]['columns'][1]['blocks'][0]['caption'] );
+	}
+
+	/* -------------------------------------------------- AC-012 Read more button or link. */
+
+	/**
+	 * The call to action is a button unless the author chooses a link.
+	 */
+	public function test_cta_style_defaults_to_a_button(): void {
+		$this->assertSame( 'button', PostRoundup::cta_style( array() ) );
+		$this->assertSame( 'button', PostRoundup::cta_style( array( 'ctaStyle' => 'pill' ) ) );
+		$this->assertSame( 'link', PostRoundup::cta_style( array( 'ctaStyle' => 'link' ) ) );
+	}
+
+	/**
+	 * A link style sends the label as a linked line of text, not a button, and keeps the edited label.
+	 */
+	public function test_link_style_sends_a_text_link_instead_of_a_button(): void {
+		$one = $this->create_article( 'Alpha story', 1 );
+
+		$blocks = $this->convert(
+			$this->create_newsletter(
+				$this->roundup(
+					array(
+						'count'     => 1,
+						'ctaStyle'  => 'link',
+						'overrides' => array( (string) $one => array( 'buttonLabel' => 'Read here' ) ),
+					)
+				)
+			)
+		);
+
+		$this->assertSame( array( 'paragraph', 'paragraph', 'paragraph' ), $this->types( $blocks ) );
+		$this->assertSame( 'Read here', $blocks[2]['formattedText'][0]['text'] );
+		$this->assertSame( get_permalink( $one ), $blocks[2]['formattedText'][0]['link']['href'] );
+		$this->assertArrayNotHasKey( 'styling', $blocks[2]['formattedText'][0] );
+	}
+
+	/**
+	 * The link style honours the Read more toggle and works in a columns row.
+	 */
+	public function test_link_style_respects_the_toggle_and_columns(): void {
+		$this->create_article( 'Alpha story', 1 );
+		$this->create_article( 'Beta story', 2 );
+
+		$hidden = $this->convert(
+			$this->create_newsletter(
+				$this->roundup( array( 'count' => 1, 'ctaStyle' => 'link', 'display' => array( 'button' => false ) ) )
+			)
+		);
+		$this->assertSame( array( 'paragraph', 'paragraph' ), $this->types( $hidden ) );
+
+		$row = $this->convert(
+			$this->create_newsletter( $this->roundup( array( 'count' => 2, 'columns' => 2, 'ctaStyle' => 'link' ) ) )
+		);
+		$this->assertSame( array( 'columns' ), $this->types( $row ) );
+		foreach ( $row[0]['columns'] as $column ) {
+			$this->assertSame( array( 'paragraph', 'paragraph', 'paragraph' ), array_column( $column['blocks'], 'type' ) );
+		}
 	}
 }

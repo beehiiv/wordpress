@@ -609,7 +609,8 @@ test.describe( 'US-002: send the roundup to beehiiv', () => {
 		const types = blocks.map( ( b ) => b.type );
 		expect( types ).toContain( 'image' );
 		expect( types ).toContain( 'button' );
-		expect( types ).toContain( 'content_break' );
+		// The roundup adds no divider between cards; the template spaces them.
+		expect( types ).not.toContain( 'content_break' );
 
 		// Title is a link to the post permalink; excerpt and button follow it.
 		const permalinkTwo = wpCli( `post get ${ postIds.p2 } --field=url` );
@@ -765,7 +766,7 @@ test.describe( 'US-003: choose and edit what each card shows', () => {
 			'Featured image',
 			'Title',
 			'Excerpt',
-			'Read more button',
+			'Read more',
 		] ) {
 			await page.getByRole( 'checkbox', { name } ).uncheck();
 		}
@@ -774,11 +775,13 @@ test.describe( 'US-003: choose and edit what each card shows', () => {
 				hasText: 'nothing is sent for this roundup',
 			} )
 		).toBeVisible();
-		expect( ( await attributesOf( page ) ).display ).toEqual( {
+		expect( ( await attributesOf( page ) ).display ).toMatchObject( {
 			image: false,
 			title: false,
 			excerpt: false,
 			button: false,
+			author: false,
+			date: false,
 		} );
 
 		// What is sent follows the stored choices: no image, no excerpt.
@@ -1124,5 +1127,313 @@ test.describe( 'Roundup inside other blocks', () => {
 		expect( section ).toBeTruthy();
 		expect( JSON.stringify( section ) ).toContain( 'QA RR Post One' );
 		expect( JSON.stringify( section ) ).toContain( 'QA RR excerpt one' );
+	} );
+} );
+
+// ---------------------------------------------------------------------------
+test.describe( 'US-005: columns, author, date and image captions', () => {
+	const attributesOf = ( page ) =>
+		page.evaluate( ( name ) => {
+			const found = window.wp.data
+				.select( 'core/block-editor' )
+				.getBlocks()
+				.find( ( item ) => item.name === name );
+			return found ? found.attributes : null;
+		}, BLOCK );
+
+	const manual = ( extra = {} ) => ( {
+		mode: 'manual',
+		uid: 'us005',
+		posts: [
+			{ id: Number( postIds.p4 ), type: 'post' },
+			{ id: Number( postIds.p3 ), type: 'post' },
+			{ id: Number( postIds.p2 ), type: 'post' },
+		],
+		...extra,
+	} );
+
+	const publishWith = async ( page, id, attrs ) => {
+		const rest = await restAsAdmin( page );
+		const res = await rest( 'POST', `/wp/v2/${ REST_BASE }/${ id }`, {
+			status: 'publish',
+			content: roundupBlock( attrs ),
+		} );
+		expect( res.status ).toBe( 200 );
+		return creates( getLog() ).pop().body.blocks;
+	};
+
+	test( 'AC-011: the author puts cards in 1, 2 or 3 columns, in the editor and in what is sent', async ( {
+		page,
+	} ) => {
+		await loginAsAdmin( page );
+		seed();
+		const id = createItem( {
+			title: 'QA RR columns AC-011',
+			type: TYPE,
+			status: 'draft',
+			content: roundupBlock( manual() ),
+			meta: { [ META_SEND ]: '1' },
+		} );
+
+		await openEditor( page, `/wp-admin/post.php?post=${ id }&action=edit` );
+		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+		const block = canvas.locator( `[data-type="${ BLOCK }"]` );
+		const cards = block.locator( '.beehiiv-post-roundup__card' );
+		await expect( cards ).toHaveCount( 3 );
+		await block.click();
+		await openSettingsSidebar( page );
+
+		const columnButton = ( name ) =>
+			page
+				.locator( '.beehiiv-post-roundup__options', {
+					hasText: 'Columns',
+				} )
+				.getByRole( 'button', { name, exact: true } );
+
+		// One column: cards stack.
+		const first = await cards.nth( 0 ).boundingBox();
+		const second = await cards.nth( 1 ).boundingBox();
+		expect( second.y ).toBeGreaterThan( first.y );
+
+		// Two columns: the first two cards share a row, and the ratio is locked.
+		await columnButton( '2' ).click();
+		await expect(
+			block.locator( '.beehiiv-post-roundup__row' )
+		).toHaveCount( 2 );
+		const rowOne = [
+			await cards.nth( 0 ).boundingBox(),
+			await cards.nth( 1 ).boundingBox(),
+		];
+		expect( Math.abs( rowOne[ 0 ].y - rowOne[ 1 ].y ) ).toBeLessThan( 4 );
+		expect( rowOne[ 1 ].x ).toBeGreaterThan( rowOne[ 0 ].x );
+		await expect(
+			page.getByRole( 'button', { name: '30:70', exact: true } )
+		).toBeEnabled();
+
+		// Cards with the image beside the text sit alone in their row, so the
+		// columns setting is turned off while a ratio is chosen.
+		await page
+			.getByRole( 'button', { name: '30:70', exact: true } )
+			.click();
+		await expect(
+			block.locator( '.beehiiv-post-roundup__row' )
+		).toHaveCount( 3 );
+		await expect( columnButton( '3' ) ).toBeDisabled();
+		await page.getByRole( 'button', { name: 'Full', exact: true } ).click();
+		await expect( columnButton( '3' ) ).toBeEnabled();
+
+		// Three columns: all three share one row.
+		await columnButton( '3' ).click();
+		await expect(
+			block.locator( '.beehiiv-post-roundup__row' )
+		).toHaveCount( 1 );
+		expect( ( await attributesOf( page ) ).columns ).toBe( 3 );
+
+		// What is sent: columns blocks with equal widths, text under each image.
+		const three = await publishWith( page, id, manual( { columns: 3 } ) );
+		expect( three.map( ( item ) => item.type ) ).toEqual( [ 'columns' ] );
+		expect( three[ 0 ].columns.map( ( c ) => c.width ) ).toEqual( [
+			33, 33, 34,
+		] );
+		expect( JSON.stringify( three[ 0 ].columns[ 0 ] ) ).toContain(
+			'QA RR Post Four'
+		);
+		expect( JSON.stringify( three[ 0 ].columns[ 2 ] ) ).toContain(
+			'QA RR Post Two'
+		);
+		expect(
+			three[ 0 ].columns[ 2 ].blocks.map( ( item ) => item.type )
+		).toEqual( [ 'image', 'paragraph', 'paragraph', 'button' ] );
+	} );
+
+	test( 'AC-012: the author shows and edits the post author and date', async ( {
+		page,
+	} ) => {
+		await loginAsAdmin( page );
+		seed();
+		const id = createItem( {
+			title: 'QA RR meta AC-012',
+			type: TYPE,
+			status: 'draft',
+			content: roundupBlock( manual() ),
+			meta: { [ META_SEND ]: '1' },
+		} );
+
+		await openEditor( page, `/wp-admin/post.php?post=${ id }&action=edit` );
+		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+		const block = canvas.locator( `[data-type="${ BLOCK }"]` );
+		const card = block.locator( '.beehiiv-post-roundup__card' ).first();
+		await expect( card ).toBeVisible();
+
+		// Both are off to begin with.
+		await expect(
+			card.locator( '.beehiiv-post-roundup__meta' )
+		).toHaveCount( 0 );
+		await block.click();
+		await openSettingsSidebar( page );
+		await page.getByRole( 'checkbox', { name: 'Author' } ).check();
+		await page.getByRole( 'checkbox', { name: 'Date' } ).check();
+		const meta = card.locator( '.beehiiv-post-roundup__meta' );
+		await expect( meta ).toContainText( 'By admin' );
+		await expect( meta ).toContainText( '2026' );
+
+		// The author can edit the author name for this newsletter.
+		const authorField = card.locator( '.beehiiv-post-roundup__author' );
+		await authorField.click();
+		await page.keyboard.press( 'ControlOrMeta+A' );
+		await page.keyboard.type( 'The Editors' );
+		await expect( meta ).toContainText( 'By The Editors' );
+		await expect
+			.poll( async () => ( await attributesOf( page ) ).overrides )
+			.toEqual( {
+				[ postIds.p4 ]: { author: 'The Editors' },
+			} );
+
+		// What is sent: one line under the title, with the edited name.
+		const sent = await publishWith(
+			page,
+			id,
+			manual( {
+				display: { author: true, date: true },
+				overrides: { [ postIds.p4 ]: { author: 'The Editors' } },
+			} )
+		);
+		const lines = sent
+			.filter( ( item ) => item.type === 'paragraph' && item.plaintext )
+			.map( ( item ) => item.plaintext );
+		expect(
+			lines.some( ( line ) => /^By The Editors · .*2026/.test( line ) )
+		).toBe( true );
+		expect(
+			lines.some( ( line ) => /^By admin · .*2026/.test( line ) )
+		).toBe( true );
+		expect( wpCli( `user get 1 --field=display_name` ) ).toBe( 'admin' );
+	} );
+
+	test( 'AC-013: the author adds a caption to the image, and it is sent with the image', async ( {
+		page,
+	} ) => {
+		await loginAsAdmin( page );
+		seed();
+		const id = createItem( {
+			title: 'QA RR caption AC-013',
+			type: TYPE,
+			status: 'draft',
+			content: roundupBlock( {
+				mode: 'manual',
+				uid: 'us005c',
+				posts: [ { id: Number( postIds.p2 ), type: 'post' } ],
+			} ),
+			meta: { [ META_SEND ]: '1' },
+		} );
+
+		await openEditor( page, `/wp-admin/post.php?post=${ id }&action=edit` );
+		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+		const card = canvas.locator( '.beehiiv-post-roundup__card' ).first();
+		await expect( card.locator( 'img' ) ).toBeVisible();
+
+		const caption = card.locator( '.beehiiv-post-roundup__caption' );
+		await caption.click();
+		await page.keyboard.type( 'Photo: a quiet morning' );
+		await expect( caption ).toHaveText( 'Photo: a quiet morning' );
+		await expect
+			.poll( async () => ( await attributesOf( page ) ).overrides )
+			.toEqual( {
+				[ postIds.p2 ]: { caption: 'Photo: a quiet morning' },
+			} );
+
+		const sent = await publishWith( page, id, {
+			mode: 'manual',
+			uid: 'us005c',
+			posts: [ { id: Number( postIds.p2 ), type: 'post' } ],
+			overrides: {
+				[ postIds.p2 ]: { caption: 'Photo: a quiet morning' },
+			},
+		} );
+		const image = sent.find( ( item ) => item.type === 'image' );
+		expect( image.caption ).toBe( 'Photo: a quiet morning' );
+
+		// The caption stays with the newsletter: the post's image is unchanged.
+		expect(
+			wpCli(
+				`eval 'echo wp_get_attachment_caption( get_post_thumbnail_id( ${ postIds.p2 } ) );'`
+			)
+		).toBe( '' );
+	} );
+} );
+
+// ---------------------------------------------------------------------------
+test.describe( 'US-006: Read more as a button or a text link', () => {
+	test( 'AC-012: the author chooses a button or a text link for Read more, in the editor and in what is sent', async ( {
+		page,
+	} ) => {
+		await loginAsAdmin( page );
+		seed();
+		const attrs = ( extra = {} ) => ( {
+			mode: 'manual',
+			uid: 'us006',
+			posts: [ { id: Number( postIds.p1 ), type: 'post' } ],
+			...extra,
+		} );
+		const id = createItem( {
+			title: 'QA RR cta AC-012',
+			type: TYPE,
+			status: 'draft',
+			content: roundupBlock( attrs() ),
+			meta: { [ META_SEND ]: '1' },
+		} );
+
+		await openEditor( page, `/wp-admin/post.php?post=${ id }&action=edit` );
+		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
+		const block = canvas.locator( `[data-type="${ BLOCK }"]` );
+		const card = block.locator( '.beehiiv-post-roundup__card' ).first();
+		await expect(
+			card.locator( '.beehiiv-post-roundup__button' )
+		).toHaveText( 'Read more' );
+
+		// A text link instead of a button.
+		await block.click();
+		await openSettingsSidebar( page );
+		await page
+			.locator( '.beehiiv-post-roundup__options', {
+				hasText: 'Read more style',
+			} )
+			.getByRole( 'button', { name: 'Link', exact: true } )
+			.click();
+		await expect(
+			card.locator( '.beehiiv-post-roundup__button' )
+		).toHaveCount( 0 );
+		const link = card.locator( '.beehiiv-post-roundup__cta-link' );
+		await expect( link ).toHaveText( 'Read more' );
+
+		// The label is still editable, whichever style is chosen.
+		await link.click();
+		await page.keyboard.press( 'ControlOrMeta+A' );
+		await page.keyboard.type( 'Read here' );
+		await expect( link ).toHaveText( 'Read here' );
+
+		// What is sent: a linked line of text, no button block.
+		const rest = await restAsAdmin( page );
+		const res = await rest( 'POST', `/wp/v2/${ REST_BASE }/${ id }`, {
+			status: 'publish',
+			content: roundupBlock(
+				attrs( {
+					ctaStyle: 'link',
+					overrides: { [ postIds.p1 ]: { buttonLabel: 'Read here' } },
+				} )
+			),
+		} );
+		expect( res.status ).toBe( 200 );
+		const sent = creates( getLog() ).pop().body.blocks;
+		expect( sent.map( ( item ) => item.type ) ).toEqual( [
+			'paragraph',
+			'paragraph',
+			'paragraph',
+		] );
+		const last = sent[ sent.length - 1 ];
+		expect( last.formattedText[ 0 ].text ).toBe( 'Read here' );
+		expect( last.formattedText[ 0 ].link.href ).toBe(
+			wpCli( `post get ${ postIds.p1 } --field=url` )
+		);
 	} );
 } );
