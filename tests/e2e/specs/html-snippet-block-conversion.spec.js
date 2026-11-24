@@ -41,7 +41,7 @@ const MOCK_CREATED_ID = 'post_qa_e2e_html_created';
 const IMG = 'https://example.com/qa-image.jpg';
 const OMITTED_NOTICE = '.beehiiv-post-settings-notice__omitted';
 const UNSUPPORTED_NOTICE = '.beehiiv-html-unsupported-notice';
-const NEWSLETTER_ONLY_LABEL = '.beehiiv-newsletter-only-label';
+const NEWSLETTER_ONLY_BLOCK = '[data-type="core/html"].beehiiv-newsletter-only';
 
 /**
  * Returns, for each element matching `selector`, the position among the Custom
@@ -70,6 +70,44 @@ async function ownersOf( canvas, selector ) {
 			return all.indexOf( next );
 		} )
 	);
+}
+
+/**
+ * Positions, among the Custom HTML blocks, of the blocks that carry the
+ * "Newsletter only" class. The label is drawn by CSS from that class.
+ *
+ * @param {import('@playwright/test').FrameLocator} canvas Editor canvas.
+ * @return {Promise<number[]>} Block positions, in document order.
+ */
+async function labelledBlocks( canvas ) {
+	return canvas
+		.locator( '[data-type="core/html"]' )
+		.evaluateAll( ( elements ) =>
+			elements
+				.map( ( element, index ) =>
+					element.classList.contains( 'beehiiv-newsletter-only' )
+						? index
+						: -1
+				)
+				.filter( ( index ) => index >= 0 )
+		);
+}
+
+/**
+ * The text the stylesheet draws before a block.
+ *
+ * @param {import('@playwright/test').Locator} block Block locator.
+ * @return {Promise<string>} The label text, without quotes.
+ */
+async function labelText( block ) {
+	const content = await block.evaluate(
+		( element ) =>
+			element.ownerDocument.defaultView.getComputedStyle(
+				element,
+				'::before'
+			).content
+	);
+	return content.replace( /^["']|["']$/g, '' );
 }
 
 const createdPosts = [];
@@ -660,7 +698,7 @@ test.describe( 'US-003: send advertiser HTML to the newsletter only', () => {
 
 		// Turning it on saves a per-block attribute (AC-019 data shape).
 		await toggle.check();
-		await expect( canvas.locator( NEWSLETTER_ONLY_LABEL ) ).toBeVisible();
+		await expect( canvas.locator( NEWSLETTER_ONLY_BLOCK ) ).toBeVisible();
 		await saveDraft( page );
 		const saved = wpEvalWith(
 			{ id },
@@ -755,13 +793,14 @@ test.describe( 'US-003: send advertiser HTML to the newsletter only', () => {
 		const blocks = canvas.locator( '[data-type="core/html"]' );
 		await expect( blocks ).toHaveCount( 2 );
 
-		await expect( canvas.locator( NEWSLETTER_ONLY_LABEL ) ).toHaveText(
-			'Newsletter only'
+		await expect( canvas.locator( NEWSLETTER_ONLY_BLOCK ) ).toHaveCount(
+			1
 		);
+		expect(
+			await labelText( canvas.locator( NEWSLETTER_ONLY_BLOCK ) )
+		).toBe( 'Newsletter only' );
 		// Only the first block has the option on.
-		expect( await ownersOf( canvas, NEWSLETTER_ONLY_LABEL ) ).toEqual( [
-			0,
-		] );
+		expect( await labelledBlocks( canvas ) ).toEqual( [ 0 ] );
 		// BR-007: the block is still shown in full so it can be edited.
 		await expect( blocks.nth( 0 ) ).toBeVisible();
 	} );
@@ -892,14 +931,15 @@ test.describe( 'US-004: verify the full flow on a test post', () => {
 		const canvas = page.frameLocator( 'iframe[name="editor-canvas"]' );
 		const editorBlocks = canvas.locator( '[data-type="core/html"]' );
 		await expect( editorBlocks ).toHaveCount( 2 );
-		await expect( canvas.locator( NEWSLETTER_ONLY_LABEL ) ).toHaveText(
-			'Newsletter only'
+		await expect( canvas.locator( NEWSLETTER_ONLY_BLOCK ) ).toHaveCount(
+			1
 		);
+		expect(
+			await labelText( canvas.locator( NEWSLETTER_ONLY_BLOCK ) )
+		).toBe( 'Newsletter only' );
 		await expect( canvas.locator( UNSUPPORTED_NOTICE ) ).toBeVisible();
 		// The label and the notice belong to the second block only.
-		expect( await ownersOf( canvas, NEWSLETTER_ONLY_LABEL ) ).toEqual( [
-			1,
-		] );
+		expect( await labelledBlocks( canvas ) ).toEqual( [ 1 ] );
 		expect( await ownersOf( canvas, UNSUPPORTED_NOTICE ) ).toEqual( [ 1 ] );
 	} );
 } );

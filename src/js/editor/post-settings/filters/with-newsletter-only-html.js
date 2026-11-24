@@ -2,7 +2,8 @@
  * "Newsletter only" option on Custom HTML blocks.
  *
  * Adds a per-block option that sends the block to beehiiv without showing it on the
- * WordPress site, a label on blocks that have it on, and a notice when the block holds
+ * WordPress site, a label on blocks that have it on (a class on the block, with the
+ * text drawn by CSS), and a notice when the block holds
  * script or iframe elements, which beehiiv does not accept.
  */
 import { __ } from '@wordpress/i18n';
@@ -45,6 +46,8 @@ function addNewsletterOnlyAttribute( settings, name ) {
 	};
 }
 
+const NEWSLETTER_ONLY_CLASS = 'beehiiv-newsletter-only';
+
 const withNewsletterOnlyHtml = createHigherOrderComponent( ( BlockEdit ) => {
 	return function BeehiivHtmlBlockEdit( props ) {
 		// Newer WordPress versions leave a saved Custom HTML block without a
@@ -71,11 +74,6 @@ const withNewsletterOnlyHtml = createHigherOrderComponent( ( BlockEdit ) => {
 
 		return (
 			<>
-				{ isNewsletterOnly && (
-					<p className="beehiiv-newsletter-only-label">
-						{ __( 'Newsletter only', 'beehiiv' ) }
-					</p>
-				) }
 				{ hasUnsupported && (
 					<Notice
 						status="warning"
@@ -112,6 +110,33 @@ const withNewsletterOnlyHtml = createHigherOrderComponent( ( BlockEdit ) => {
 	};
 }, 'withNewsletterOnlyHtml' );
 
+/**
+ * Add a class to the block wrapper when the option is on. The stylesheet draws the
+ * "Newsletter only" label from it, so no extra element is rendered.
+ */
+const withNewsletterOnlyClass = createHigherOrderComponent(
+	( BlockListBlock ) => {
+		return function BeehiivHtmlBlockListBlock( props ) {
+			if (
+				props.name !== HTML_BLOCK ||
+				! props.attributes?.[ NEWSLETTER_ONLY_ATTRIBUTE ]
+			) {
+				return <BlockListBlock { ...props } />;
+			}
+
+			return (
+				<BlockListBlock
+					{ ...props }
+					className={ [ props.className, NEWSLETTER_ONLY_CLASS ]
+						.filter( Boolean )
+						.join( ' ' ) }
+				/>
+			);
+		};
+	},
+	'withNewsletterOnlyClass'
+);
+
 addFilter(
 	'blocks.registerBlockType',
 	'beehiiv/newsletter-only-html-attribute',
@@ -122,4 +147,10 @@ addFilter(
 	'editor.BlockEdit',
 	'beehiiv/newsletter-only-html',
 	withNewsletterOnlyHtml
+);
+
+addFilter(
+	'editor.BlockListBlock',
+	'beehiiv/newsletter-only-html-class',
+	withNewsletterOnlyClass
 );

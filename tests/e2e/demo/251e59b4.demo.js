@@ -20,7 +20,7 @@ const PUBLICATION_ID = 'pub_demo_html';
 const TEMPLATE_ID = 'tpl_demo_html';
 const CREATED_ID = 'post_demo_html_created';
 const STATE = path.join( os.tmpdir(), 'demo-251e59b4-auth.json' );
-const NEWSLETTER_ONLY_LABEL = '.beehiiv-newsletter-only-label';
+const NEWSLETTER_ONLY_BLOCK = '[data-type="core/html"].beehiiv-newsletter-only';
 const ids = [];
 
 const b64 = ( value ) =>
@@ -182,11 +182,9 @@ test( 'Custom HTML to beehiiv: full walkthrough', async ( { page } ) => {
 	);
 	await glideClick( page, toggle );
 	await expect( toggle ).toBeChecked();
-	// One label for the one block that has the option on. It renders next to
-	// the block, not inside the block element, on current WordPress.
-	const label = canvas.locator( NEWSLETTER_ONLY_LABEL );
+	// One block carries the class that draws the label, so only that block is labelled.
+	const label = canvas.locator( NEWSLETTER_ONLY_BLOCK );
 	await expect( label ).toHaveCount( 1 );
-	await expect( label ).toHaveText( 'Newsletter only' );
 	await point( page, label, 800 );
 	await caption(
 		page,
