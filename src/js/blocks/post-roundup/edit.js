@@ -29,6 +29,8 @@ import {
 	MIN_COUNT,
 	MODE_AUTO,
 	MODE_MANUAL,
+	chunkRows,
+	clampColumns,
 	clampCount,
 	createUid,
 	escapeText,
@@ -78,11 +80,24 @@ function OptionButtons( { label, options, value, onChange, disabled } ) {
 	);
 }
 
+const CTA_OPTIONS = [
+	{ value: 'button', label: __( 'Button', 'beehiiv' ) },
+	{ value: 'link', label: __( 'Link', 'beehiiv' ) },
+];
+
+const COLUMN_OPTIONS = [
+	{ value: 1, label: '1' },
+	{ value: 2, label: '2' },
+	{ value: 3, label: '3' },
+];
+
 const DISPLAY_LABELS = {
 	image: __( 'Featured image', 'beehiiv' ),
 	title: __( 'Title', 'beehiiv' ),
+	author: __( 'Author', 'beehiiv' ),
+	date: __( 'Date', 'beehiiv' ),
 	excerpt: __( 'Excerpt', 'beehiiv' ),
-	button: __( 'Read more button', 'beehiiv' ),
+	button: __( 'Read more', 'beehiiv' ),
 };
 
 function PostCard( {
@@ -90,6 +105,7 @@ function PostCard( {
 	display,
 	layout,
 	imagePlacement,
+	ctaStyle,
 	override,
 	onChange,
 	onReset,
@@ -145,6 +161,18 @@ function PostCard( {
 							alt={ imageAlt }
 						/>
 					) }
+					{ imageUrl && (
+						<RichText
+							tagName="figcaption"
+							className="beehiiv-post-roundup__caption"
+							value={ escapeText( merged.caption ) }
+							onChange={ store( 'caption', '' ) }
+							allowedFormats={ [] }
+							disableLineBreaks
+							placeholder={ __( 'Add caption', 'beehiiv' ) }
+							aria-label={ __( 'Image caption', 'beehiiv' ) }
+						/>
+					) }
 					<MediaUploadCheck>
 						<MediaUpload
 							allowedTypes={ [ 'image' ] }
@@ -186,6 +214,40 @@ function PostCard( {
 						</strong>
 					</p>
 				) }
+				{ ( display.author || display.date ) && (
+					<p className="beehiiv-post-roundup__meta">
+						{ display.author && (
+							<>
+								{ __( 'By', 'beehiiv' ) }{ ' ' }
+								<RichText
+									tagName="span"
+									className="beehiiv-post-roundup__author"
+									value={ escapeText( merged.author ) }
+									onChange={ store( 'author', card.author ) }
+									allowedFormats={ [] }
+									disableLineBreaks
+									placeholder={ escapeText( card.author ) }
+									aria-label={ __( 'Author', 'beehiiv' ) }
+								/>
+							</>
+						) }
+						{ display.author && display.date && (
+							<span aria-hidden="true"> · </span>
+						) }
+						{ display.date && (
+							<RichText
+								tagName="span"
+								className="beehiiv-post-roundup__date"
+								value={ escapeText( merged.date ) }
+								onChange={ store( 'date', card.date ) }
+								allowedFormats={ [] }
+								disableLineBreaks
+								placeholder={ escapeText( card.date ) }
+								aria-label={ __( 'Date', 'beehiiv' ) }
+							/>
+						) }
+					</p>
+				) }
 				{ display.excerpt && (
 					<RichText
 						tagName="p"
@@ -201,7 +263,11 @@ function PostCard( {
 				{ display.button && (
 					<RichText
 						tagName="span"
-						className="beehiiv-post-roundup__button"
+						className={
+							ctaStyle === 'link'
+								? 'beehiiv-post-roundup__cta-link'
+								: 'beehiiv-post-roundup__button'
+						}
 						value={ escapeText( merged.buttonLabel ) }
 						onChange={ store( 'buttonLabel', card.button_label ) }
 						allowedFormats={ [] }
@@ -227,6 +293,8 @@ function PostCard( {
 export default function Edit( { attributes, setAttributes, clientId } ) {
 	const { mode, count, posts, uid, overrides, layout, imagePlacement } =
 		attributes;
+	const columns = clampColumns( attributes.columns );
+	const ctaStyle = attributes.ctaStyle === 'link' ? 'link' : 'button';
 	const isManual = mode === MODE_MANUAL;
 	const display = getDisplay( attributes );
 	const showsNothing = Object.values( display ).every( ( shown ) => ! shown );
@@ -310,13 +378,18 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 	const columnNotice = isInColumn && (
 		<Notice status="info" isDismissible={ false }>
 			{ __(
-				'Inside a Columns block, cards are sent full width.',
+				'Inside a Columns block, cards are sent full width, one per row.',
 				'beehiiv'
 			) }
 		</Notice>
 	);
 
+	// Inside a column the cards stay full width and in one column. Cards with the
+	// image beside the text sit alone in their row, since a beehiiv column cannot
+	// hold another columns block.
 	const cardLayout = isInColumn ? LAYOUT_FULL : layout;
+	const columnsLocked = isInColumn || cardLayout !== LAYOUT_FULL;
+	const effectiveColumns = columnsLocked ? 1 : columns;
 
 	let preview;
 
@@ -341,30 +414,42 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 			/>
 		);
 	} else {
-		preview = cards.map( ( card ) => (
-			<PostCard
-				key={ card.id }
-				card={ card }
-				display={ display }
-				layout={ cardLayout }
-				imagePlacement={ imagePlacement }
-				override={ overrides?.[ card.id ] }
-				onChange={ ( changes ) =>
-					setAttributes( {
-						overrides: setOverride( overrides, card.id, changes ),
-					} )
-				}
-				onReset={ () =>
-					setAttributes( {
-						overrides: pruneOverrides(
-							overrides,
-							cards
-								.map( ( item ) => item.id )
-								.filter( ( id ) => id !== card.id )
-						),
-					} )
-				}
-			/>
+		preview = chunkRows( cards, effectiveColumns ).map( ( row ) => (
+			<div
+				key={ row.map( ( card ) => card.id ).join( '-' ) }
+				className="beehiiv-post-roundup__row"
+			>
+				{ row.map( ( card ) => (
+					<PostCard
+						key={ card.id }
+						card={ card }
+						display={ display }
+						layout={ cardLayout }
+						imagePlacement={ imagePlacement }
+						ctaStyle={ ctaStyle }
+						override={ overrides?.[ card.id ] }
+						onChange={ ( changes ) =>
+							setAttributes( {
+								overrides: setOverride(
+									overrides,
+									card.id,
+									changes
+								),
+							} )
+						}
+						onReset={ () =>
+							setAttributes( {
+								overrides: pruneOverrides(
+									overrides,
+									cards
+										.map( ( item ) => item.id )
+										.filter( ( id ) => id !== card.id )
+								),
+							} )
+						}
+					/>
+				) ) }
+			</div>
 		) );
 	}
 
@@ -433,6 +518,15 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 				</PanelBody>
 				<PanelBody title={ __( 'Layout', 'beehiiv' ) } initialOpen>
 					<OptionButtons
+						label={ __( 'Columns', 'beehiiv' ) }
+						options={ COLUMN_OPTIONS }
+						value={ effectiveColumns }
+						disabled={ columnsLocked }
+						onChange={ ( value ) =>
+							setAttributes( { columns: value } )
+						}
+					/>
+					<OptionButtons
 						label={ __( 'Table width ratio', 'beehiiv' ) }
 						options={ LAYOUT_OPTIONS }
 						value={ cardLayout }
@@ -452,6 +546,14 @@ export default function Edit( { attributes, setAttributes, clientId } ) {
 					/>
 				</PanelBody>
 				<PanelBody title={ __( 'Display', 'beehiiv' ) } initialOpen>
+					<OptionButtons
+						label={ __( 'Read more style', 'beehiiv' ) }
+						options={ CTA_OPTIONS }
+						value={ ctaStyle }
+						onChange={ ( value ) =>
+							setAttributes( { ctaStyle: value } )
+						}
+					/>
 					{ Object.keys( DISPLAY_LABELS ).map( ( item ) => (
 						<ToggleControl
 							key={ item }

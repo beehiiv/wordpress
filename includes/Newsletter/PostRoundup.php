@@ -67,7 +67,32 @@ final class PostRoundup {
 	 *
 	 * @since x.x.x
 	 */
-	public const DISPLAY_ITEMS = [ 'image', 'title', 'excerpt', 'button' ];
+	public const DISPLAY_ITEMS = [ 'image', 'title', 'author', 'date', 'excerpt', 'button' ];
+
+	/**
+	 * Whether each card item shows when the block stores no choice. Author and date
+	 * are opt-in, so roundups made before they existed send exactly what they did.
+	 *
+	 * @since x.x.x
+	 */
+	public const DISPLAY_DEFAULTS = [
+		'image'   => true,
+		'title'   => true,
+		'author'  => false,
+		'date'    => false,
+		'excerpt' => true,
+		'button'  => true,
+	];
+
+	/**
+	 * Most card columns a roundup can have. Matches what one beehiiv columns block accepts.
+	 *
+	 * @since x.x.x
+	 */
+	public const MAX_COLUMNS = 3;
+
+	public const CTA_BUTTON = 'button';
+	public const CTA_LINK   = 'link';
 
 	/**
 	 * Register hooks.
@@ -285,6 +310,9 @@ final class PostRoundup {
 				),
 				'image_url'    => $image_url ? (string) $image_url : '',
 				'image_alt'    => is_string( $alt ) ? trim( wp_strip_all_tags( $alt ) ) : '',
+				'caption'      => '',
+				'author'       => self::plain_text( get_the_author_meta( 'display_name', (int) $post->post_author ) ),
+				'date'         => self::plain_text( get_the_date( '', $post ) ),
 				'button_label' => __( 'Read more', 'beehiiv' ),
 			];
 		}
@@ -304,11 +332,36 @@ final class PostRoundup {
 		$display = [];
 
 		foreach ( self::DISPLAY_ITEMS as $item ) {
-			$is_set           = array_key_exists( $item, $stored );
-			$display[ $item ] = ! $is_set || filter_var( $stored[ $item ], FILTER_VALIDATE_BOOLEAN );
+			$display[ $item ] = array_key_exists( $item, $stored )
+				? filter_var( $stored[ $item ], FILTER_VALIDATE_BOOLEAN )
+				: self::DISPLAY_DEFAULTS[ $item ];
 		}
 
 		return $display;
+	}
+
+	/**
+	 * How many cards sit side by side, from 1 to 3. Defaults to 1.
+	 *
+	 * @param array<string, mixed> $attrs Block attributes.
+	 * @return int
+	 * @since x.x.x
+	 */
+	public static function columns( array $attrs ): int {
+		$columns = $attrs['columns'] ?? 1;
+
+		return is_numeric( $columns ) ? max( 1, min( self::MAX_COLUMNS, (int) $columns ) ) : 1;
+	}
+
+	/**
+	 * How the Read more call to action looks: a button, or a plain text link.
+	 *
+	 * @param array<string, mixed> $attrs Block attributes.
+	 * @return string `button` or `link`.
+	 * @since x.x.x
+	 */
+	public static function cta_style( array $attrs ): string {
+		return isset( $attrs['ctaStyle'] ) && self::CTA_LINK === $attrs['ctaStyle'] ? self::CTA_LINK : self::CTA_BUTTON;
 	}
 
 	/**
@@ -342,7 +395,7 @@ final class PostRoundup {
 	 * value means "use the post's own value".
 	 *
 	 * @param array<string, mixed> $attrs Block attributes.
-	 * @return array<int, array{title: string, excerpt: string, button_label: string, image_id: int}>
+	 * @return array<int, array<string, string|int>> Edits keyed by post ID.
 	 * @since x.x.x
 	 */
 	public static function overrides( array $attrs ): array {
@@ -359,6 +412,9 @@ final class PostRoundup {
 				'title'        => self::plain_text( $values['title'] ?? '' ),
 				'excerpt'      => self::plain_text( $values['excerpt'] ?? '' ),
 				'button_label' => self::plain_text( $values['buttonLabel'] ?? '' ),
+				'author'       => self::plain_text( $values['author'] ?? '' ),
+				'date'         => self::plain_text( $values['date'] ?? '' ),
+				'caption'      => self::plain_text( $values['caption'] ?? '' ),
 				'image_id'     => $image_id && wp_attachment_is_image( $image_id ) ? $image_id : 0,
 			];
 		}
@@ -401,7 +457,7 @@ final class PostRoundup {
 			$edit = $overrides[ (int) $card['id'] ] ?? null;
 
 			if ( null !== $edit ) {
-				foreach ( [ 'title', 'excerpt', 'button_label' ] as $field ) {
+				foreach ( [ 'title', 'excerpt', 'button_label', 'author', 'date', 'caption' ] as $field ) {
 					if ( '' !== $edit[ $field ] ) {
 						$card[ $field ] = $edit[ $field ];
 					}
@@ -420,6 +476,15 @@ final class PostRoundup {
 
 			if ( ! $display['image'] ) {
 				$card['image_url'] = '';
+				$card['caption']   = '';
+			}
+
+			if ( ! $display['author'] ) {
+				$card['author'] = '';
+			}
+
+			if ( ! $display['date'] ) {
+				$card['date'] = '';
 			}
 
 			if ( ! $display['title'] ) {
@@ -444,38 +509,97 @@ final class PostRoundup {
 	 * Expand a roundup block into beehiiv blocks.
 	 *
 	 * Per post: an image (when there is one), a bold linked title paragraph (a
-	 * heading cannot carry a link), an excerpt paragraph and a button, with a
-	 * separator between posts. Items the author turned off are left out, and the
-	 * author's card edits replace the post's own values.
+	 * heading cannot carry a link), an excerpt paragraph and a button. No divider is
+	 * added between cards, since the beehiiv template spaces blocks itself; an author
+	 * who wants one adds a Separator block. Items the author turned off are left out,
+	 * and the author's card edits replace the post's own values.
 	 *
 	 * @param array<string, mixed> $attrs   Block attributes.
 	 * @param int                  $post_id Newsletter post ID.
 	 * @param string               $key     Snapshot key of the block.
-	 * @param bool                 $separate Whether to put a separator between cards. Off inside a column.
 	 * @return array<int, array<string, mixed>>
 	 * @since x.x.x
 	 */
-	public static function expand( array $attrs, int $post_id, string $key, bool $separate = true ): array {
+	public static function expand( array $attrs, int $post_id, string $key ): array {
 		$blocks = [];
 
-		$cards = self::apply_settings( self::cards( self::resolve_ids( $attrs, $post_id, $key ) ), $attrs );
+		$cards     = self::apply_settings( self::cards( self::resolve_ids( $attrs, $post_id, $key ) ), $attrs );
+		$layout    = self::layout( $attrs );
+		$placement = self::image_placement( $attrs );
+		$cta_style = self::cta_style( $attrs );
+
+		// Several cards per row apply to full-width cards only. A card with the image
+		// beside the text is already a columns block, and a beehiiv column cannot hold
+		// another columns block, so it sits alone in its row.
+		$columns = self::LAYOUT_FULL === $layout ? self::columns( $attrs ) : 1;
+
+		$cells = [];
 
 		foreach ( $cards as $card ) {
-			$card_blocks = self::card_blocks( $card, self::layout( $attrs ), self::image_placement( $attrs ) );
+			$card_blocks = self::card_blocks( $card, $layout, $placement, $cta_style );
 
-			// A card with every item turned off adds nothing, not even a separator.
-			if ( empty( $card_blocks ) ) {
-				continue;
+			// A card with every item turned off adds nothing.
+			if ( ! empty( $card_blocks ) ) {
+				$cells[] = $card_blocks;
 			}
+		}
 
-			if ( $separate && ! empty( $blocks ) ) {
-				$blocks[] = [ 'type' => 'content_break' ];
-			}
-
-			$blocks = array_merge( $blocks, $card_blocks );
+		foreach ( array_chunk( $cells, $columns ) as $row ) {
+			$blocks = array_merge( $blocks, self::row_blocks( $row ) );
 		}
 
 		return $blocks;
+	}
+
+	/**
+	 * One row of cards: a single card as it is, several as columns of equal width.
+	 *
+	 * A last row with fewer cards than the others uses the whole width.
+	 *
+	 * @param array<int, array<int, array<string, mixed>>> $row Blocks of each card in the row.
+	 * @return array<int, array<string, mixed>>
+	 * @since x.x.x
+	 */
+	private static function row_blocks( array $row ): array {
+		if ( 1 === count( $row ) ) {
+			return $row[0];
+		}
+
+		$count = count( $row );
+		$width = intdiv( 100, $count );
+		$cols  = [];
+
+		foreach ( array_values( $row ) as $index => $card_blocks ) {
+			$cols[] = ColumnsBlockConverter::build_beehiiv_column_from_definition(
+				$card_blocks,
+				$index === $count - 1 ? 100 - $width * ( $count - 1 ) : $width,
+				'top'
+			);
+		}
+
+		return [ ColumnsBlockConverter::build_beehiiv_columns_block( $cols, true ) ];
+	}
+
+	/**
+	 * The author and date of a card as one line, `By Name · Date`. Empty when neither shows.
+	 *
+	 * @param array<string, mixed> $card Card data.
+	 * @return string
+	 * @since x.x.x
+	 */
+	private static function meta_line( array $card ): string {
+		$parts = [];
+
+		if ( '' !== $card['author'] ) {
+			/* translators: %s: post author name. */
+			$parts[] = sprintf( __( 'By %s', 'beehiiv' ), $card['author'] );
+		}
+
+		if ( '' !== $card['date'] ) {
+			$parts[] = $card['date'];
+		}
+
+		return implode( ' · ', $parts );
 	}
 
 	/**
@@ -487,13 +611,15 @@ final class PostRoundup {
 	 * @param array<string, mixed> $card      Card data from {@see cards()}.
 	 * @param string               $layout    Card layout.
 	 * @param string               $placement Image side for a split layout.
+	 * @param string               $cta_style `button` or `link`, how the Read more call to action looks.
 	 * @return array<int, array<string, mixed>>
 	 * @since x.x.x
 	 */
 	private static function card_blocks(
 		array $card,
 		string $layout = self::LAYOUT_FULL,
-		string $placement = 'left'
+		string $placement = 'left',
+		string $cta_style = self::CTA_BUTTON
 	): array {
 		$url    = esc_url( $card['url'] );
 		$blocks = [];
@@ -505,10 +631,13 @@ final class PostRoundup {
 					'blockName' => 'core/image',
 					'attrs'     => [],
 					'innerHTML' => sprintf(
-						'<figure class="wp-block-image"><a href="%1$s"><img src="%2$s" alt="%3$s"/></a></figure>',
+						'<figure class="wp-block-image"><a href="%1$s"><img src="%2$s" alt="%3$s"/></a>%4$s</figure>',
 						$url,
 						esc_url( $card['image_url'] ),
-						esc_attr( $card['image_alt'] )
+						esc_attr( $card['image_alt'] ),
+						'' !== $card['caption']
+							? '<figcaption class="wp-element-caption">' . esc_html( $card['caption'] ) . '</figcaption>'
+							: ''
 					),
 				]
 			);
@@ -528,6 +657,18 @@ final class PostRoundup {
 			);
 		}
 
+		$meta = self::meta_line( $card );
+
+		if ( '' !== $meta ) {
+			$blocks[] = BlockConverter::convert_paragraph_block(
+				[
+					'blockName' => 'core/paragraph',
+					'attrs'     => [],
+					'innerHTML' => '<p>' . esc_html( $meta ) . '</p>',
+				]
+			);
+		}
+
 		if ( '' !== $card['excerpt'] ) {
 			$blocks[] = BlockConverter::convert_paragraph_block(
 				[
@@ -538,7 +679,19 @@ final class PostRoundup {
 			);
 		}
 
-		if ( '' !== $card['button_label'] ) {
+		if ( '' !== $card['button_label'] && self::CTA_LINK === $cta_style ) {
+			$blocks[] = BlockConverter::convert_paragraph_block(
+				[
+					'blockName' => 'core/paragraph',
+					'attrs'     => [],
+					'innerHTML' => sprintf(
+						'<p><a href="%1$s">%2$s</a></p>',
+						$url,
+						esc_html( $card['button_label'] )
+					),
+				]
+			);
+		} elseif ( '' !== $card['button_label'] ) {
 			$blocks[] = BlockConverter::convert_button_block(
 				[
 					'blockName' => 'core/button',

@@ -39,7 +39,7 @@ defined( 'ABSPATH' ) || exit;
  * - `core/separator` — beehiiv `content_break`
  * - `core/more` — snippet newsletters only; beehiiv Read More `button` via `convert_more_block()`
  * - `beehiiv/advertisement` — beehiiv `advertisement` block via `convert_advertisement_block()`
- * - `beehiiv/post-roundup` — newsletters only; `PostRoundup::expand()` makes image, text, button, separator blocks
+ * - `beehiiv/post-roundup` — newsletters only; `PostRoundup::expand()` makes image, text and button blocks
  *
  * - `core/group` — `convert_group_block()` (beehiiv `section` block holding the converted inner
  *   blocks; only for posts whose first sync used sections, see `PostSettingsBuilder`; a Group
@@ -717,8 +717,8 @@ final class BlockConverter {
 	 * is omitted.
 	 *
 	 * A Post Roundup expands in place when the post is a newsletter. Its cards are sent
-	 * full width with no separators between cards, because a beehiiv column cannot hold
-	 * another columns block and a divider inside a column is not known to be accepted.
+	 * one card wide and full width, because a beehiiv column cannot hold another
+	 * columns block.
 	 *
 	 * @param array<int, array<string, mixed>>      $wp_blocks     Parsed inner blocks.
 	 * @param array<int, array<string, mixed>>|null $nested_blocks Receives the inner blocks of nested columns.
@@ -759,12 +759,13 @@ final class BlockConverter {
 
 			if ( PostRoundup::BLOCK === $block_name ) {
 				if ( $post_object instanceof WP_Post && ContentTypes::is_newsletter( $post_object->post_type ) ) {
-					$attrs           = (array) ( $wp_block['attrs'] ?? [] );
-					$attrs['layout'] = PostRoundup::LAYOUT_FULL;
+					$attrs            = (array) ( $wp_block['attrs'] ?? [] );
+					$attrs['layout']  = PostRoundup::LAYOUT_FULL;
+					$attrs['columns'] = 1;
 
 					$beehiiv_blocks = array_merge(
 						$beehiiv_blocks,
-						PostRoundup::expand( $attrs, $post_object->ID, PostRoundup::block_key( $attrs, null ), false )
+						PostRoundup::expand( $attrs, $post_object->ID, PostRoundup::block_key( $attrs, null ) )
 					);
 				}
 				continue;

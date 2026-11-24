@@ -32,6 +32,16 @@
 			"enum": [ "full", "50-50", "30-70", "70-30" ],
 			"default": "full"
 		},
+		"ctaStyle": {
+			"type": "string",
+			"enum": [ "button", "link" ],
+			"default": "button"
+		},
+		"columns": {
+			"type": "number",
+			"enum": [ 1, 2, 3 ],
+			"default": 1
+		},
 		"imagePlacement": {
 			"type": "string",
 			"enum": [ "left", "right" ],
@@ -42,6 +52,8 @@
 			"default": {
 				"image": true,
 				"title": true,
+				"author": false,
+				"date": false,
 				"excerpt": true,
 				"button": true
 			}

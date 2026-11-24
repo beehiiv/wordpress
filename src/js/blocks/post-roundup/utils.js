@@ -61,7 +61,26 @@ export const LAYOUT_FULL = 'full';
 // Share of the card width the image takes, per layout (image to text).
 export const LAYOUT_IMAGE_WIDTH = { '50-50': 50, '30-70': 30, '70-30': 70 };
 
-export const DISPLAY_ITEMS = [ 'image', 'title', 'excerpt', 'button' ];
+export const MAX_COLUMNS = 3;
+
+export const DISPLAY_ITEMS = [
+	'image',
+	'title',
+	'author',
+	'date',
+	'excerpt',
+	'button',
+];
+
+// Whether each item shows when the block stores no choice. Author and date are opt-in.
+const DISPLAY_DEFAULTS = {
+	image: true,
+	title: true,
+	author: false,
+	date: false,
+	excerpt: true,
+	button: true,
+};
 
 /**
  * Which card items the block shows. Every item is shown unless turned off.
@@ -75,7 +94,10 @@ export function getDisplay( attributes ) {
 	return DISPLAY_ITEMS.reduce(
 		( display, item ) => ( {
 			...display,
-			[ item ]: stored[ item ] !== false,
+			[ item ]:
+				stored[ item ] === undefined
+					? DISPLAY_DEFAULTS[ item ]
+					: stored[ item ] !== false,
 		} ),
 		{}
 	);
@@ -96,6 +118,9 @@ export function mergeCard( card, override ) {
 		title: edit.title || card.title,
 		excerpt: edit.excerpt || card.excerpt,
 		buttonLabel: edit.buttonLabel || card.button_label,
+		author: edit.author || card.author,
+		date: edit.date || card.date,
+		caption: edit.caption || '',
 		imageId: edit.imageId || 0,
 	};
 }
@@ -155,4 +180,37 @@ export function escapeText( text ) {
 		.replace( /&/g, '&amp;' )
 		.replace( /</g, '&lt;' )
 		.replace( />/g, '&gt;' );
+}
+
+/**
+ * How many cards sit side by side, from 1 to 3.
+ *
+ * @param {*} value Requested columns.
+ * @return {number} Whole number from 1 to MAX_COLUMNS.
+ */
+export function clampColumns( value ) {
+	const number = Math.round( Number( value ) );
+
+	if ( ! Number.isFinite( number ) ) {
+		return 1;
+	}
+
+	return Math.max( 1, Math.min( MAX_COLUMNS, number ) );
+}
+
+/**
+ * Split cards into rows of the given size. The last row may be shorter.
+ *
+ * @param {Object[]} cards   Cards.
+ * @param {number}   columns Cards per row.
+ * @return {Object[][]} Rows of cards.
+ */
+export function chunkRows( cards, columns ) {
+	const rows = [];
+
+	for ( let index = 0; index < cards.length; index += columns ) {
+		rows.push( cards.slice( index, index + columns ) );
+	}
+
+	return rows;
 }
