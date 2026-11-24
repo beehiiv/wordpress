@@ -1,0 +1,15 @@
+/* stylelint-disable selector-class-pattern -- block editor */
+.editor-styles-wrapper .beehiiv-newsletter-only::before {
+	background: #f0f6fc;
+	border: 1px solid #72aee6;
+	border-radius: 2px;
+	color: #0a4b78;
+	content: 'Newsletter only';
+	display: inline-block;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.4;
+	margin: 0 0 8px;
+	padding: 2px 8px;
+}
+/* stylelint-enable selector-class-pattern */

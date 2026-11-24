@@ -30,6 +30,7 @@ final class Plugin {
 		Frontend\Assets::init();
 		Admin\Assets::init();
 		Newsletter\Sender::init();
+		Editor\NewsletterOnlyHtml::init();
 		Advertisement\Sync::init();
 		OAuth\Config::register_hooks();
 		OAuth\AdminActions::init();
