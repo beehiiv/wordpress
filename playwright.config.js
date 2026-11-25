@@ -11,6 +11,7 @@ const baseURL = process.env.WP_BASE_URL || 'http://localhost:8891';
 
 module.exports = defineConfig( {
 	testDir: './tests/e2e/specs',
+	globalSetup: require.resolve( './tests/e2e/global-setup.js' ),
 	outputDir: './tests/e2e/test-results',
 	timeout: 30 * 1000,
 	expect: {
