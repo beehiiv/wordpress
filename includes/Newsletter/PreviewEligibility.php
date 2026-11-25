@@ -34,7 +34,7 @@ final class PreviewEligibility {
 	public static function check( int $post_id ) {
 		$post = get_post( $post_id );
 
-		if ( ! $post instanceof WP_Post || 'post' !== $post->post_type ) {
+		if ( ! $post instanceof WP_Post || ! ContentTypes::is_supported( $post->post_type ) ) {
 			return new WP_Error(
 				'beehiiv_post_not_found',
 				__( 'This post no longer exists. Save or reload the editor and try again.', 'beehiiv' )

@@ -1,7 +1,8 @@
 /**
  * beehiiv post settings plugin sidebar.
  *
- * Registers a dedicated editor sidebar on the default `post` post type.
+ * Registers a dedicated editor sidebar on the post types beehiiv supports
+ * (`post` and the newsletter type, from `beehiivPostSettings.supportedPostTypes`).
  */
 import { __ } from '@wordpress/i18n';
 import { registerPlugin } from '@wordpress/plugins';
@@ -121,13 +122,21 @@ function useIsNewsletterReady( postPublication ) {
 
 function BeehiivPostSettingsPanel() {
 	const beehiivMeta = useBeehiivPostMeta();
-	const { isConnected, canWritePosts } = useBeehiivEditorConfig();
+	const { isConnected, canWritePosts, newsletterPostType } =
+		useBeehiivEditorConfig();
+	const postType = useSelect(
+		( select ) => select( editorStore ).getCurrentPostType(),
+		[]
+	);
 	const postPublication = usePostPublication( beehiivMeta );
 	const isNewsletterReady = useIsNewsletterReady( postPublication );
 
 	if ( ! beehiivMeta ) {
 		return null;
 	}
+
+	// A newsletter has no public post for a "Read More" button to link to.
+	const supportsSnippet = postType !== newsletterPostType;
 
 	const {
 		sendToNewsletter,
@@ -257,30 +266,35 @@ function BeehiivPostSettingsPanel() {
 
 							{ newsletterWording }
 
-							<ToggleControl
-								className="beehiiv-post-settings-snippet"
-								label={ __( 'Snippet newsletter', 'beehiiv' ) }
-								help={
-									<>
-										{ __(
-											'Send a snippet newsletter with a "Read More" button to the full post.',
-											'beehiiv'
-										) }
-										{ sendToNewsletterSnippet && (
-											<>
-												<br />
-												<br />
-												{ __(
-													'Insert the "More" block in your post to mark where the snippet ends.',
-													'beehiiv'
-												) }
-											</>
-										) }
-									</>
-								}
-								checked={ sendToNewsletterSnippet }
-								onChange={ setSendToNewsletterSnippet }
-							/>
+							{ supportsSnippet && (
+								<ToggleControl
+									className="beehiiv-post-settings-snippet"
+									label={ __(
+										'Snippet newsletter',
+										'beehiiv'
+									) }
+									help={
+										<>
+											{ __(
+												'Send a snippet newsletter with a "Read More" button to the full post.',
+												'beehiiv'
+											) }
+											{ sendToNewsletterSnippet && (
+												<>
+													<br />
+													<br />
+													{ __(
+														'Insert the "More" block in your post to mark where the snippet ends.',
+														'beehiiv'
+													) }
+												</>
+											) }
+										</>
+									}
+									checked={ sendToNewsletterSnippet }
+									onChange={ setSendToNewsletterSnippet }
+								/>
+							) }
 						</>
 					) }
 			</PanelBody>
@@ -309,23 +323,41 @@ function BeehiivPostSettingsPanel() {
 }
 
 function useBeehiivPostSettingsEligibility() {
-	return useSelect( ( select ) => {
-		const editor = select( editorStore );
-		const core = select( coreStore );
+	const { supportedPostTypes } = useBeehiivEditorConfig();
 
-		return {
-			postType: editor.getCurrentPostType(),
-			canPublishPosts: core.canUser( 'publish', 'posts' ),
-		};
-	}, [] );
+	return useSelect(
+		( select ) => {
+			const editor = select( editorStore );
+			const core = select( coreStore );
+			const postType = editor.getCurrentPostType();
+
+			// `canUser` needs the REST resource of the current type (`posts`,
+			// `beehiiv-newsletters`), not a hard-coded `posts`. Undefined while
+			// the type resolves, which callers treat as "not denied".
+			const resource = postType
+				? core.getPostType( postType )?.rest_base
+				: undefined;
+
+			return {
+				postType,
+				isSupportedPostType:
+					! postType || supportedPostTypes.includes( postType ),
+				canPublishPosts: resource
+					? core.canUser( 'publish', resource )
+					: undefined,
+			};
+		},
+		[ supportedPostTypes ]
+	);
 }
 
 function BeehiivPostSettingsSidebar() {
-	const { postType, canPublishPosts } = useBeehiivPostSettingsEligibility();
+	const { isSupportedPostType, canPublishPosts } =
+		useBeehiivPostSettingsEligibility();
 
-	// Only on the `post` post type. `canUser` is undefined while resolving — do not
+	// Only on supported post types. `canUser` is undefined while resolving — do not
 	// treat that as denied or the sidebar icon never registers.
-	if ( postType && postType !== 'post' ) {
+	if ( ! isSupportedPostType ) {
 		return null;
 	}
 
@@ -346,14 +378,15 @@ function BeehiivPostSettingsSidebar() {
 }
 
 function BeehiivSendNewsletterPrePublishPanel() {
-	const { postType, canPublishPosts } = useBeehiivPostSettingsEligibility();
+	const { isSupportedPostType, canPublishPosts } =
+		useBeehiivPostSettingsEligibility();
 	const beehiivMeta = useBeehiivPostMeta();
 	const postPublishDate = usePostPublishDate();
 	const { isConnected, canWritePosts } = useBeehiivEditorConfig();
 	const postPublication = usePostPublication( beehiivMeta );
 	const isNewsletterReady = useIsNewsletterReady( postPublication );
 
-	if ( postType && postType !== 'post' ) {
+	if ( ! isSupportedPostType ) {
 		return null;
 	}
 

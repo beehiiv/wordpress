@@ -7,6 +7,7 @@
 
 use Beehiiv\Config;
 use Beehiiv\Editor\Meta;
+use Beehiiv\Newsletter\ContentTypes;
 use Beehiiv\Newsletter\EmailPreview;
 use Beehiiv\OAuth\TokenStore;
 use Beehiiv\REST\EmailPreviewController;
@@ -239,6 +240,27 @@ class NewsletterEmailPreviewTest extends WP_UnitTestCase {
 		);
 		$this->assertSame( 'draft', $this->requests[1]['body']['status'] );
 		$this->assertStringContainsString( 'expand=free_email_content', $this->requests[2]['url'] );
+	}
+
+	/**
+	 * A newsletter (the Newsletters content type) can be previewed like a post.
+	 */
+	public function test_a_newsletter_can_be_previewed(): void {
+		$post_id = self::factory()->post->create(
+			[
+				'post_type'    => ContentTypes::NEWSLETTER,
+				'post_status'  => 'draft',
+				'post_title'   => 'Campaign',
+				'post_content' => "<!-- wp:paragraph -->\n<p>Hello subscribers.</p>\n<!-- /wp:paragraph -->",
+			]
+		);
+		update_post_meta( $post_id, Meta::SEND_TO_NEWSLETTER, '1' );
+
+		$result = EmailPreview::render( $post_id );
+
+		$this->assertSame( '<html><body>Rendered</body></html>', $result['html'] );
+		$this->assertContains( 'POST /posts', $this->request_log() );
+		$this->assertSame( 'draft', get_post_meta( $post_id, Meta::BEEHIIV_POST_STATE, true ) );
 	}
 
 	/**

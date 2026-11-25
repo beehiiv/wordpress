@@ -51,7 +51,8 @@
 		"test:e2e:report": "node tests/e2e/report/generate-dashboard.js",
 		"test:php:report": "node tests/phpunit/report/generate-dashboard.js",
 		"test:compat": "node scripts/test-compat.js",
-		"test:php-runtime": "node --test tests/php-runtime/*.test.js"
+		"test:php-runtime": "node --test tests/php-runtime/*.test.js",
+		"test:js": "node --test tests/js/*.test.js"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.60.0",
@@ -73,6 +74,10 @@
 		"@wordpress/plugins": "^7.45.0",
 		"@wordpress/prettier-config": "^4.46.0",
 		"@wordpress/scripts": "^32.1.0",
-		"@wordpress/stylelint-config": "^23.38.0"
+		"@wordpress/stylelint-config": "^23.38.0",
+		"typescript": "^5.9.3"
+	},
+	"dependencies": {
+		"@10up/block-components": "^1.23.0"
 	}
 }

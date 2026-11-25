@@ -5,24 +5,33 @@ const { wpCli, wpCliSafe, ensurePluginActive } = require( '../utils/wp-cli' );
 /**
  * PRD: requirements/08-admin-interface/2-admin-menu/menu-registration.prd.md
  *
- * Non-admin fixture user for AC-004. Created idempotently (reused across
- * repeated runs against this shared wp-env tests environment, matching the
- * `ensurePluginActive`-style pattern in utils/wp-cli.js) with the Editor
- * role, which does not carry `manage_options` -- the capability the beehiiv
- * menu item is registered under (includes/Admin/Menu.php).
+ * Fixture users, created idempotently (reused across repeated runs against
+ * this shared wp-env tests environment):
+ * - Editor: can publish posts, no `manage_options`.
+ * - Author: can publish posts, no `manage_options`.
+ * - Contributor: cannot publish posts.
  */
-const NON_ADMIN_USERNAME = 'qa_e2e_menu_editor';
-const NON_ADMIN_PASSWORD = 'qa-e2e-menu-editor-pw-1';
+const USERS = {
+	editor: { name: 'qa_e2e_menu_editor', role: 'editor' },
+	author: { name: 'qa_e2e_menu_author', role: 'author' },
+	contributor: { name: 'qa_e2e_menu_contributor', role: 'contributor' },
+};
+const PASSWORD = 'qa-e2e-menu-user-pw-1';
 
 test.beforeAll( () => {
 	ensurePluginActive();
 
-	if ( wpCliSafe( `user get ${ NON_ADMIN_USERNAME } --field=ID` ) === null ) {
-		wpCli(
-			`user create ${ NON_ADMIN_USERNAME } ${ NON_ADMIN_USERNAME }@example.test ` +
-				`--role=editor --user_pass=${ NON_ADMIN_PASSWORD }`
-		);
-	}
+	Object.values( USERS ).forEach( ( { name, role } ) => {
+		if ( wpCliSafe( `user get ${ name } --field=ID` ) === null ) {
+			wpCli(
+				`user create ${ name } ${ name }@example.test ` +
+					`--role=${ role } --user_pass=${ PASSWORD }`
+			);
+		} else {
+			// Reused user from an earlier run: pin the known password.
+			wpCli( `user update ${ name } --user_pass=${ PASSWORD }` );
+		}
+	} );
 } );
 
 test.describe( 'Admin menu registration', () => {
@@ -78,20 +87,64 @@ test.describe( 'Admin menu registration', () => {
 		expect( parseFloat( beforeStyle.height ) ).toBeGreaterThan( 0 );
 	} );
 
-	test( 'AC-004: the menu item is hidden from, and the settings page blocked for, non-administrator users', async ( {
+	test( 'AC-004: the beehiiv Settings page is reachable by administrators only', async ( {
 		page,
+		browser,
 	} ) => {
-		await loginAs( page, NON_ADMIN_USERNAME, NON_ADMIN_PASSWORD );
-		await page.goto( '/wp-admin/' );
-
-		await expect( page.locator( '#toplevel_page_beehiiv' ) ).toHaveCount(
-			0
+		// Administrator reaches the page.
+		await loginAsAdmin( page );
+		const adminResponse = await page.goto(
+			'/wp-admin/admin.php?page=beehiiv'
 		);
+		expect( adminResponse.status() ).toBe( 200 );
+		await expect( page.locator( 'h1' ) ).toHaveText( 'beehiiv Settings' );
 
-		const response = await page.goto( '/wp-admin/admin.php?page=beehiiv' );
-		expect( response.status() ).toBe( 403 );
-		await expect( page.locator( 'body' ) ).toContainText(
-			/not allowed to access this page/i
-		);
+		// Every non-administrator is blocked, including users who can
+		// publish posts (they see the beehiiv menu, but not Settings).
+		for ( const { name } of Object.values( USERS ) ) {
+			const context = await browser.newContext();
+			const userPage = await context.newPage();
+			await loginAs( userPage, name, PASSWORD );
+
+			const response = await userPage.goto(
+				'/wp-admin/admin.php?page=beehiiv'
+			);
+			expect( response.status(), `${ name } status` ).toBe( 403 );
+			await expect( userPage.locator( 'body' ) ).toContainText(
+				/not allowed to access this page/i
+			);
+			await expect(
+				userPage.locator( 'h1', { hasText: 'beehiiv Settings' } )
+			).toHaveCount( 0 );
+
+			await userPage.goto( '/wp-admin/' );
+			await expect(
+				userPage.locator(
+					'#toplevel_page_beehiiv .wp-submenu a:text-is("Settings")'
+				)
+			).toHaveCount( 0 );
+
+			await context.close();
+		}
+	} );
+
+	test( 'AC-005: users who can publish posts see a Newsletters entry under the beehiiv menu', async ( {
+		browser,
+	} ) => {
+		for ( const { name } of [ USERS.editor, USERS.author ] ) {
+			const context = await browser.newContext();
+			const userPage = await context.newPage();
+			await loginAs( userPage, name, PASSWORD );
+			await userPage.goto( '/wp-admin/' );
+
+			const menu = userPage.locator( '#toplevel_page_beehiiv' );
+			await expect( menu, `${ name } sees beehiiv menu` ).toBeVisible();
+			await expect(
+				menu.locator( '.wp-submenu a', { hasText: 'Newsletters' } ),
+				`${ name } sees Newsletters entry`
+			).toBeVisible();
+
+			await context.close();
+		}
 	} );
 } );
