@@ -244,6 +244,37 @@ final class PostSettingsBuilder {
 		// A subtitle cleared in WordPress is removed from the draft by sending it empty.
 		$payload['subtitle'] = $settings['subtitle'] ?? '';
 
+		return self::apply_template_merge_strategy( $payload, $post_id );
+	}
+
+	/**
+	 * Keep the beehiiv template content first when an update replaces a post's blocks.
+	 *
+	 * The beehiiv update replaces the whole body by default, which drops the template
+	 * header on a post created from a template. For such a post, `append_to_template`
+	 * makes beehiiv rebuild the body as the template's current blocks followed by the
+	 * blocks in the request, so a re-sync never duplicates content. beehiiv rejects the
+	 * strategy on a post that was not created from a template, so a post without a
+	 * stored template ID, and a payload without `blocks`, are returned unchanged.
+	 *
+	 * @param array<string, mixed> $payload Update-post request body.
+	 * @param int                  $post_id Post ID.
+	 * @return array<string, mixed> The payload, with the merge strategy when it applies.
+	 * @since 1.3.0
+	 */
+	public static function apply_template_merge_strategy( array $payload, int $post_id ): array {
+		if ( ! isset( $payload['blocks'] ) ) {
+			return $payload;
+		}
+
+		$linked_template_id = get_post_meta( $post_id, Meta::BEEHIIV_LINKED_POST_TEMPLATE_ID, true );
+
+		if ( ! is_string( $linked_template_id ) || '' === trim( $linked_template_id ) ) {
+			return $payload;
+		}
+
+		$payload['content_merge_strategy'] = 'append_to_template';
+
 		return $payload;
 	}
 
@@ -302,6 +333,8 @@ final class PostSettingsBuilder {
 		if ( is_wp_error( $schedule ) ) {
 			return $schedule;
 		}
+
+		$payload = self::apply_template_merge_strategy( $payload, $post_id );
 
 		/**
 		 * Filters the beehiiv newsletter update payload before it is sent.
